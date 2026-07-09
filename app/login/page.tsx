@@ -1,0 +1,147 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Wordmark } from "@/components/brand/wordmark";
+import { Button } from "@/components/ui/button";
+import { isDemoMode } from "@/lib/config";
+import { getSupabaseBrowser } from "@/lib/supabase/client";
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") ?? "/doctor";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const sb = getSupabaseBrowser();
+    if (!sb) {
+      setLoading(false);
+      return;
+    }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    router.push(next);
+    router.refresh();
+  }
+
+  return (
+    <main className="grid min-h-screen place-items-center px-6">
+      <div className="w-full max-w-sm">
+        <Wordmark className="mb-8 justify-center" />
+
+        {isDemoMode ? (
+          <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
+            <div className="label mb-2">DEMO MODE</div>
+            <p className="text-sm text-[var(--text-muted)]">
+              No Supabase keys detected — auth is skipped. Enter either console
+              directly. Add keys in <span className="font-mono">.env.local</span>{" "}
+              to enable real login.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <Button className="flex-1" onClick={() => router.push("/doctor")}>
+                Enter as Doctor
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => router.push("/ops")}
+              >
+                Enter as Ops
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={onSubmit}
+            className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 shadow-card"
+          >
+            <div className="label mb-4">SIGN IN</div>
+            <Field
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              placeholder="you@iyashi.health"
+            />
+            <div className="h-3" />
+            <Field
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••"
+            />
+            {error && (
+              <p className="mt-3 text-sm text-terracotta-300">{error}</p>
+            )}
+            <Button
+              type="submit"
+              className="mt-5 w-full"
+              disabled={loading}
+            >
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+            <p className="mt-4 text-center text-sm text-[var(--text-muted)]">
+              New here?{" "}
+              <Link href="/register" className="text-salmon hover:underline">
+                Create an account
+              </Link>
+            </p>
+          </form>
+        )}
+
+        <p className="mt-6 text-center text-xs text-[var(--text-faint)]">
+          Iyashi Health · Healing, on demand
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function Field({
+  label,
+  type,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="label">{label}</span>
+      <input
+        type={type}
+        value={value}
+        required
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-espresso px-3 py-2.5 text-sm text-cream outline-none placeholder:text-[var(--text-faint)] focus:border-terracotta/60"
+      />
+    </label>
+  );
+}

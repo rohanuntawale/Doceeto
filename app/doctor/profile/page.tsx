@@ -1,0 +1,133 @@
+"use client";
+
+import { useState } from "react";
+import { BadgeCheck, Star, MapPin, Stethoscope, Pencil } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { Card, CardHeader } from "@/components/ui/card";
+import { StatusPill } from "@/components/ui/status-pill";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { OnlineToggle } from "@/components/doctor/online-toggle";
+import { EditProfileDialog } from "@/components/doctor/edit-profile-dialog";
+import { useReviews } from "@/lib/hooks/data";
+import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
+import { doctorStatus } from "@/lib/labels";
+import { formatINR, initials, timeAgo } from "@/lib/utils/format";
+import { useMounted } from "@/lib/hooks/use-mounted";
+
+export default function ProfilePage() {
+  const me = useCurrentDoctor();
+  const reviews = useReviews();
+  const mounted = useMounted();
+  const [editing, setEditing] = useState(false);
+  if (!me) return null;
+
+  const mine = reviews; // demo: reviews belong to the seeded doctor
+  const st = doctorStatus[me.status];
+
+  return (
+    <>
+      <PageHeader
+        kanji="私"
+        label="ZUMI · PROFILE"
+        title="Your profile"
+        action={
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5" /> Edit profile
+          </Button>
+        }
+      />
+
+      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-5">
+          <div className="flex items-start gap-4">
+            <span
+              className="grid h-16 w-16 shrink-0 place-items-center rounded-xl font-serif text-2xl text-cream"
+              style={{ background: me.avatarColor }}
+            >
+              {initials(me.fullName.replace("Dr. ", ""))}
+            </span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif text-2xl text-cream">{me.fullName}</h2>
+                {me.verified && (
+                  <BadgeCheck className="h-5 w-5 text-status-ok" />
+                )}
+              </div>
+              <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
+                <Stethoscope className="h-3.5 w-3.5" /> {me.specialty}
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <StatusPill tone={st.tone}>{st.label}</StatusPill>
+                <span className="flex items-center gap-1 text-sm text-tan">
+                  <Star className="h-4 w-4 fill-tan" /> {me.rating.toFixed(1)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <FeeTile label="Video / clinic consult" value={formatINR(me.consultFee)} />
+            <FeeTile label="Home visit" value={formatINR(me.homeVisitFee)} />
+          </div>
+
+          <p className="mt-4 flex items-center gap-1.5 text-xs text-[var(--text-faint)]">
+            <MapPin className="h-3.5 w-3.5" /> Serving Pune ·{" "}
+            {me.lat.toFixed(3)}, {me.lng.toFixed(3)}
+          </p>
+
+          <div className="mt-5">
+            <OnlineToggle doctor={me} />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader label="ZUMI · REVIEWS" title={`Patient reviews (${mine.length})`} />
+          {mine.length === 0 ? (
+            <div className="p-4">
+              <EmptyState kanji="星" title="No reviews yet" />
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--border)]">
+              {mine.map((r) => (
+                <div key={r.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-cream">
+                      {r.patientName}
+                    </span>
+                    <span className="flex items-center gap-0.5 text-tan">
+                      {Array.from({ length: r.rating }).map((_, i) => (
+                        <Star key={i} className="h-3.5 w-3.5 fill-tan" />
+                      ))}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    “{r.comment}”
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-[var(--text-faint)]">
+                    {mounted ? timeAgo(r.createdAt) : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <EditProfileDialog
+        doctor={me}
+        open={editing}
+        onClose={() => setEditing(false)}
+      />
+    </>
+  );
+}
+
+function FeeTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-espresso p-3">
+      <div className="metric text-xl text-cream">{value}</div>
+      <div className="label mt-1">{label}</div>
+    </div>
+  );
+}

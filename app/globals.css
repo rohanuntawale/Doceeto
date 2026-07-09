@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ───────────────────────────────────────────
+   Sourced from the Iyashi pitch deck. The app ships a dark
+   "espresso" shell by default; [data-surface="light"] regions
+   remap the same tokens for calm/detail panels. */
+:root {
+  --espresso: #2a2320;
+  --espresso-800: #342c26;
+  --espresso-700: #3f352e;
+  --cream: #f1e9d8;
+  --sand: #d9c9a8;
+  --tan: #c9a876;
+  --terracotta: #c15a38;
+  --terracotta-700: #a94e30;
+  --salmon: #e0a890;
+
+  --bg: var(--espresso);
+  --surface: var(--espresso-800);
+  --border: rgba(241, 233, 216, 0.1);
+  --text: var(--cream);
+  --text-muted: rgba(241, 233, 216, 0.62);
+  --text-faint: rgba(241, 233, 216, 0.4);
+  --accent: var(--terracotta);
+}
+
+[data-surface="light"] {
+  --bg: var(--cream);
+  --surface: #faf5ea;
+  --border: rgba(42, 35, 32, 0.12);
+  --text: var(--ink, #2a2320);
+  --text-muted: rgba(42, 35, 32, 0.6);
+  --text-faint: rgba(42, 35, 32, 0.4);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-feature-settings: "ss01", "cv01";
+}
+
+/* Editorial section label, e.g. "PHASE 01 · TASUKE" */
+.label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+
+/* Big serif metric, e.g. StatCard numbers */
+.metric {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+
+/* Thin, quiet scrollbars that match the shell */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--espresso-700) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--espresso-700);
+  border-radius: 8px;
+}
+
+/* Leaflet tiles read better dimmed against the espresso shell */
+.leaflet-container {
+  background: var(--espresso-800) !important;
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+.leaflet-tile {
+  filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
+}
+.leaflet-bar,
+.leaflet-control-attribution {
+  background: rgba(42, 35, 32, 0.85) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-bar a {
+  background: var(--espresso-800) !important;
+  color: var(--cream) !important;
+  border-color: var(--border) !important;
+}

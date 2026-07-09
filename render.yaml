@@ -1,0 +1,22 @@
+# Render blueprint — deploy the Iyashi dashboard as a Node web service.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: iyashi-dashboard
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
