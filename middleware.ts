@@ -1,22 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PROTECTED = ["/doctor", "/ops"];
+const isDoctorPath = (p: string) => p === "/doctor" || p.startsWith("/doctor/");
+// Note: excludes /ops-signin, which must stay public.
+const isOpsPath = (p: string) => p === "/ops" || p.startsWith("/ops/");
 
 export async function middleware(request: NextRequest) {
   const { response, user, configured } = await updateSession(request);
   const path = request.nextUrl.pathname;
 
-  // Demo mode (no Supabase): everything is open — the landing page lets
-  // you enter either console directly.
+  // Demo mode (no Supabase): auth is client-side (ops passcode gate).
   if (!configured) return response;
 
-  const isProtected = PROTECTED.some((p) => path.startsWith(p));
-
-  if (isProtected && !user) {
+  if (!user && (isDoctorPath(path) || isOpsPath(path))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
+    // Admins land on the dedicated ops sign-in; everyone else on /login.
+    url.pathname = isOpsPath(path) ? "/ops-signin" : "/login";
+    if (!isOpsPath(path)) url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 

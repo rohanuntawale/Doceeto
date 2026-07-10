@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
@@ -47,26 +48,32 @@ function LoginInner() {
   return (
     <main className="grid min-h-screen place-items-center px-6">
       <div className="w-full max-w-sm">
+        <Link
+          href="/"
+          className="mb-6 flex items-center gap-1.5 text-xs text-[var(--text-faint)] transition-colors hover:text-cream"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+        </Link>
         <Wordmark className="mb-8 justify-center" />
 
         {isDemoMode ? (
           <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
             <div className="label mb-2">DEMO MODE</div>
             <p className="text-sm text-[var(--text-muted)]">
-              No Supabase keys detected — auth is skipped. Enter either console
-              directly. Add keys in <span className="font-mono">.env.local</span>{" "}
+              No Supabase keys detected — auth is skipped. Sign in as a doctor or
+              a patient. Add keys in <span className="font-mono">.env.local</span>{" "}
               to enable real login.
             </p>
             <div className="mt-5 flex gap-2">
               <Button className="flex-1" onClick={() => router.push("/doctor")}>
-                Enter as Doctor
+                Sign in as Doctor
               </Button>
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => router.push("/ops")}
+                onClick={() => router.push("/patient")}
               >
-                Enter as Ops
+                Sign in as Patient
               </Button>
             </div>
           </div>

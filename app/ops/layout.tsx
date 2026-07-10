@@ -1,5 +1,6 @@
 import { LayoutDashboard, Siren, Users, Pill } from "lucide-react";
 import { Shell, type NavItem } from "@/components/layout/shell";
+import { OpsGuard } from "@/components/ops/ops-guard";
 
 const nav: NavItem[] = [
   { href: "/ops", label: "Overview", kanji: "全", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -10,8 +11,10 @@ const nav: NavItem[] = [
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Shell role="ops" sectionLabel="COMMAND CENTER" nav={nav}>
-      {children}
-    </Shell>
+    <OpsGuard>
+      <Shell role="ops" sectionLabel="COMMAND CENTER" nav={nav}>
+        {children}
+      </Shell>
+    </OpsGuard>
   );
 }

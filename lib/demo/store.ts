@@ -163,6 +163,7 @@ export const demoStore = {
     address: string;
     lat: number;
     lng: number;
+    doctorId?: string | null;
   }): ConsultRequest {
     const req: ConsultRequest = {
       id: nextId("req"),
@@ -176,7 +177,7 @@ export const demoStore = {
       lat: input.lat,
       lng: input.lng,
       createdAt: new Date().toISOString(),
-      doctorId: null,
+      doctorId: input.doctorId ?? null,
     };
     const s = getState();
     s.requests = [req, ...s.requests];

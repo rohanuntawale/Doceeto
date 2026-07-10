@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Stethoscope, Radio, HeartPulse } from "lucide-react";
+import { ArrowRight, Stethoscope, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SiteMenu } from "@/components/site/site-menu";
 import { isDemoMode } from "@/lib/config";
 
 const ENTRIES = [
@@ -17,13 +18,6 @@ const ENTRIES = [
     title: "Doctor cockpit",
     sub: "Go online · take requests · earn",
     icon: <Stethoscope className="h-4 w-4" />,
-  },
-  {
-    href: "/ops",
-    kanji: "検",
-    title: "Ops console",
-    sub: "Dispatch · network · orders",
-    icon: <Radio className="h-4 w-4" />,
   },
 ];
 
@@ -64,14 +58,17 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          {isDemoMode ? (
-            <span className="flex items-center gap-1.5 rounded-full bg-terracotta/12 px-3 py-1.5 text-[11px] font-medium text-salmon ring-1 ring-terracotta/25">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
-              LIVE DEMO
-            </span>
-          ) : (
-            <span className="label">EST · 2026</span>
-          )}
+          <div className="flex items-center gap-2.5">
+            {isDemoMode ? (
+              <span className="hidden items-center gap-1.5 rounded-full bg-terracotta/12 px-3 py-1.5 text-[11px] font-medium text-salmon ring-1 ring-terracotta/25 sm:flex">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
+                LIVE DEMO
+              </span>
+            ) : (
+              <span className="label hidden sm:inline">EST · 2026</span>
+            )}
+            <SiteMenu />
+          </div>
         </div>
 
         {/* hero */}
@@ -164,22 +161,14 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="label">Palette</span>
-              <div className="flex gap-1.5">
-                {["#F1E9D8", "#D9C9A8", "#C9A876", "#C15A38"].map((c) => (
-                  <span
-                    key={c}
-                    className="h-4 w-4 rounded-sm ring-1 ring-white/10"
-                    style={{ background: c }}
-                  />
-                ))}
-              </div>
-            </div>
-            <span className="font-mono text-xs text-[var(--text-faint)]">
-              hello@iyashi.health
-            </span>
+          <div className="mt-4 flex items-center gap-5 text-xs text-[var(--text-muted)]">
+            <Link href="/about" className="transition-colors hover:text-cream">
+              About us
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-cream">
+              Contact
+            </Link>
+            <span className="text-[var(--text-faint)]">© 2026 Iyashi Health</span>
           </div>
         </div>
       </section>

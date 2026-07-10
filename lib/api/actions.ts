@@ -37,6 +37,7 @@ export async function liveCreateRequest(input: {
   address: string;
   lat: number;
   lng: number;
+  doctorId?: string | null;
 }) {
   const sb = getSupabaseBrowser();
   if (!sb) return;
@@ -49,6 +50,7 @@ export async function liveCreateRequest(input: {
     address: input.address,
     lat: input.lat,
     lng: input.lng,
+    doctor_id: input.doctorId ?? null,
   });
 }
 

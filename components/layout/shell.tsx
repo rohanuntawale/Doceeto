@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { clearOpsAuthed } from "@/lib/ops-auth";
 
 export interface NavItem {
   href: string;
@@ -28,12 +29,19 @@ export function Shell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const otherRole = role === "doctor" ? "ops" : "doctor";
+  // Ops is admin-only, so never surface a one-click hop into it: the doctor
+  // cockpit switches to the patient app; ops switches back to the cockpit.
+  const switchTo =
+    role === "doctor"
+      ? { href: "/patient", label: "Patient app" }
+      : { href: "/doctor", label: "Doctor cockpit" };
 
   async function logout() {
+    if (role === "ops") clearOpsAuthed();
     const sb = getSupabaseBrowser();
     if (sb) await sb.auth.signOut();
-    router.push(isDemoMode ? "/" : "/login");
+    if (role === "ops") router.push("/ops-signin");
+    else router.push(isDemoMode ? "/" : "/login");
     router.refresh();
   }
 
@@ -55,11 +63,11 @@ export function Shell({
 
         <div className="mt-auto flex flex-col gap-1 border-t border-[var(--border)] pt-3">
           <Link
-            href={`/${otherRole}`}
+            href={switchTo.href}
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
           >
             <ArrowLeftRight className="h-4 w-4" />
-            Switch to {otherRole === "doctor" ? "Doctor" : "Ops"}
+            {switchTo.label}
           </Link>
           <button
             onClick={logout}

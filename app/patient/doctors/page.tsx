@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
+import { PatientBookings } from "@/components/patient/patient-bookings";
 import { useDoctors, useActions } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { doctorStatus } from "@/lib/labels";
@@ -38,6 +39,7 @@ export default function PatientDoctors() {
       address: type === "home_visit" ? patient.address : "Online consult",
       lat: patient.lat,
       lng: patient.lng,
+      doctorId: doctor.id,
     });
     toast.push({
       tone: "success",
@@ -57,6 +59,8 @@ export default function PatientDoctors() {
           visit.
         </p>
       </div>
+
+      <PatientBookings patientId={patient.id} />
 
       <div>
         <label className="label">What&apos;s bothering you? (optional)</label>

@@ -201,6 +201,7 @@ export interface CreateRequestInput {
   address: string;
   lat: number;
   lng: number;
+  doctorId?: string | null; // the doctor the patient chose
 }
 export interface CreateOrderInput {
   patientId: string;
