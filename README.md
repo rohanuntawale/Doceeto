@@ -14,11 +14,11 @@ Iyashi in one Next.js app — **three connected surfaces**:
 
 **They're wired together:** a request a patient raises appears **live** in the doctor cockpit and ops console, and its status flows back to the patient as the doctor/ops act on it.
 
-> Runs in **two modes**. With no Supabase keys it boots in **local mode** — a cross-tab
+> Runs in **two modes**. With no backend env it boots in **demo mode**, a cross-tab
 > engine (BroadcastChannel + localStorage) that behaves like a shared backend on your
-> machine, seeded with the doctor/ambulance **catalog only** (no fake activity — you create
-> the data). Add Supabase keys and it switches to a real Postgres + Auth + Realtime backend
-> (cross-device), no code changes.
+> machine, seeded with the doctor/ambulance **catalog only** (no fake activity, you create
+> the data). Set the Neo4j env vars and it switches to a real **Neo4j backend with accounts
+> and login** (cross-device), no code changes.
 
 ### See patient → doctor connect (30 seconds, no setup)
 
@@ -28,7 +28,7 @@ Iyashi in one Next.js app — **three connected surfaces**:
 4. Watch it appear **live** in the doctor's Requests / nearby-SOS. Accept it → the patient tab shows *"accepted"* instantly. Same for **Ops → orders**.
 5. Use **Reset** (top-right of the patient app) to wipe your test data and start clean.
 
-> Cross-tab works within one browser today. Add Supabase keys for true cross-device.
+> Cross-tab works within one browser today. Add the Neo4j env for real accounts and cross-device.
 
 ---
 
@@ -41,19 +41,31 @@ npm run dev          # → http://localhost:3000  (demo mode, no setup)
 
 Open the landing page and enter either **Doctor cockpit** or **Ops console**.
 
-## Go live with Supabase
+## Go live with Neo4j (real accounts + login)
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL editor, run **`supabase/migrations/0001_init.sql`**, then **`supabase/seed.sql`**.
-3. Copy `.env.example` → `.env.local` and fill in:
+1. Create a free graph at [Neo4j Aura](https://neo4j.com/cloud/aura/) (or run Neo4j locally).
+2. Copy `.env.example` → `.env.local` and fill in:
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-   SUPABASE_SERVICE_ROLE_KEY=eyJ...      # server only
+   NEXT_PUBLIC_BACKEND=neo4j
+   NEO4J_URI=neo4j+s://xxxx.databases.neo4j.io
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=your-password
+   AUTH_SECRET=any-long-random-string
+   SETUP_TOKEN=any-secret-you-choose
+   OPS_EMAIL=ops@iyashi.health
+   OPS_PASSWORD=change-me
    ```
-4. `npm run dev`. The app now reads/writes real data. Insert a row into `sos_events` in Supabase and watch it appear on the ops board **without a refresh**.
+3. `npm run dev`, then run the one-time setup (creates constraints, seeds the
+   doctor/ambulance catalog, and the ops login):
+   ```
+   curl -X POST -H "x-setup-token: $SETUP_TOKEN" http://localhost:3000/api/admin/seed
+   ```
+4. Patients and doctors now **register with a real email + password** at `/register`;
+   sessions are signed JWTs in an httpOnly cookie. Ops signs in at `/ops-signin`
+   with `OPS_EMAIL` / `OPS_PASSWORD`.
 
-Doctors self-onboard at `/signup` (a `profiles` + `doctors` row is created by a trigger). Ops accounts are seeded/invited — set `role = 'ops'` on their `profiles` row.
+**Authorization** is enforced server-side in the `/api` route handlers (there is no
+database RLS): each role only reads and writes the rows it is allowed to.
 
 ## Scripts
 
@@ -80,6 +92,6 @@ Both work with **zero** extra config. In demo mode they deploy even with no env 
 
 ## Tech
 
-Next.js 14 (App Router) · TypeScript · Tailwind · Supabase (Postgres/Auth/Realtime) · TanStack Query · React-Leaflet · lucide-react.
+Next.js 14 (App Router) · TypeScript · Tailwind · Neo4j (graph DB) · custom JWT auth (bcrypt + httpOnly cookie) · TanStack Query · React-Leaflet · lucide-react.
 
 Modules covered: **Tasuke** (SOS), **Zumi** (freelance doctors), **AuraMed** (medicine). **Kenshin** (diagnostics) is reserved in the schema and nav for a later phase.

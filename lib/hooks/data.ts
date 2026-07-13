@@ -1,26 +1,18 @@
 "use client";
 
 /**
- * Unified data hooks. The exported hooks are bound ONCE at module load
- * to either the demo or the live implementation (isDemoMode is a
- * build-time constant from NEXT_PUBLIC_* env), so React always sees a
- * stable hook - no conditional-hook violations. Components import only
- * from here and never care which backend is live.
+ * Unified data hooks. Exported hooks bind ONCE at module load to either
+ * the demo engine (in-browser store) or the live backend (Neo4j via the
+ * /api routes), chosen by the build-time isDemoMode constant. Components
+ * import only from here and never care which backend is live.
+ *
+ * Live mode has no realtime feed (Neo4j is not Postgres), so reads poll
+ * on a short interval and every mutation invalidates the matching query.
  */
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
 import { demoStore } from "@/lib/demo/store";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
-import {
-  mapAmbulance,
-  mapDoctor,
-  mapOrder,
-  mapRequest,
-  mapReview,
-  mapSos,
-} from "@/lib/api/mappers";
-import * as live from "@/lib/api/actions";
 import type {
   Ambulance,
   ConsultRequest,
@@ -41,110 +33,66 @@ const ORDER_ORDER: OrderStatus[] = [
   "delivered",
 ];
 
-// ── Demo primitives ─────────────────────────────────────────
+const POLL_MS = 4000;
+const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews"];
+
+// ── Demo primitive ──────────────────────────────────────────
 function useDemoState() {
-  return useSyncExternalStore(
-    demoStore.subscribe,
-    demoStore.get,
-    demoStore.get,
-  );
+  return useSyncExternalStore(demoStore.subscribe, demoStore.get, demoStore.get);
 }
 
-// ── Live primitive: query + realtime invalidation ───────────
-function useLiveTable<T>(
-  key: string,
-  table: string,
-  // Rows are untyped Postgres records; mappers in lib/api/mappers narrow them.
-  map: (row: Record<string, unknown>) => T,
-  order = "created_at",
-): T[] {
-  const qc = useQueryClient();
+// ── Live primitive: fetch an entity from /api/data with polling ──
+async function fetchEntity<T>(entity: string): Promise<T[]> {
+  const res = await fetch(`/api/data?entity=${entity}`, { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? (data as T[]) : [];
+}
+
+function useApiEntity<T>(entity: string): T[] {
   const { data } = useQuery({
-    queryKey: [key],
-    queryFn: async () => {
-      const sb = getSupabaseBrowser();
-      if (!sb) return [] as T[];
-      const { data, error } = await sb
-        .from(table)
-        .select("*")
-        .order(order, { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map(map);
-    },
+    queryKey: [entity],
+    queryFn: () => fetchEntity<T>(entity),
+    refetchInterval: POLL_MS,
+    refetchOnWindowFocus: true,
   });
-
-  useEffect(() => {
-    const sb = getSupabaseBrowser();
-    if (!sb) return;
-    const channel = sb
-      .channel(`rt-${table}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        () => qc.invalidateQueries({ queryKey: [key] }),
-      )
-      .subscribe();
-    return () => {
-      sb.removeChannel(channel);
-    };
-  }, [key, table, qc]);
-
   return data ?? [];
 }
 
-// ── Entity hooks ────────────────────────────────────────────
-// Each backend gets a fully-named custom hook (so eslint's
-// rules-of-hooks sees unconditional hook calls), and the export is
-// bound ONCE to the right one - isDemoMode is a build-time constant,
-// so React always sees a stable hook at the call site.
-
+// ── Entity hooks (bound once to the active backend) ─────────
 function useSosDemo(): SosEvent[] {
   return useDemoState().sos;
 }
-function useSosLive(): SosEvent[] {
-  return useLiveTable("sos", "sos_events", (r) => mapSos(r));
-}
-export const useSosEvents = isDemoMode ? useSosDemo : useSosLive;
+export const useSosEvents = isDemoMode ? useSosDemo : () => useApiEntity<SosEvent>("sos");
 
 function useRequestsDemo(): ConsultRequest[] {
   return useDemoState().requests;
 }
-function useRequestsLive(): ConsultRequest[] {
-  return useLiveTable("requests", "consult_requests", (r) => mapRequest(r));
-}
-export const useConsultRequests = isDemoMode ? useRequestsDemo : useRequestsLive;
+export const useConsultRequests = isDemoMode
+  ? useRequestsDemo
+  : () => useApiEntity<ConsultRequest>("requests");
 
 function useOrdersDemo(): Order[] {
   return useDemoState().orders;
 }
-function useOrdersLive(): Order[] {
-  return useLiveTable("orders", "orders", (r) => mapOrder(r));
-}
-export const useOrders = isDemoMode ? useOrdersDemo : useOrdersLive;
+export const useOrders = isDemoMode ? useOrdersDemo : () => useApiEntity<Order>("orders");
 
 function useDoctorsDemo(): Doctor[] {
   return useDemoState().doctors;
 }
-function useDoctorsLive(): Doctor[] {
-  return useLiveTable("doctors", "doctors", (r) => mapDoctor(r));
-}
-export const useDoctors = isDemoMode ? useDoctorsDemo : useDoctorsLive;
+export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Doctor>("doctors");
 
 function useAmbulancesDemo(): Ambulance[] {
   return useDemoState().ambulances;
 }
-function useAmbulancesLive(): Ambulance[] {
-  return useLiveTable("ambulances", "ambulances", (r) => mapAmbulance(r));
-}
-export const useAmbulances = isDemoMode ? useAmbulancesDemo : useAmbulancesLive;
+export const useAmbulances = isDemoMode
+  ? useAmbulancesDemo
+  : () => useApiEntity<Ambulance>("ambulances");
 
 function useReviewsDemo(): Review[] {
   return useDemoState().reviews;
 }
-function useReviewsLive(): Review[] {
-  return useLiveTable("reviews", "reviews", (r) => mapReview(r));
-}
-export const useReviews = isDemoMode ? useReviewsDemo : useReviewsLive;
+export const useReviews = isDemoMode ? useReviewsDemo : () => useApiEntity<Review>("reviews");
 
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
@@ -159,17 +107,15 @@ export function useOpsSnapshot(): OpsSnapshot {
       resolved.length > 0
         ? resolved.reduce((acc, s) => {
             const mins =
-              (new Date(s.resolvedAt!).getTime() -
-                new Date(s.createdAt).getTime()) /
+              (new Date(s.resolvedAt!).getTime() - new Date(s.createdAt).getTime()) /
               60000;
             return acc + mins;
           }, 0) / resolved.length
         : 8;
 
     return {
-      activeSos: sos.filter(
-        (s) => s.status !== "resolved" && s.status !== "cancelled",
-      ).length,
+      activeSos: sos.filter((s) => s.status !== "resolved" && s.status !== "cancelled")
+        .length,
       ambulancesFree: ambulances.filter((a) => a.status === "free").length,
       ambulancesTotal: ambulances.length,
       doctorsOnline: doctors.filter((d) => d.status === "online").length,
@@ -201,7 +147,7 @@ export interface CreateRequestInput {
   address: string;
   lat: number;
   lng: number;
-  doctorId?: string | null; // the doctor the patient chose
+  doctorId?: string | null;
 }
 export interface CreateOrderInput {
   patientId: string;
@@ -213,13 +159,10 @@ export interface CreateOrderInput {
 }
 
 export interface Actions {
-  // patient-side creates
   createSos: (input: CreateSosInput) => void;
   createRequest: (input: CreateRequestInput) => void;
   createOrder: (input: CreateOrderInput) => void;
-  // profile edits
   updateDoctor: (id: string, patch: Partial<Doctor>) => void;
-  // console-side mutations
   setDoctorStatus: (id: string, status: Doctor["status"]) => void;
   acceptRequest: (id: string, doctorId: string) => void;
   declineRequest: (id: string) => void;
@@ -235,7 +178,19 @@ export function resetTestData() {
   if (isDemoMode) demoStore.reset();
 }
 
+/** POST an action to the live backend, then refresh the affected data. */
+function callAction(qc: QueryClient, action: string, payload: Record<string, unknown>) {
+  fetch("/api/actions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action, payload }),
+  })
+    .then(() => ENTITY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] })))
+    .catch((err) => console.error("Iyashi action failed:", err));
+}
+
 export function useActions(): Actions {
+  const qc = useQueryClient();
   const nextSos = useCallback((current: SosStatus): SosStatus => {
     const i = SOS_ORDER.indexOf(current);
     return SOS_ORDER[Math.min(i + 1, SOS_ORDER.length - 1)];
@@ -262,32 +217,25 @@ export function useActions(): Actions {
         advanceOrder: (id) => demoStore.advanceOrder(id),
       };
     }
-    // Never let a rejected Supabase write become an unhandled promise
-    // rejection that could crash the tab; log and move on.
-    const safe = <A extends unknown[]>(fn: (...a: A) => Promise<unknown>) =>
-      (...a: A) => {
-        try {
-          Promise.resolve(fn(...a)).catch((err) =>
-            console.error("Iyashi action failed:", err),
-          );
-        } catch (err) {
-          console.error("Iyashi action failed:", err);
-        }
-      };
+    // Live: the server takes patient identity from the session, so the
+    // patientId/patientName here are ignored server-side (anti-spoof).
     return {
-      createSos: safe(live.liveCreateSos),
-      createRequest: safe(live.liveCreateRequest),
-      createOrder: safe(live.liveCreateOrder),
-      updateDoctor: safe(live.liveUpdateDoctor),
-      setDoctorStatus: safe(live.liveSetDoctorStatus),
-      acceptRequest: safe(live.liveAcceptRequest),
-      declineRequest: safe(live.liveDeclineRequest),
-      completeRequest: safe(live.liveCompleteRequest),
-      assignAmbulance: safe(live.liveAssignAmbulance),
-      assignDoctorToSos: safe(live.liveAssignDoctorToSos),
-      advanceSos: (id, current) => safe(live.liveAdvanceSos)(id, nextSos(current)),
-      advanceOrder: (id, current) =>
-        safe(live.liveAdvanceOrder)(id, nextOrder(current)),
+      createSos: (input) => callAction(qc, "createSos", { ...input }),
+      createRequest: (input) => callAction(qc, "createRequest", { ...input }),
+      createOrder: (input) => callAction(qc, "createOrder", { ...input }),
+      updateDoctor: (id, patch) => callAction(qc, "updateDoctor", { patch }),
+      setDoctorStatus: (_id, status) => callAction(qc, "setDoctorStatus", { status }),
+      acceptRequest: (id) => callAction(qc, "acceptRequest", { id }),
+      declineRequest: (id) => callAction(qc, "declineRequest", { id }),
+      completeRequest: (id) => callAction(qc, "completeRequest", { id }),
+      assignAmbulance: (sosId, ambulanceId) =>
+        callAction(qc, "assignAmbulance", { sosId, ambulanceId }),
+      assignDoctorToSos: (sosId, doctorId) =>
+        callAction(qc, "assignDoctorToSos", { sosId, doctorId }),
+      advanceSos: (sosId, current) =>
+        callAction(qc, "advanceSos", { sosId, next: nextSos(current) }),
+      advanceOrder: (orderId, current) =>
+        callAction(qc, "advanceOrder", { orderId, next: nextOrder(current) }),
     };
-  }, [nextSos, nextOrder]);
+  }, [qc, nextSos, nextOrder]);
 }

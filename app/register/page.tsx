@@ -11,7 +11,6 @@ import { isDemoMode } from "@/lib/config";
 import { demoStore } from "@/lib/demo/store";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { doctorKind } from "@/lib/labels";
 import type { DoctorKind } from "@/lib/types/domain";
 
@@ -118,17 +117,45 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const toast = useToast();
   const { patient, update } = useCurrentPatient();
-  const [form, setForm] = useState({ name: "", address: patient.address });
+  const [form, setForm] = useState({
+    name: "",
+    address: patient.address,
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+
+    if (isDemoMode) {
+      update({
+        name: form.name.trim() || "Patient",
+        address: form.address.trim() || patient.address,
+      });
+      toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your profile is ready." });
+      router.push("/patient");
+      return;
+    }
+
     setLoading(true);
-    update({
-      name: form.name.trim() || "Patient",
-      address: form.address.trim() || patient.address,
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        role: "patient",
+        name: form.name,
+        address: form.address,
+        email: form.email,
+        password: form.password,
+      }),
     });
-    toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your patient profile is ready." });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+    if (!res.ok) return setError(data.error ?? "Could not create the account.");
+    toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your account is ready." });
     router.push("/patient");
   }
 
@@ -151,6 +178,31 @@ function PatientForm({ onBack }: { onBack: () => void }) {
           placeholder="Baner, Pune"
         />
       </Field>
+      {!isDemoMode && (
+        <>
+          <Field label="Email">
+            <input
+              type="email"
+              className={inputCls}
+              value={form.email}
+              required
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="you@example.com"
+            />
+          </Field>
+          <Field label="Password">
+            <input
+              type="password"
+              className={inputCls}
+              value={form.password}
+              required
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="At least 6 characters"
+            />
+          </Field>
+        </>
+      )}
+      {error && <p className="text-sm text-terracotta-300">{error}</p>}
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
         {loading ? "Setting up…" : "Continue to the app"}
       </Button>
@@ -186,7 +238,6 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -208,47 +259,29 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    // Live: real Supabase signup.
+    // Live: create the doctor account on the Neo4j backend.
     setLoading(true);
-    const sb = getSupabaseBrowser();
-    if (!sb) {
-      setLoading(false);
-      return;
-    }
-    const { error } = await sb.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          full_name: form.fullName,
-          specialty: form.specialty,
-          kind: form.kind,
-          gender: form.gender,
-          experience_years: form.experienceYears,
-          role: "doctor",
-        },
-      },
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        role: "doctor",
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        specialty: form.specialty,
+        kind: form.kind,
+        gender: form.gender,
+        experienceYears: form.experienceYears,
+        consultFee: form.consultFee,
+        homeVisitFee: form.homeVisitFee,
+      }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
-    if (error) return setError(error.message);
-    setSent(true);
-  }
-
-  if (sent) {
-    return (
-      <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
-        <div className="font-jp text-3xl text-salmon">医</div>
-        <p className="mt-3 font-serif text-lg text-cream">Check your inbox</p>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Confirm your email to activate your Iyashi doctor account.
-        </p>
-        <Link href="/login">
-          <Button variant="outline" className="mt-5 w-full">
-            Back to sign in
-          </Button>
-        </Link>
-      </div>
-    );
+    if (!res.ok) return setError(data.error ?? "Could not create the account.");
+    toast.push({ tone: "success", title: "You're on the network", desc: form.fullName });
+    router.push("/doctor");
   }
 
   return (
@@ -330,28 +363,28 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      {isDemoMode ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Consult fee (₹)">
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              value={form.consultFee}
-              onChange={(e) => setForm({ ...form, consultFee: Number(e.target.value) })}
-            />
-          </Field>
-          <Field label="Home visit fee (₹)">
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              value={form.homeVisitFee}
-              onChange={(e) => setForm({ ...form, homeVisitFee: Number(e.target.value) })}
-            />
-          </Field>
-        </div>
-      ) : (
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Consult fee (₹)">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.consultFee}
+            onChange={(e) => setForm({ ...form, consultFee: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Home visit fee (₹)">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.homeVisitFee}
+            onChange={(e) => setForm({ ...form, homeVisitFee: Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+
+      {!isDemoMode && (
         <>
           <Field label="Email">
             <input
@@ -360,7 +393,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
               value={form.email}
               required
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="you@iyashi.health"
+              placeholder="you@example.com"
             />
           </Field>
           <Field label="Password">
@@ -370,7 +403,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
               value={form.password}
               required
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="••••••••"
+              placeholder="At least 6 characters"
             />
           </Field>
         </>

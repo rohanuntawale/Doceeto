@@ -7,7 +7,6 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { clearOpsAuthed } from "@/lib/ops-auth";
 
 export interface NavItem {
@@ -39,8 +38,13 @@ export function Shell({
 
   async function logout() {
     if (role === "ops") clearOpsAuthed();
-    const sb = getSupabaseBrowser();
-    if (sb) await sb.auth.signOut();
+    if (!isDemoMode) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        /* ignore */
+      }
+    }
     if (role === "ops") router.push("/ops-signin");
     else router.push(isDemoMode ? "/" : "/login");
     router.refresh();
