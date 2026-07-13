@@ -262,22 +262,32 @@ export function useActions(): Actions {
         advanceOrder: (id) => demoStore.advanceOrder(id),
       };
     }
+    // Never let a rejected Supabase write become an unhandled promise
+    // rejection that could crash the tab; log and move on.
+    const safe = <A extends unknown[]>(fn: (...a: A) => Promise<unknown>) =>
+      (...a: A) => {
+        try {
+          Promise.resolve(fn(...a)).catch((err) =>
+            console.error("Iyashi action failed:", err),
+          );
+        } catch (err) {
+          console.error("Iyashi action failed:", err);
+        }
+      };
     return {
-      createSos: (input) => void live.liveCreateSos(input),
-      createRequest: (input) => void live.liveCreateRequest(input),
-      createOrder: (input) => void live.liveCreateOrder(input),
-      updateDoctor: (id, patch) => void live.liveUpdateDoctor(id, patch),
-      setDoctorStatus: (id, status) => void live.liveSetDoctorStatus(id, status),
-      acceptRequest: (id, doctorId) => void live.liveAcceptRequest(id, doctorId),
-      declineRequest: (id) => void live.liveDeclineRequest(id),
-      completeRequest: (id) => void live.liveCompleteRequest(id),
-      assignAmbulance: (sosId, ambId) =>
-        void live.liveAssignAmbulance(sosId, ambId),
-      assignDoctorToSos: (sosId, docId) =>
-        void live.liveAssignDoctorToSos(sosId, docId),
-      advanceSos: (id, current) => void live.liveAdvanceSos(id, nextSos(current)),
+      createSos: safe(live.liveCreateSos),
+      createRequest: safe(live.liveCreateRequest),
+      createOrder: safe(live.liveCreateOrder),
+      updateDoctor: safe(live.liveUpdateDoctor),
+      setDoctorStatus: safe(live.liveSetDoctorStatus),
+      acceptRequest: safe(live.liveAcceptRequest),
+      declineRequest: safe(live.liveDeclineRequest),
+      completeRequest: safe(live.liveCompleteRequest),
+      assignAmbulance: safe(live.liveAssignAmbulance),
+      assignDoctorToSos: safe(live.liveAssignDoctorToSos),
+      advanceSos: (id, current) => safe(live.liveAdvanceSos)(id, nextSos(current)),
       advanceOrder: (id, current) =>
-        void live.liveAdvanceOrder(id, nextOrder(current)),
+        safe(live.liveAdvanceOrder)(id, nextOrder(current)),
     };
   }, [nextSos, nextOrder]);
 }

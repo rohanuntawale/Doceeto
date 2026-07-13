@@ -94,9 +94,22 @@ function commit(broadcast = true) {
     } catch {
       /* quota / private mode - ignore */
     }
-    if (broadcast && channel) channel.postMessage({ type: "state", state });
+    if (broadcast && channel) {
+      try {
+        channel.postMessage({ type: "state", state });
+      } catch {
+        /* channel closed or structured-clone failure - ignore */
+      }
+    }
   }
-  listeners.forEach((l) => l());
+  // A listener must never break the store: isolate each one.
+  listeners.forEach((l) => {
+    try {
+      l();
+    } catch {
+      /* a subscriber threw - keep the rest alive */
+    }
+  });
 }
 
 export const demoStore = {
@@ -370,7 +383,33 @@ function setupClient() {
       }
     };
   } catch {
-    /* BroadcastChannel unsupported - single-tab still works */
+    /* BroadcastChannel unsupported - fall back to storage events below */
+  }
+
+  // Fallback (and belt-and-braces) cross-tab sync: the `storage` event
+  // fires in OTHER tabs when localStorage changes, so even without
+  // BroadcastChannel the patient ↔ doctor connection still works.
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue) as DemoState;
+        if (parsed && Array.isArray(parsed.doctors)) {
+          state = parsed;
+          listeners.forEach((l) => {
+            try {
+              l();
+            } catch {
+              /* ignore */
+            }
+          });
+        }
+      } catch {
+        /* corrupt payload - ignore */
+      }
+    });
+  } catch {
+    /* addEventListener unavailable - single-tab still works */
   }
 
   // Emit once so the first paint reflects persisted state.

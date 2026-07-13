@@ -36,7 +36,11 @@ export default function RequestsPage() {
       <section className="mb-8">
         <div className="label mb-3">OPEN · {pending.length}</div>
         {pending.length === 0 ? (
-          <EmptyState kanji="頼" title="No open requests right now" />
+          <EmptyState
+            kanji="頼"
+            title="No open requests right now"
+            desc="Make sure you're online. New requests from patients nearby will appear here."
+          />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {pending.map((r) => (

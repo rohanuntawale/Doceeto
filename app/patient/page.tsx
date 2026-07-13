@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Stethoscope, Pill, ChevronRight, MapPin } from "lucide-react";
 import { SosTrigger } from "@/components/patient/sos-trigger";
 import { CareStatus } from "@/components/patient/care-status";
+import { HowItWorks } from "@/components/patient/how-it-works";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 
 export default function PatientHome() {
@@ -20,6 +21,8 @@ export default function PatientHome() {
           <MapPin className="h-3.5 w-3.5" /> {patient.address}
         </p>
       </div>
+
+      <HowItWorks />
 
       <SosTrigger patient={patient} />
 
