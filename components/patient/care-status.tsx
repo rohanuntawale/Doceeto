@@ -20,7 +20,7 @@ import {
 } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 
-/** The patient's own live care — updates the instant a doctor/ops acts. */
+/** The patient's own live care. Updates the instant a doctor or ops acts. */
 export function CareStatus({ patient }: { patient: PatientIdentity }) {
   const mounted = useMounted();
   const sos = useSosEvents().filter((e) => e.patientId === patient.id);
@@ -38,7 +38,7 @@ export function CareStatus({ patient }: { patient: PatientIdentity }) {
       <EmptyState
         kanji="癒"
         title="No active care"
-        desc="Raise an SOS, book a doctor, or order medicine — it'll appear here and update live."
+        desc="Raise an SOS, book a doctor, or order medicine. It shows up here and updates live."
       />
     );
   }

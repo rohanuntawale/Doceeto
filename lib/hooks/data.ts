@@ -4,7 +4,7 @@
  * Unified data hooks. The exported hooks are bound ONCE at module load
  * to either the demo or the live implementation (isDemoMode is a
  * build-time constant from NEXT_PUBLIC_* env), so React always sees a
- * stable hook — no conditional-hook violations. Components import only
+ * stable hook - no conditional-hook violations. Components import only
  * from here and never care which backend is live.
  */
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
@@ -95,7 +95,7 @@ function useLiveTable<T>(
 // ── Entity hooks ────────────────────────────────────────────
 // Each backend gets a fully-named custom hook (so eslint's
 // rules-of-hooks sees unconditional hook calls), and the export is
-// bound ONCE to the right one — isDemoMode is a build-time constant,
+// bound ONCE to the right one - isDemoMode is a build-time constant,
 // so React always sees a stable hook at the call site.
 
 function useSosDemo(): SosEvent[] {

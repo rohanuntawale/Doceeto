@@ -52,7 +52,7 @@ export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
             )}
           />
           <p className="truncate text-sm font-medium text-cream">
-            {online ? "Online — accepting care" : "Offline"}
+            {online ? "Online and taking patients" : "Offline"}
           </p>
         </div>
         <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">

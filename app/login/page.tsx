@@ -60,9 +60,9 @@ function LoginInner() {
           <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
             <div className="label mb-2">DEMO MODE</div>
             <p className="text-sm text-[var(--text-muted)]">
-              No Supabase keys detected — auth is skipped. Sign in as a doctor or
+              No Supabase keys found, so login is skipped. Sign in as a doctor or
               a patient. Add keys in <span className="font-mono">.env.local</span>{" "}
-              to enable real login.
+              to turn on real login.
             </p>
             <div className="mt-5 flex gap-2">
               <Button className="flex-1" onClick={() => router.push("/doctor")}>

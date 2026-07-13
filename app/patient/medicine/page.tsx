@@ -51,7 +51,7 @@ export default function PatientMedicine() {
     toast.push({
       tone: "success",
       title: "Order placed",
-      desc: "Track it live on your home screen — ETA ~10 min.",
+      desc: "Track it live on your home screen.",
     });
     setCart({});
   }
@@ -62,7 +62,7 @@ export default function PatientMedicine() {
         <div className="font-jp text-sm text-salmon">薬 · AURAMED</div>
         <h1 className="mt-1 font-serif text-3xl text-cream">Order medicine</h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-          <Store className="h-3.5 w-3.5" /> {DARK_STORES[0]} · ~10 min to{" "}
+          <Store className="h-3.5 w-3.5" /> {DARK_STORES[0]} · delivered to{" "}
           {patient.address}
         </p>
       </div>

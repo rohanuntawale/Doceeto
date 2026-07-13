@@ -11,12 +11,12 @@
 
 truncate reviews, orders, consult_requests, sos_events, ambulances, dark_stores, doctors restart identity cascade;
 
-insert into doctors (id, full_name, specialty, status, verified, rating, consult_fee, home_visit_fee, lat, lng, last_seen) values
-  ('11111111-1111-1111-1111-111111111111','Dr. Ananya Rao','General Physician','online', true, 4.8, 400, 900, 18.5308, 73.8475, now()),
-  ('22222222-2222-2222-2222-222222222222','Dr. Vikram Shah','Cardiologist','online', true, 4.9, 800, 1600, 18.5089, 73.8271, now()),
-  ('33333333-3333-3333-3333-333333333333','Dr. Meera Iyer','Pediatrician','busy', true, 4.7, 500, 1100, 18.5642, 73.7769, now()),
-  ('44444444-4444-4444-4444-444444444444','Dr. Rohan Kulkarni','Orthopedic','offline', true, 4.6, 700, 1400, 18.4967, 73.9089, now()),
-  ('55555555-5555-5555-5555-555555555555','Dr. Sana Qureshi','General Physician','online', false, 4.4, 350, 800, 18.5793, 73.8143, now());
+insert into doctors (id, full_name, specialty, kind, gender, experience_years, languages, status, verified, rating, consult_fee, home_visit_fee, lat, lng, last_seen) values
+  ('11111111-1111-1111-1111-111111111111','Dr. Ananya Rao','General Physician','practising','female', 9, array['English','Hindi','Marathi'],'online', true, 4.8, 400, 900, 18.5308, 73.8475, now()),
+  ('22222222-2222-2222-2222-222222222222','Dr. Vikram Shah','Cardiologist','practising','male', 15, array['English','Hindi','Gujarati'],'online', true, 4.9, 800, 1600, 18.5089, 73.8271, now()),
+  ('33333333-3333-3333-3333-333333333333','Dr. Meera Iyer','Pediatrician','practising','female', 12, array['English','Hindi','Tamil'],'busy', true, 4.7, 500, 1100, 18.5642, 73.7769, now()),
+  ('44444444-4444-4444-4444-444444444444','Dr. Rohan Kulkarni','Orthopedic','resident','male', 3, array['English','Hindi','Marathi'],'offline', true, 4.6, 700, 1400, 18.4967, 73.9089, now()),
+  ('55555555-5555-5555-5555-555555555555','Dr. Sana Qureshi','General Physician','resident','female', 2, array['English','Hindi','Urdu'],'online', false, 4.4, 350, 800, 18.5793, 73.8143, now());
 
 insert into ambulances (id, vehicle_no, driver_name, status, lat, lng) values
   ('a1111111-1111-1111-1111-111111111111','MH12 AB 1234','Suresh P.','free', 18.5314, 73.8446),

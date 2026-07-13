@@ -1,10 +1,12 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Iyashi design system — tokens sourced from the pitch deck.
- * Colors are exposed as CSS variables in app/globals.css so light/dark
- * surfaces can remap them; Tailwind consumes them via rgb(var(--x)).
+ * Iyashi design system. Colors are exposed as CSS-variable RGB triplets
+ * in app/globals.css so each data-theme can remap them; Tailwind consumes
+ * them via rgb(var(--x) / <alpha-value>) which keeps /opacity modifiers.
  */
+const v = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -14,28 +16,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // All brand hues resolve through CSS variables (RGB triplets set
+        // per theme in app/globals.css), so switching data-theme reskins
+        // the whole app and Tailwind opacity modifiers (bg-terracotta/12)
+        // keep working.
         espresso: {
-          DEFAULT: "#2A2320",
-          800: "#342C26",
-          700: "#3F352E",
-          600: "#4A3F37",
+          DEFAULT: v("--c-espresso"),
+          800: v("--c-espresso-800"),
+          700: v("--c-espresso-700"),
+          600: v("--c-espresso-600"),
         },
-        cream: "#F1E9D8",
-        sand: "#D9C9A8",
-        tan: "#C9A876",
+        cream: v("--c-cream"),
+        sand: v("--c-sand"),
+        tan: v("--c-tan"),
         terracotta: {
-          DEFAULT: "#C15A38",
-          700: "#A94E30",
-          300: "#E0A890",
+          DEFAULT: v("--c-terracotta"),
+          700: v("--c-terracotta-700"),
+          300: v("--c-terracotta-300"),
         },
-        salmon: "#E0A890",
-        ink: "#2A2320",
+        salmon: v("--c-salmon"),
+        ink: v("--c-ink"),
         // Functional status hues, harmonized with the brand.
         status: {
-          critical: "#C15A38",
-          warn: "#C9A876",
-          ok: "#7C8B63",
-          idle: "#6B615A",
+          critical: v("--c-status-critical"),
+          warn: v("--c-status-warn"),
+          ok: v("--c-status-ok"),
+          idle: v("--c-status-idle"),
         },
       },
       fontFamily: {
@@ -51,14 +57,14 @@ const config: Config = {
         card: "14px",
       },
       boxShadow: {
-        card: "0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 30px rgba(0,0,0,0.25)",
-        glow: "0 0 0 1px rgba(193,90,56,0.5), 0 0 28px rgba(193,90,56,0.35)",
+        card: "0 1px 0 rgba(255,255,255,0.05) inset, 0 8px 30px rgba(0,0,0,0.28)",
+        glow: "0 0 0 1px rgb(var(--c-terracotta) / 0.5), 0 0 28px rgb(var(--c-terracotta) / 0.35)",
       },
       keyframes: {
         "pulse-ring": {
-          "0%": { boxShadow: "0 0 0 0 rgba(193,90,56,0.55)" },
-          "70%": { boxShadow: "0 0 0 14px rgba(193,90,56,0)" },
-          "100%": { boxShadow: "0 0 0 0 rgba(193,90,56,0)" },
+          "0%": { boxShadow: "0 0 0 0 rgb(var(--c-terracotta) / 0.55)" },
+          "70%": { boxShadow: "0 0 0 14px rgb(var(--c-terracotta) / 0)" },
+          "100%": { boxShadow: "0 0 0 0 rgb(var(--c-terracotta) / 0)" },
         },
         "fade-up": {
           "0%": { opacity: "0", transform: "translateY(6px)" },

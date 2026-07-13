@@ -2,37 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ───────────────────────────────────────────
-   Sourced from the Iyashi pitch deck. The app ships a dark
-   "espresso" shell by default; [data-surface="light"] regions
-   remap the same tokens for calm/detail panels. */
-:root {
-  --espresso: #2a2320;
-  --espresso-800: #342c26;
-  --espresso-700: #3f352e;
-  --cream: #f1e9d8;
-  --sand: #d9c9a8;
-  --tan: #c9a876;
-  --terracotta: #c15a38;
-  --terracotta-700: #a94e30;
-  --salmon: #e0a890;
-
-  --bg: var(--espresso);
-  --surface: var(--espresso-800);
-  --border: rgba(241, 233, 216, 0.1);
-  --text: var(--cream);
-  --text-muted: rgba(241, 233, 216, 0.62);
-  --text-faint: rgba(241, 233, 216, 0.4);
-  --accent: var(--terracotta);
+/* ── Theme tokens ────────────────────────────────────────────
+   Every brand hue is an "R G B" triplet so Tailwind can do
+   rgb(var(--x) / <alpha>) and any data-theme can reskin the app.
+   Default theme = Sumi (墨), the warm espresso shell. */
+:root,
+[data-theme="sumi"] {
+  --c-espresso: 42 35 32;
+  --c-espresso-800: 52 44 38;
+  --c-espresso-700: 63 53 46;
+  --c-espresso-600: 74 63 55;
+  --c-cream: 241 233 216;
+  --c-sand: 217 201 168;
+  --c-tan: 201 168 118;
+  --c-terracotta: 193 90 56;
+  --c-terracotta-700: 169 78 48;
+  --c-terracotta-300: 224 168 144;
+  --c-salmon: 224 168 144;
+  --c-ink: 42 35 32;
+  --c-status-critical: 193 90 56;
+  --c-status-warn: 201 168 118;
+  --c-status-ok: 124 139 99;
+  --c-status-idle: 107 97 90;
+  /* map tiles tuned per shell */
+  --map-filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
 }
 
-[data-surface="light"] {
-  --bg: var(--cream);
-  --surface: #faf5ea;
-  --border: rgba(42, 35, 32, 0.12);
-  --text: var(--ink, #2a2320);
-  --text-muted: rgba(42, 35, 32, 0.6);
-  --text-faint: rgba(42, 35, 32, 0.4);
+/* Matcha (抹茶) — tea-green shell, soft gold accent */
+[data-theme="matcha"] {
+  --c-espresso: 30 37 29;
+  --c-espresso-800: 40 49 38;
+  --c-espresso-700: 51 62 47;
+  --c-espresso-600: 63 76 57;
+  --c-cream: 240 236 219;
+  --c-sand: 208 214 184;
+  --c-tan: 183 197 140;
+  --c-terracotta: 201 162 75;
+  --c-terracotta-700: 176 140 60;
+  --c-terracotta-300: 226 206 143;
+  --c-salmon: 214 200 140;
+  --c-ink: 30 37 29;
+  --c-status-critical: 201 106 75;
+  --c-status-warn: 201 162 75;
+  --c-status-ok: 138 163 91;
+  --c-status-idle: 100 110 92;
+  --map-filter: grayscale(0.3) brightness(0.82) contrast(1.05) hue-rotate(45deg) sepia(0.14);
+}
+
+/* Sakura (桜) — dusk plum shell, blossom-pink accent */
+[data-theme="sakura"] {
+  --c-espresso: 36 30 36;
+  --c-espresso-800: 46 38 46;
+  --c-espresso-700: 57 47 57;
+  --c-espresso-600: 69 56 69;
+  --c-cream: 244 233 231;
+  --c-sand: 224 200 205;
+  --c-tan: 214 168 180;
+  --c-terracotta: 217 106 138;
+  --c-terracotta-700: 190 88 118;
+  --c-terracotta-300: 240 174 192;
+  --c-salmon: 240 174 192;
+  --c-ink: 36 30 36;
+  --c-status-critical: 214 92 108;
+  --c-status-warn: 214 168 120;
+  --c-status-ok: 130 160 120;
+  --c-status-idle: 112 100 108;
+  --map-filter: grayscale(0.3) brightness(0.82) contrast(1.03) hue-rotate(300deg) sepia(0.12);
+}
+
+/* Ai (藍) — indigo night shell, lantern-blue accent */
+[data-theme="ai"] {
+  --c-espresso: 25 31 45;
+  --c-espresso-800: 33 41 58;
+  --c-espresso-700: 43 53 73;
+  --c-espresso-600: 54 66 90;
+  --c-cream: 233 231 221;
+  --c-sand: 196 204 224;
+  --c-tan: 160 176 216;
+  --c-terracotta: 124 140 240;
+  --c-terracotta-700: 96 112 214;
+  --c-terracotta-300: 169 180 245;
+  --c-salmon: 169 180 245;
+  --c-ink: 25 31 45;
+  --c-status-critical: 224 120 120;
+  --c-status-warn: 214 180 110;
+  --c-status-ok: 120 170 150;
+  --c-status-idle: 108 118 138;
+  --map-filter: grayscale(0.2) brightness(0.8) contrast(1.05) hue-rotate(190deg) sepia(0.1);
+}
+
+/* Semantic tokens, derived from the active theme triplets. */
+:root {
+  --bg: rgb(var(--c-espresso));
+  --surface: rgb(var(--c-espresso-800));
+  --border: rgb(var(--c-cream) / 0.1);
+  --text: rgb(var(--c-cream));
+  --text-muted: rgb(var(--c-cream) / 0.62);
+  --text-faint: rgb(var(--c-cream) / 0.4);
+  --accent: rgb(var(--c-terracotta));
+  /* glass surface, tuned to the theme */
+  --glass-bg: rgb(var(--c-espresso-800) / 0.55);
+  --glass-bg-strong: rgb(var(--c-espresso-800) / 0.72);
+  --glass-border: rgb(var(--c-cream) / 0.12);
+  --glass-highlight: rgb(var(--c-cream) / 0.06);
 }
 
 * {
@@ -50,7 +122,21 @@ body {
   font-feature-settings: "ss01", "cv01";
 }
 
-/* Editorial section label, e.g. "PHASE 01 · TASUKE" */
+/* A soft, theme-aware ambient wash behind the whole app so glass
+   surfaces have light to refract. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 12% -10%, rgb(var(--c-terracotta) / 0.16), transparent 60%),
+    radial-gradient(50rem 40rem at 100% 0%, rgb(var(--c-tan) / 0.1), transparent 55%),
+    radial-gradient(70rem 50rem at 50% 120%, rgb(var(--c-espresso-600) / 0.5), transparent 60%);
+}
+
+/* Editorial section label, e.g. "TASUKE · EMERGENCY" */
 .label {
   font-size: 0.6875rem;
   letter-spacing: 0.15em;
@@ -67,36 +153,67 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* ── Glassmorphism ───────────────────────────────────────────
+   Frosted, translucent panels that pick up the ambient wash. */
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 10px 30px rgb(0 0 0 / 0.28);
+}
+.glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 16px 44px rgb(0 0 0 / 0.34);
+}
+/* Give the shared card radius a frosted default, so every existing
+   `.rounded-card` surface reads as glass without touching each file.
+   This rule sits after @tailwind utilities, so it overrides the
+   bg-espresso-800 utility on cards by source order (no !important). */
+.rounded-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  backdrop-filter: blur(14px) saturate(1.25);
+  border-color: var(--glass-border);
+}
+
 /* Thin, quiet scrollbars that match the shell */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--espresso-700) transparent;
+  scrollbar-color: rgb(var(--c-espresso-700)) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--espresso-700);
+  background: rgb(var(--c-espresso-700));
   border-radius: 8px;
 }
 
-/* Leaflet tiles read better dimmed against the espresso shell */
+/* Leaflet tiles read better tuned to the active shell */
 .leaflet-container {
-  background: var(--espresso-800) !important;
+  background: rgb(var(--c-espresso-800)) !important;
   font-family: var(--font-inter), Inter, sans-serif;
 }
 .leaflet-tile {
-  filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
+  filter: var(--map-filter);
 }
 .leaflet-bar,
 .leaflet-control-attribution {
-  background: rgba(42, 35, 32, 0.85) !important;
+  background: rgb(var(--c-espresso-800) / 0.85) !important;
   color: var(--text-muted) !important;
   border-color: var(--border) !important;
 }
 .leaflet-bar a {
-  background: var(--espresso-800) !important;
-  color: var(--cream) !important;
+  background: rgb(var(--c-espresso-800)) !important;
+  color: rgb(var(--c-cream)) !important;
   border-color: var(--border) !important;
 }

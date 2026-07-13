@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Stethoscope, Pill, RotateCcw, ArrowLeftRight } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
+import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { resetTestData } from "@/lib/hooks/data";
@@ -44,11 +45,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
           )}
           <button
             onClick={() => router.push("/doctor")}
-            title="Open the doctor cockpit"
+            title="Open the doctor view"
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
           >
             <ArrowLeftRight className="h-3.5 w-3.5" /> Doctor view
           </button>
+          <ThemeSwitcher />
         </div>
       </header>
 

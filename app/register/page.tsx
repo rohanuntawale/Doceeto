@@ -12,6 +12,8 @@ import { demoStore } from "@/lib/demo/store";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { doctorKind } from "@/lib/labels";
+import type { DoctorKind } from "@/lib/types/domain";
 
 type Role = "patient" | "doctor" | null;
 
@@ -62,14 +64,14 @@ function Chooser({ onPick }: { onPick: (r: Role) => void }) {
           onClick={() => onPick("patient")}
           kanji="患"
           title="I need care"
-          sub="Register as a patient — SOS, doctors, medicine"
+          sub="Get a doctor at home, at a clinic, or on video"
           icon={<HeartPulse className="h-4 w-4" />}
         />
         <RoleCard
           onClick={() => onPick("doctor")}
           kanji="医"
           title="I'm a doctor"
-          sub="Join the network — take consults and home visits"
+          sub="See patients near you and earn on your own time"
           icon={<Stethoscope className="h-4 w-4" />}
         />
       </div>
@@ -150,7 +152,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
         />
       </Field>
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
-        {loading ? "Setting up…" : "Continue to patient app"}
+        {loading ? "Setting up…" : "Continue to the app"}
       </Button>
     </FormShell>
   );
@@ -174,6 +176,9 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
   const [form, setForm] = useState({
     fullName: "",
     specialty: "General Physician",
+    kind: "practising" as DoctorKind,
+    gender: "female" as "female" | "male",
+    experienceYears: 3,
     email: "",
     password: "",
     consultFee: 400,
@@ -191,11 +196,14 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
       const doc = demoStore.registerDoctor({
         fullName: form.fullName,
         specialty: form.specialty,
+        kind: form.kind,
+        gender: form.gender,
+        experienceYears: Number(form.experienceYears) || 0,
         consultFee: Number(form.consultFee) || 0,
         homeVisitFee: Number(form.homeVisitFee) || 0,
       });
       setCurrentDoctorId(doc.id);
-      toast.push({ tone: "success", title: "You're on the network", desc: doc.fullName });
+      toast.push({ tone: "success", title: "You're on the network", desc: `${doc.fullName} · ${doctorKind[doc.kind].label}` });
       router.push("/doctor");
       return;
     }
@@ -211,7 +219,14 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
       email: form.email,
       password: form.password,
       options: {
-        data: { full_name: form.fullName, specialty: form.specialty, role: "doctor" },
+        data: {
+          full_name: form.fullName,
+          specialty: form.specialty,
+          kind: form.kind,
+          gender: form.gender,
+          experience_years: form.experienceYears,
+          role: "doctor",
+        },
       },
     });
     setLoading(false);
@@ -261,6 +276,60 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
         </select>
       </Field>
 
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="You are">
+          <select
+            className={inputCls}
+            value={form.gender}
+            onChange={(e) =>
+              setForm({ ...form, gender: e.target.value as "female" | "male" })
+            }
+          >
+            <option value="female">Female doctor</option>
+            <option value="male">Male doctor</option>
+          </select>
+        </Field>
+        <Field label="Years of experience">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.experienceYears}
+            onChange={(e) =>
+              setForm({ ...form, experienceYears: Number(e.target.value) })
+            }
+          />
+        </Field>
+      </div>
+
+      <div>
+        <span className="label">Where you are right now</span>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          {(["resident", "practising"] as DoctorKind[]).map((k) => {
+            const active = form.kind === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setForm({ ...form, kind: k })}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  active
+                    ? "border-terracotta bg-terracotta/10"
+                    : "border-[var(--border)] bg-espresso hover:border-terracotta/40"
+                }`}
+              >
+                <span className="block text-sm font-medium text-cream">
+                  {doctorKind[k].label}
+                </span>
+                <span className="mt-0.5 block text-xs text-[var(--text-faint)]">
+                  {doctorKind[k].blurb}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {isDemoMode ? (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Consult fee (₹)">
@@ -309,7 +378,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
 
       {error && <p className="text-sm text-terracotta-300">{error}</p>}
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
-        {loading ? "Creating…" : isDemoMode ? "Join & open cockpit" : "Create account"}
+        {loading ? "Creating…" : isDemoMode ? "Join and go online" : "Create account"}
       </Button>
     </FormShell>
   );

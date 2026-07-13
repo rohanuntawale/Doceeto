@@ -55,6 +55,12 @@ create table if not exists doctors (
   profile_id    uuid references profiles(id) on delete set null,
   full_name     text not null,
   specialty     text not null default 'General Physician',
+  -- 'resident' = licensed junior doctor, not full-time yet.
+  -- 'practising' = working doctor taking extra visits for side income.
+  kind          text not null default 'practising',
+  gender        text not null default 'female',
+  experience_years integer not null default 0,
+  languages     text[] not null default array['English','Hindi'],
   license_no    text,
   status        doctor_status_t not null default 'offline',
   verified      boolean not null default false,
@@ -199,10 +205,11 @@ begin
           new.raw_user_meta_data->>'phone');
 
   if r = 'doctor' then
-    insert into public.doctors (profile_id, full_name, specialty)
+    insert into public.doctors (profile_id, full_name, specialty, kind)
     values (new.id,
             coalesce(new.raw_user_meta_data->>'full_name', 'New doctor'),
-            coalesce(new.raw_user_meta_data->>'specialty', 'General Physician'));
+            coalesce(new.raw_user_meta_data->>'specialty', 'General Physician'),
+            coalesce(new.raw_user_meta_data->>'kind', 'practising'));
   end if;
   return new;
 end $$;

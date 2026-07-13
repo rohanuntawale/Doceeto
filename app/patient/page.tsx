@@ -28,20 +28,20 @@ export default function PatientHome() {
           href="/patient/doctors"
           kanji="医"
           title="Find a doctor"
-          sub="Video or home visit"
+          sub="Home, clinic or video"
           icon={<Stethoscope className="h-4 w-4" />}
         />
         <QuickLink
           href="/patient/medicine"
           kanji="薬"
           title="Order medicine"
-          sub="In ~10 minutes"
+          sub="Delivered to your door"
           icon={<Pill className="h-4 w-4" />}
         />
       </div>
 
       <div>
-        <div className="label mb-3">YOUR CARE · LIVE</div>
+        <div className="label mb-3">Your care right now</div>
         <CareStatus patient={patient} />
       </div>
     </div>

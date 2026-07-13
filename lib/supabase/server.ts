@@ -5,7 +5,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/con
 /**
  * Server Supabase client for RSC / route handlers. Returns null in
  * demo mode. Cookie writes are wrapped in try/catch because RSC can
- * only read cookies — the middleware refreshes the session.
+ * only read cookies - the middleware refreshes the session.
  */
 export function getSupabaseServer() {
   if (!isSupabaseConfigured) return null;
@@ -22,7 +22,7 @@ export function getSupabaseServer() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          // Called from a Server Component — safe to ignore.
+          // Called from a Server Component - safe to ignore.
         }
       },
     },
