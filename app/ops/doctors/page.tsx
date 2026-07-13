@@ -19,7 +19,7 @@ export default function DoctorsNetwork() {
   const avgRating =
     doctors.length > 0
       ? (doctors.reduce((a, d) => a + d.rating, 0) / doctors.length).toFixed(1)
-      : "—";
+      : "0.0";
 
   return (
     <>

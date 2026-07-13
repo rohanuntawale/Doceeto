@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter, JetBrains_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { NO_FLASH_SCRIPT } from "@/lib/theme";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -28,7 +29,7 @@ const notoJp = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Iyashi · Healing, on demand",
   description:
-    "Iyashi Health operational dashboard — emergency dispatch, freelance doctors, and medicine delivery in one front door.",
+    "Iyashi Health: emergency help, freelance doctors, and medicine delivery, all in one place.",
   icons: { icon: "/favicon.svg" },
 };
 
@@ -44,6 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${playfair.variable} ${inter.variable} ${mono.variable} ${notoJp.variable}`}
     >
+      <head>
+        {/* Apply the saved color theme before paint to avoid a flash. */}
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
+      </head>
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

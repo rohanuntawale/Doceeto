@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * DEMO ENGINE — an in-browser backend that needs no server.
+ * DEMO ENGINE - an in-browser backend that needs no server.
  *
  * It now behaves like a real shared backend for LOCAL testing:
  *   • State is persisted to localStorage (survives refresh).
  *   • Mutations broadcast over a BroadcastChannel, so a request raised
  *     in the PATIENT tab shows up live in the DOCTOR / OPS tabs on the
- *     same browser — patient → doctor actually connects.
+ *     same browser - patient → doctor actually connects.
  *   • There is NO fake auto-generated activity. SOS events, consult
  *     requests and orders are the ones YOU create via the patient app.
  *     (SEED_LEVEL controls the starting catalog; default "catalog" =
@@ -66,7 +66,7 @@ function nextId(prefix: string) {
 }
 
 function fresh(): DemoState {
-  // Infrastructure catalog — present unless SEED_LEVEL is "none".
+  // Infrastructure catalog - present unless SEED_LEVEL is "none".
   const catalog = SEED_LEVEL === "none";
   return {
     doctors: catalog ? [] : seedDoctors(),
@@ -92,11 +92,24 @@ function commit(broadcast = true) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
-      /* quota / private mode — ignore */
+      /* quota / private mode - ignore */
     }
-    if (broadcast && channel) channel.postMessage({ type: "state", state });
+    if (broadcast && channel) {
+      try {
+        channel.postMessage({ type: "state", state });
+      } catch {
+        /* channel closed or structured-clone failure - ignore */
+      }
+    }
   }
-  listeners.forEach((l) => l());
+  // A listener must never break the store: isolate each one.
+  listeners.forEach((l) => {
+    try {
+      l();
+    } catch {
+      /* a subscriber threw - keep the rest alive */
+    }
+  });
 }
 
 export const demoStore = {
@@ -215,6 +228,9 @@ export const demoStore = {
   registerDoctor(input: {
     fullName: string;
     specialty: string;
+    kind: Doctor["kind"];
+    gender: Doctor["gender"];
+    experienceYears: number;
     consultFee: number;
     homeVisitFee: number;
   }): Doctor {
@@ -226,6 +242,10 @@ export const demoStore = {
         ? input.fullName
         : `Dr. ${input.fullName}`,
       specialty: input.specialty,
+      kind: input.kind,
+      gender: input.gender,
+      experienceYears: input.experienceYears,
+      languages: ["English", "Hindi"],
       status: "online",
       verified: false,
       rating: 0,
@@ -258,6 +278,10 @@ export const demoStore = {
 
   acceptRequest(id: string, doctorId: string) {
     const s = getState();
+    // Only the first doctor to accept wins: skip if it is no longer
+    // pending (another doctor already claimed it).
+    const target = s.requests.find((r) => r.id === id);
+    if (!target || target.status !== "pending") return;
     s.requests = s.requests.map((r) =>
       r.id === id ? { ...r, status: "accepted", doctorId } : r,
     );
@@ -346,7 +370,7 @@ function setupClient() {
       if (parsed && Array.isArray(parsed.doctors)) state = parsed;
     }
   } catch {
-    /* corrupt payload — fall back to fresh() */
+    /* corrupt payload - fall back to fresh() */
   }
 
   // Subscribe to updates from other tabs (patient ↔ doctor ↔ ops).
@@ -359,7 +383,33 @@ function setupClient() {
       }
     };
   } catch {
-    /* BroadcastChannel unsupported — single-tab still works */
+    /* BroadcastChannel unsupported - fall back to storage events below */
+  }
+
+  // Fallback (and belt-and-braces) cross-tab sync: the `storage` event
+  // fires in OTHER tabs when localStorage changes, so even without
+  // BroadcastChannel the patient ↔ doctor connection still works.
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue) as DemoState;
+        if (parsed && Array.isArray(parsed.doctors)) {
+          state = parsed;
+          listeners.forEach((l) => {
+            try {
+              l();
+            } catch {
+              /* ignore */
+            }
+          });
+        }
+      } catch {
+        /* corrupt payload - ignore */
+      }
+    });
+  } catch {
+    /* addEventListener unavailable - single-tab still works */
   }
 
   // Emit once so the first paint reflects persisted state.

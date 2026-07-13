@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequestCard } from "@/components/zumi/request-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,8 +13,18 @@ export default function RequestsPage() {
   const actions = useActions();
   const me = useCurrentDoctor();
   const toast = useToast();
+  // Requests this doctor passed on locally. Passing on a broadcast request
+  // only hides it for this doctor, it stays open for everyone else.
+  const [passed, setPassed] = useState<Set<string>>(new Set());
 
-  const pending = requests.filter((r) => r.status === "pending");
+  // A doctor sees requests open to everyone nearby (doctorId null) and
+  // requests a patient sent straight to them.
+  const pending = requests.filter(
+    (r) =>
+      r.status === "pending" &&
+      !passed.has(r.id) &&
+      (r.doctorId === null || r.doctorId === me?.id),
+  );
   const accepted = requests.filter(
     (r) => r.status === "accepted" && r.doctorId === me?.id,
   );
@@ -25,13 +36,20 @@ export default function RequestsPage() {
       <section className="mb-8">
         <div className="label mb-3">OPEN · {pending.length}</div>
         {pending.length === 0 ? (
-          <EmptyState kanji="頼" title="No open requests right now" />
+          <EmptyState
+            kanji="頼"
+            title="No open requests right now"
+            desc="Make sure you're online. New requests from patients nearby will appear here."
+          />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {pending.map((r) => (
               <RequestCard
                 key={r.id}
                 request={r}
+                note={
+                  r.doctorId === me?.id ? "Chose you" : "Open to nearby doctors"
+                }
                 onAccept={() => {
                   if (!me) return;
                   actions.acceptRequest(r.id, me.id);
@@ -41,7 +59,12 @@ export default function RequestsPage() {
                     desc: r.patientName,
                   });
                 }}
-                onDecline={() => actions.declineRequest(r.id)}
+                onDecline={() => {
+                  // Directed to me → decline it. Open broadcast → just
+                  // hide it for me so others can still take it.
+                  if (r.doctorId === me?.id) actions.declineRequest(r.id);
+                  else setPassed((p) => new Set(p).add(r.id));
+                }}
               />
             ))}
           </div>

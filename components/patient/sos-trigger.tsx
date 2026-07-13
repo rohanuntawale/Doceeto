@@ -34,7 +34,7 @@ export function SosTrigger({ patient }: { patient: PatientIdentity }) {
     setOpen(false);
     toast.push({
       tone: "error",
-      title: "SOS sent — help is on the way",
+      title: "SOS sent. Help is on the way",
       desc: "A dispatcher and nearby doctor have been alerted.",
     });
   }

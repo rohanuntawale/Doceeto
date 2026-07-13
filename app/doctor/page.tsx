@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Inbox, Siren, Star, Timer, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -25,8 +25,14 @@ export default function DoctorHome() {
   const sos = useSosEvents();
   const actions = useActions();
   const toast = useToast();
+  const [passed, setPassed] = useState<Set<string>>(new Set());
 
-  const pending = requests.filter((r) => r.status === "pending");
+  const pending = requests.filter(
+    (r) =>
+      r.status === "pending" &&
+      !passed.has(r.id) &&
+      (r.doctorId === null || r.doctorId === me?.id),
+  );
   const myCompletedToday = requests.filter(
     (r) => r.status === "completed" && r.doctorId === me?.id,
   );
@@ -67,7 +73,7 @@ export default function DoctorHome() {
           icon={<Inbox className="h-4 w-4" />}
         />
         <StatCard
-          value={me ? me.rating.toFixed(1) : "—"}
+          value={me ? (me.rating > 0 ? me.rating.toFixed(1) : "New") : "New"}
           label="Rating"
           icon={<Star className="h-4 w-4" />}
         />
@@ -97,6 +103,11 @@ export default function DoctorHome() {
                 <RequestCard
                   key={r.id}
                   request={r}
+                  note={
+                    r.doctorId === me?.id
+                      ? "Chose you"
+                      : "Open to nearby doctors"
+                  }
                   onAccept={() => {
                     if (!me) return;
                     actions.acceptRequest(r.id, me.id);
@@ -106,7 +117,10 @@ export default function DoctorHome() {
                       desc: `${r.patientName} · ${r.address}`,
                     });
                   }}
-                  onDecline={() => actions.declineRequest(r.id)}
+                  onDecline={() => {
+                    if (r.doctorId === me?.id) actions.declineRequest(r.id);
+                    else setPassed((p) => new Set(p).add(r.id));
+                  }}
                 />
               ))
             )}

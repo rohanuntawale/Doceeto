@@ -1,4 +1,4 @@
-/** Geo helpers — haversine distance for nearest-doctor / nearest-SOS. */
+/** Geo helpers - haversine distance for nearest-doctor / nearest-SOS. */
 
 export interface LatLng {
   lat: number;

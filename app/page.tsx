@@ -2,30 +2,30 @@ import Link from "next/link";
 import { ArrowRight, Stethoscope, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteMenu } from "@/components/site/site-menu";
+import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { isDemoMode } from "@/lib/config";
 
 const ENTRIES = [
   {
     href: "/patient",
     kanji: "患",
-    title: "Patient app",
-    sub: "SOS · find a doctor · medicine",
+    title: "I need care",
+    sub: "Find a doctor, get help, order medicine",
     icon: <HeartPulse className="h-4 w-4" />,
   },
   {
     href: "/doctor",
     kanji: "助",
-    title: "Doctor cockpit",
-    sub: "Go online · take requests · earn",
+    title: "I'm a doctor",
+    sub: "Go online and see patients near you",
     icon: <Stethoscope className="h-4 w-4" />,
   },
 ];
 
 const PILLARS = [
-  { kanji: "助", name: "Tasuke", role: "the button" },
-  { kanji: "医", name: "Zumi", role: "the doctor" },
-  { kanji: "検", name: "Kenshin", role: "the network" },
-  { kanji: "薬", name: "AuraMed", role: "the medicine" },
+  { kanji: "医", name: "Doctors", role: "at home, clinic or on video" },
+  { kanji: "助", name: "Emergency", role: "one tap for urgent help" },
+  { kanji: "薬", name: "Medicine", role: "delivered to your door" },
 ];
 
 export default function Landing() {
@@ -59,14 +59,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-2.5">
-            {isDemoMode ? (
-              <span className="hidden items-center gap-1.5 rounded-full bg-terracotta/12 px-3 py-1.5 text-[11px] font-medium text-salmon ring-1 ring-terracotta/25 sm:flex">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
-                LIVE DEMO
-              </span>
-            ) : (
-              <span className="label hidden sm:inline">EST · 2026</span>
-            )}
+            <ThemeSwitcher />
             <SiteMenu />
           </div>
         </div>
@@ -75,7 +68,7 @@ export default function Landing() {
         <div className="relative max-w-xl">
           <div className="animate-rise flex items-center gap-3" style={{ animationDelay: "40ms" }}>
             <span className="h-px w-8 bg-terracotta" />
-            <span className="label">One front door to care</span>
+            <span className="label">A doctor, whenever you need one</span>
           </div>
 
           <h1
@@ -93,14 +86,14 @@ export default function Landing() {
             className="animate-rise mt-8 font-serif text-3xl text-cream md:text-4xl"
             style={{ animationDelay: "190ms" }}
           >
-            Healing, <span className="text-salmon">on demand.</span>
+            A doctor at your door, <span className="text-salmon">in minutes.</span>
           </p>
           <p
             className="animate-rise mt-4 max-w-md text-[15px] leading-relaxed text-[var(--text-muted)]"
             style={{ animationDelay: "240ms" }}
           >
-            One platform for the moments that matter — emergencies, doctors, and
-            medicine, brought to the instant they’re needed.
+            Book a doctor for a home visit, a clinic visit, or a video call. Get
+            urgent help fast, and have medicine sent to your door.
           </p>
 
           {/* primary CTAs */}
@@ -128,7 +121,7 @@ export default function Landing() {
             className="animate-rise mt-8"
             style={{ animationDelay: "340ms" }}
           >
-            <div className="label mb-3">Or explore a surface</div>
+            <div className="label mb-3">Have a look</div>
             <div className="flex flex-col gap-2.5">
               {ENTRIES.map((e) => (
                 <EntryLink key={e.href} {...e} />
@@ -142,7 +135,7 @@ export default function Landing() {
               style={{ animationDelay: "400ms" }}
             >
               Tip: open the <span className="text-salmon">Patient app</span> and{" "}
-              <span className="text-salmon">Doctor cockpit</span> in two tabs — a
+              <span className="text-salmon">Doctor space</span> in two tabs. A
               request you raise shows up live for the doctor.
             </p>
           )}
@@ -183,14 +176,6 @@ export default function Landing() {
           癒
         </span>
 
-        {/* light sweep */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden"
-        >
-          <div className="animate-sheen absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-        </div>
-
         {/* vignette + hairline */}
         <div
           aria-hidden
@@ -202,17 +187,17 @@ export default function Landing() {
         />
         <div className="absolute inset-y-0 left-0 w-px bg-black/20" />
 
-        {/* vertical module romaji */}
+        {/* vertical romaji */}
         <div className="absolute right-7 top-1/2 -translate-y-1/2 [writing-mode:vertical-rl] font-mono text-xs tracking-[0.35em] text-cream/75">
-          TASUKE / ZUMI / KENSHIN / AURAMED
+          IYASHI · 癒し
         </div>
 
         {/* caption block */}
         <div className="absolute bottom-9 left-9">
           <div className="font-jp text-lg text-cream/80">癒し</div>
-          <div className="mt-1 font-serif text-2xl text-cream">Healing, delivered.</div>
+          <div className="mt-1 font-serif text-2xl text-cream">Care, made simple.</div>
           <div className="mt-1 text-xs text-cream/60">
-            One button · one doctor · one network.
+            A doctor, help, and medicine in one app.
           </div>
         </div>
       </section>

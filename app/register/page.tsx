@@ -11,7 +11,8 @@ import { isDemoMode } from "@/lib/config";
 import { demoStore } from "@/lib/demo/store";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { doctorKind } from "@/lib/labels";
+import type { DoctorKind } from "@/lib/types/domain";
 
 type Role = "patient" | "doctor" | null;
 
@@ -62,14 +63,14 @@ function Chooser({ onPick }: { onPick: (r: Role) => void }) {
           onClick={() => onPick("patient")}
           kanji="患"
           title="I need care"
-          sub="Register as a patient — SOS, doctors, medicine"
+          sub="Get a doctor at home, at a clinic, or on video"
           icon={<HeartPulse className="h-4 w-4" />}
         />
         <RoleCard
           onClick={() => onPick("doctor")}
           kanji="医"
           title="I'm a doctor"
-          sub="Join the network — take consults and home visits"
+          sub="See patients near you and earn on your own time"
           icon={<Stethoscope className="h-4 w-4" />}
         />
       </div>
@@ -116,17 +117,45 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const toast = useToast();
   const { patient, update } = useCurrentPatient();
-  const [form, setForm] = useState({ name: "", address: patient.address });
+  const [form, setForm] = useState({
+    name: "",
+    address: patient.address,
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+
+    if (isDemoMode) {
+      update({
+        name: form.name.trim() || "Patient",
+        address: form.address.trim() || patient.address,
+      });
+      toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your profile is ready." });
+      router.push("/patient");
+      return;
+    }
+
     setLoading(true);
-    update({
-      name: form.name.trim() || "Patient",
-      address: form.address.trim() || patient.address,
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        role: "patient",
+        name: form.name,
+        address: form.address,
+        email: form.email,
+        password: form.password,
+      }),
     });
-    toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your patient profile is ready." });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+    if (!res.ok) return setError(data.error ?? "Could not create the account.");
+    toast.push({ tone: "success", title: "Welcome to Iyashi", desc: "Your account is ready." });
     router.push("/patient");
   }
 
@@ -149,8 +178,33 @@ function PatientForm({ onBack }: { onBack: () => void }) {
           placeholder="Baner, Pune"
         />
       </Field>
+      {!isDemoMode && (
+        <>
+          <Field label="Email">
+            <input
+              type="email"
+              className={inputCls}
+              value={form.email}
+              required
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="you@example.com"
+            />
+          </Field>
+          <Field label="Password">
+            <input
+              type="password"
+              className={inputCls}
+              value={form.password}
+              required
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="At least 6 characters"
+            />
+          </Field>
+        </>
+      )}
+      {error && <p className="text-sm text-terracotta-300">{error}</p>}
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
-        {loading ? "Setting up…" : "Continue to patient app"}
+        {loading ? "Setting up…" : "Continue to the app"}
       </Button>
     </FormShell>
   );
@@ -174,6 +228,9 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
   const [form, setForm] = useState({
     fullName: "",
     specialty: "General Physician",
+    kind: "practising" as DoctorKind,
+    gender: "female" as "female" | "male",
+    experienceYears: 3,
     email: "",
     password: "",
     consultFee: 400,
@@ -181,7 +238,6 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -191,49 +247,41 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
       const doc = demoStore.registerDoctor({
         fullName: form.fullName,
         specialty: form.specialty,
+        kind: form.kind,
+        gender: form.gender,
+        experienceYears: Number(form.experienceYears) || 0,
         consultFee: Number(form.consultFee) || 0,
         homeVisitFee: Number(form.homeVisitFee) || 0,
       });
       setCurrentDoctorId(doc.id);
-      toast.push({ tone: "success", title: "You're on the network", desc: doc.fullName });
+      toast.push({ tone: "success", title: "You're on the network", desc: `${doc.fullName} · ${doctorKind[doc.kind].label}` });
       router.push("/doctor");
       return;
     }
 
-    // Live: real Supabase signup.
+    // Live: create the doctor account on the Neo4j backend.
     setLoading(true);
-    const sb = getSupabaseBrowser();
-    if (!sb) {
-      setLoading(false);
-      return;
-    }
-    const { error } = await sb.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: { full_name: form.fullName, specialty: form.specialty, role: "doctor" },
-      },
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        role: "doctor",
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        specialty: form.specialty,
+        kind: form.kind,
+        gender: form.gender,
+        experienceYears: form.experienceYears,
+        consultFee: form.consultFee,
+        homeVisitFee: form.homeVisitFee,
+      }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
-    if (error) return setError(error.message);
-    setSent(true);
-  }
-
-  if (sent) {
-    return (
-      <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
-        <div className="font-jp text-3xl text-salmon">医</div>
-        <p className="mt-3 font-serif text-lg text-cream">Check your inbox</p>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Confirm your email to activate your Iyashi doctor account.
-        </p>
-        <Link href="/login">
-          <Button variant="outline" className="mt-5 w-full">
-            Back to sign in
-          </Button>
-        </Link>
-      </div>
-    );
+    if (!res.ok) return setError(data.error ?? "Could not create the account.");
+    toast.push({ tone: "success", title: "You're on the network", desc: form.fullName });
+    router.push("/doctor");
   }
 
   return (
@@ -261,28 +309,82 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
         </select>
       </Field>
 
-      {isDemoMode ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Consult fee (₹)">
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              value={form.consultFee}
-              onChange={(e) => setForm({ ...form, consultFee: Number(e.target.value) })}
-            />
-          </Field>
-          <Field label="Home visit fee (₹)">
-            <input
-              type="number"
-              min={0}
-              className={inputCls}
-              value={form.homeVisitFee}
-              onChange={(e) => setForm({ ...form, homeVisitFee: Number(e.target.value) })}
-            />
-          </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="You are">
+          <select
+            className={inputCls}
+            value={form.gender}
+            onChange={(e) =>
+              setForm({ ...form, gender: e.target.value as "female" | "male" })
+            }
+          >
+            <option value="female">Female doctor</option>
+            <option value="male">Male doctor</option>
+          </select>
+        </Field>
+        <Field label="Years of experience">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.experienceYears}
+            onChange={(e) =>
+              setForm({ ...form, experienceYears: Number(e.target.value) })
+            }
+          />
+        </Field>
+      </div>
+
+      <div>
+        <span className="label">Where you are right now</span>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          {(["resident", "practising"] as DoctorKind[]).map((k) => {
+            const active = form.kind === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setForm({ ...form, kind: k })}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  active
+                    ? "border-terracotta bg-terracotta/10"
+                    : "border-[var(--border)] bg-espresso hover:border-terracotta/40"
+                }`}
+              >
+                <span className="block text-sm font-medium text-cream">
+                  {doctorKind[k].label}
+                </span>
+                <span className="mt-0.5 block text-xs text-[var(--text-faint)]">
+                  {doctorKind[k].blurb}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      ) : (
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Consult fee (₹)">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.consultFee}
+            onChange={(e) => setForm({ ...form, consultFee: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Home visit fee (₹)">
+          <input
+            type="number"
+            min={0}
+            className={inputCls}
+            value={form.homeVisitFee}
+            onChange={(e) => setForm({ ...form, homeVisitFee: Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+
+      {!isDemoMode && (
         <>
           <Field label="Email">
             <input
@@ -291,7 +393,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
               value={form.email}
               required
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="you@iyashi.health"
+              placeholder="you@example.com"
             />
           </Field>
           <Field label="Password">
@@ -301,7 +403,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
               value={form.password}
               required
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="••••••••"
+              placeholder="At least 6 characters"
             />
           </Field>
         </>
@@ -309,7 +411,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
 
       {error && <p className="text-sm text-terracotta-300">{error}</p>}
       <Button type="submit" className="mt-2 w-full" disabled={loading}>
-        {loading ? "Creating…" : isDemoMode ? "Join & open cockpit" : "Create account"}
+        {loading ? "Creating…" : isDemoMode ? "Join and go online" : "Create account"}
       </Button>
     </FormShell>
   );
