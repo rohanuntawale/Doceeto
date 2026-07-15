@@ -348,8 +348,9 @@ export const demoStore = {
 
   declineRequest(id: string) {
     const s = getState();
+    // Only a still-pending request can be declined.
     s.requests = s.requests.map((r) =>
-      r.id === id ? { ...r, status: "declined" } : r,
+      r.id === id && r.status === "pending" ? { ...r, status: "declined" } : r,
     );
     commit();
   },
@@ -376,8 +377,10 @@ export const demoStore = {
 
   completeRequest(id: string) {
     const s = getState();
+    // Only an active visit can be completed.
+    const active = ["accepted", "enroute", "arrived"];
     s.requests = s.requests.map((r) =>
-      r.id === id ? { ...r, status: "completed" } : r,
+      r.id === id && active.includes(r.status) ? { ...r, status: "completed" } : r,
     );
     commit();
   },
@@ -425,12 +428,12 @@ export const demoStore = {
     comment: string;
   }) {
     const s = getState();
-    if (input.requestId) {
-      // No double-rating.
-      if (s.reviews.some((v) => v.requestId === input.requestId)) return;
-      const req = s.requests.find((r) => r.id === input.requestId);
-      if (!req || req.status !== "completed" || req.doctorId !== input.doctorId) return;
-    }
+    // A rating must reference a completed visit with this doctor, and only
+    // once — a null requestId (or a mismatch) is rejected.
+    if (!input.requestId) return;
+    if (s.reviews.some((v) => v.requestId === input.requestId)) return;
+    const req = s.requests.find((r) => r.id === input.requestId);
+    if (!req || req.status !== "completed" || req.doctorId !== input.doctorId) return;
     const review: Review = {
       id: nextId("rev"),
       doctorId: input.doctorId,

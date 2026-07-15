@@ -10,6 +10,21 @@
 
 ---
 
+## Session 7 — Third (adversarial) audit + round-3 fixes ✅
+A third audit confirmed the Session-6 critical fixes hold in live mode, then
+tried to break the code. Real bugs it found, now fixed:
+
+- ✅ **Atomic prescription** — one guarded write (ownership + active status +
+  verification in a single transaction); removes the read-then-write TOCTOU.
+- ✅ **Verification on every clinical transition** — start/arrive/complete now
+  require the doctor is still verified (honors mid-visit revocation).
+- ✅ **SOS PII lockdown** — active emergencies go only to verified doctors within
+  ~15 km; unverified accounts get nothing.
+- ✅ **Demo parity** — closed the demo `addReview` null-requestId bypass and added
+  status guards to demo complete/decline, so the demo faithfully models live authz.
+- ⏭ Confirmed-open roadmap: payments, real ABDM/NMR verification, Schedule-X
+  blocking, server-forced-SOS, real geolocation, login rate-limit, tests/CI.
+
 ## Session 6 — Security hardening (fixing the re-audit criticals) ✅
 Closed the critical/high holes the re-audit (`docs/CODE_AUDIT.md`) found — the
 "role checked, ownership not" pattern in the new features.

@@ -440,10 +440,16 @@ export async function declineRequest(id: string, doctorId: string) {
   );
 }
 
+// A clinical transition is allowed only for the owning doctor, in the
+// expected state, AND while they are still verified (honors mid-visit
+// revocation). Shared WHERE fragment.
+const OWN_AND_VERIFIED =
+  "r.doctorId = $doctorId AND EXISTS { MATCH (d:Doctor {id: $doctorId}) WHERE d.verificationStatus = 'verified' }";
+
 export async function startVisit(id: string, doctorId: string) {
   await write(
     `MATCH (r:ConsultRequest {id: $id})
-     WHERE r.doctorId = $doctorId AND r.status = 'accepted' SET r.status = 'enroute'`,
+     WHERE ${OWN_AND_VERIFIED} AND r.status = 'accepted' SET r.status = 'enroute'`,
     { id, doctorId },
   );
 }
@@ -451,7 +457,7 @@ export async function startVisit(id: string, doctorId: string) {
 export async function arriveVisit(id: string, doctorId: string) {
   await write(
     `MATCH (r:ConsultRequest {id: $id})
-     WHERE r.doctorId = $doctorId AND r.status IN ['enroute','accepted']
+     WHERE ${OWN_AND_VERIFIED} AND r.status IN ['enroute','accepted']
      SET r.status = 'arrived', r.etaMins = 0`,
     { id, doctorId },
   );
@@ -460,13 +466,17 @@ export async function arriveVisit(id: string, doctorId: string) {
 export async function completeRequest(id: string, doctorId: string) {
   await write(
     `MATCH (r:ConsultRequest {id: $id})
-     WHERE r.doctorId = $doctorId AND r.status IN ['accepted','enroute','arrived']
+     WHERE ${OWN_AND_VERIFIED} AND r.status IN ['accepted','enroute','arrived']
      SET r.status = 'completed'`,
     { id, doctorId },
   );
 }
 
-/** Doctor issues an e-prescription and marks the visit complete. */
+/**
+ * Doctor issues an e-prescription and completes the visit — in ONE atomic,
+ * guarded write. Ownership, active status and verification are all enforced
+ * in the same transaction; nothing is created/completed if any guard fails.
+ */
 export async function createPrescription(input: {
   requestId: string;
   doctorId: string;
@@ -474,36 +484,21 @@ export async function createPrescription(input: {
   items: { name: string; dosage: string; duration: string }[];
   advice: string;
 }): Promise<Prescription | null> {
-  // Only the doctor who owns an active visit may prescribe on it, and only
-  // if they are verified. Anything else returns null (rejected).
-  const reqRows = await read<{ r: Row }>(
-    `MATCH (r:ConsultRequest {id: $id, doctorId: $doctorId})
-     WHERE r.status IN ['accepted','enroute','arrived'] RETURN properties(r) AS r`,
-    { id: input.requestId, doctorId: input.doctorId },
-  );
-  const docRows = await read<{ d: Row }>(
-    `MATCH (d:Doctor {id: $id}) WHERE d.verificationStatus = 'verified' RETURN properties(d) AS d`,
-    { id: input.doctorId },
-  );
-  const req = reqRows[0]?.r;
-  const doc = docRows[0]?.d;
-  if (!req || !doc) return null;
   const rows = await write<{ p: Row }>(
-    `CREATE (p:Prescription {
-       id: $id, requestId: $requestId, patientId: $patientId, patientName: $patientName,
-       doctorId: $doctorId, doctorName: $doctorName, doctorRegNo: $doctorRegNo,
+    `MATCH (r:ConsultRequest {id: $requestId, doctorId: $doctorId})
+     WHERE r.status IN ['accepted','enroute','arrived']
+     MATCH (d:Doctor {id: $doctorId}) WHERE d.verificationStatus = 'verified'
+     CREATE (p:Prescription {
+       id: $id, requestId: $requestId, patientId: r.patientId, patientName: r.patientName,
+       doctorId: d.id, doctorName: d.fullName, doctorRegNo: d.regNo,
        diagnosis: $diagnosis, items: $items, advice: $advice, createdAt: $now
      })
-     WITH p MATCH (r:ConsultRequest {id: $requestId}) SET r.status = 'completed'
+     SET r.status = 'completed'
      RETURN properties(p) AS p`,
     {
       id: uid("rx"),
       requestId: input.requestId,
-      patientId: req.patientId ?? null,
-      patientName: req.patientName ?? "Patient",
-      doctorId: doc.id,
-      doctorName: doc.fullName ?? "Doctor",
-      doctorRegNo: doc.regNo ?? null,
+      doctorId: input.doctorId,
       diagnosis: input.diagnosis,
       items: JSON.stringify(input.items),
       advice: input.advice,

@@ -5,6 +5,32 @@
 > stages, e-prescriptions, ratings, Neo4j auth). Companion to `VC_AUDIT.md`
 > (market) and `BUILD_LOG.md` (history). Share freely with the team.
 
+## Third audit + round-3 fixes (2026-07-15)
+
+A third, adversarial audit **confirmed the five Critical fixes below genuinely
+hold in live mode** (correct Cypher, no `alg:none` JWT weakness, secret hard-fail
+works). Acting as an attacker it found a handful of real remaining bugs — now fixed:
+
+- **Atomic prescription** — `createPrescription` is now a **single guarded write**
+  (ownership + active status + verification in one transaction), removing the
+  read-then-write TOCTOU.
+- **Verification re-checked on every clinical transition** — start/arrive/complete
+  now require the doctor is still verified (honors mid-visit revocation), not just
+  ownership.
+- **SOS PII locked down** — active emergencies are returned only to **verified**
+  doctors and only within **~15 km**; an unverified account gets nothing.
+- **Demo rating parity** — the demo `addReview` null-`requestId` bypass is closed;
+  a rating now requires a completed, owned, not-already-rated visit (matches live).
+- **Demo transition guards** — demo complete/decline now enforce status (can't
+  complete a non-active or decline a non-pending request), matching live.
+
+Still open (the real roadmap, unchanged): payments/escrow, real ABDM/NMR
+verification (regNo is still free text), Schedule-X/formulary drug blocking,
+server-forced-SOS on emergency triage, real geolocation/live ETA, login
+rate-limiting, and a test/CI suite for the authz guards.
+
+---
+
 ## Update — fixes applied (2026-07-15, same day)
 
 The Critical findings and several Highs were fixed the same day. Summary:

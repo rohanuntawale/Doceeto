@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import * as repo from "@/lib/neo4j/repo";
+import { haversineKm } from "@/lib/utils/geo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,9 +63,16 @@ export async function GET(req: Request) {
         if (role === "ops") return NextResponse.json(all);
         if (role === "patient")
           return NextResponse.json(all.filter((s) => s.patientId === me));
-        // doctor: active emergencies they can respond to
+        // Doctors only see active emergencies if they are VERIFIED, and only
+        // ones within ~15km — an unverified account can't harvest patient PII.
+        const doc = await repo.getDoctorById(me);
+        if (!doc || !doc.verified) return NextResponse.json([]);
         return NextResponse.json(
-          all.filter((s) => s.status === "open" || s.status === "assigned"),
+          all.filter(
+            (s) =>
+              (s.status === "open" || s.status === "assigned") &&
+              haversineKm(doc, s) <= 15,
+          ),
         );
       }
 
