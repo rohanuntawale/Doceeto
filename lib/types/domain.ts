@@ -18,6 +18,12 @@ export type DoctorKind = "resident" | "practising";
 
 export type Gender = "female" | "male";
 
+/** How verified a doctor is. Only "verified" doctors may go online. */
+export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
+
+/** Triage acuity — routes the patient to the right level of care. */
+export type Acuity = "emergency" | "urgent" | "routine";
+
 export type SosCategory =
   | "cardiac"
   | "trauma"
@@ -36,8 +42,10 @@ export type SosStatus =
 export type ConsultType = "video" | "home_visit" | "clinic";
 
 export type ConsultStatus =
-  | "pending"
-  | "accepted"
+  | "pending" // waiting for a doctor to accept
+  | "accepted" // a doctor claimed it
+  | "enroute" // doctor is on the way (home/clinic visits)
+  | "arrived" // doctor has reached the patient
   | "declined"
   | "completed"
   | "cancelled";
@@ -65,8 +73,11 @@ export interface Doctor {
   experienceYears: number;
   languages: string[];
   status: DoctorStatus;
-  verified: boolean;
+  verified: boolean; // convenience mirror of verificationStatus === "verified"
+  verificationStatus: VerificationStatus;
+  regNo: string | null; // NMC / state medical council registration number
   rating: number;
+  ratingCount: number; // number of reviews behind the rating
   consultFee: number;
   homeVisitFee: number;
   avatarColor: string; // deterministic accent for avatar chips
@@ -107,12 +118,31 @@ export interface ConsultRequest {
   type: ConsultType;
   status: ConsultStatus;
   symptoms: string;
+  acuity: Acuity; // from triage — routes to the right level of care
+  triageSummary: string | null; // short human-readable triage note
   fee: number;
   address: string;
   lat: number;
   lng: number;
   createdAt: string; // ISO
+  acceptedAt: string | null; // when a doctor claimed it (drives ETA)
+  etaMins: number | null; // estimated arrival for home/clinic visits
   doctorId: string | null;
+}
+
+/** An issued e-prescription — the clinical output of a completed visit. */
+export interface Prescription {
+  id: string;
+  requestId: string;
+  patientId?: string | null;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  doctorRegNo: string | null; // shown on every Rx per Telemedicine Guidelines 2020
+  diagnosis: string;
+  items: { name: string; dosage: string; duration: string }[];
+  advice: string;
+  createdAt: string; // ISO
 }
 
 export interface Order {
@@ -130,6 +160,8 @@ export interface Order {
 
 export interface Review {
   id: string;
+  doctorId: string | null;
+  requestId: string | null;
   patientName: string;
   rating: number;
   comment: string;

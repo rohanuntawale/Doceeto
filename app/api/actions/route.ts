@@ -57,9 +57,44 @@ export async function POST(req: Request) {
         if (role !== "doctor") return needs("doctors");
         await repo.declineRequest(String(payload.id));
         return NextResponse.json({ ok: true });
+      case "startVisit":
+        if (role !== "doctor") return needs("doctors");
+        await repo.startVisit(String(payload.id));
+        return NextResponse.json({ ok: true });
+      case "arriveVisit":
+        if (role !== "doctor") return needs("doctors");
+        await repo.arriveVisit(String(payload.id));
+        return NextResponse.json({ ok: true });
       case "completeRequest":
         if (role !== "doctor") return needs("doctors");
         await repo.completeRequest(String(payload.id));
+        return NextResponse.json({ ok: true });
+      case "createPrescription":
+        if (role !== "doctor") return needs("doctors");
+        return NextResponse.json(
+          await repo.createPrescription({
+            requestId: String(payload.requestId),
+            doctorId: me,
+            diagnosis: String(payload.diagnosis ?? ""),
+            items: Array.isArray(payload.items) ? payload.items : [],
+            advice: String(payload.advice ?? ""),
+          }),
+        );
+      case "addReview":
+        if (role !== "patient") return needs("patients");
+        await repo.addReview({
+          doctorId: String(payload.doctorId),
+          requestId: payload.requestId ? String(payload.requestId) : null,
+          patientName: session.name,
+          rating: Number(payload.rating ?? 5),
+          comment: String(payload.comment ?? ""),
+        });
+        return NextResponse.json({ ok: true });
+
+      // ── Ops verification ──
+      case "verifyDoctor":
+        if (role !== "ops") return needs("ops");
+        await repo.verifyDoctor(String(payload.id), !!payload.approve);
         return NextResponse.json({ ok: true });
 
       // ── Ops actions ──

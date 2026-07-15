@@ -1,10 +1,10 @@
 "use client";
 
-import { MapPin, Video, Home, Building2, Clock } from "lucide-react";
+import { MapPin, Video, Home, Building2, Clock, Navigation } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Button } from "@/components/ui/button";
 import { formatINR, timeAgo } from "@/lib/utils/format";
-import { consultStatus, consultType } from "@/lib/labels";
+import { consultStatus, consultType, acuity as acuityLabels } from "@/lib/labels";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import type { ConsultRequest } from "@/lib/types/domain";
 
@@ -19,6 +19,9 @@ export function RequestCard({
   note,
   onAccept,
   onDecline,
+  onStart,
+  onArrive,
+  onPrescribe,
   onComplete,
 }: {
   request: ConsultRequest;
@@ -26,12 +29,15 @@ export function RequestCard({
   note?: string;
   onAccept?: () => void;
   onDecline?: () => void;
-  onComplete?: () => void;
+  onStart?: () => void; // "on my way" (home/clinic)
+  onArrive?: () => void; // reached the patient
+  onPrescribe?: () => void; // finish + write Rx
+  onComplete?: () => void; // simple complete (fallback)
 }) {
   const mounted = useMounted();
   const st = consultStatus[request.status];
-  const isPending = request.status === "pending";
-  const isAccepted = request.status === "accepted";
+  const inPerson = request.type !== "video";
+  const ac = acuityLabels[request.acuity];
 
   return (
     <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-4 shadow-card transition-colors hover:border-white/15">
@@ -45,11 +51,24 @@ export function RequestCard({
             <p className="text-xs text-[var(--text-muted)]">
               {consultType[request.type].label}
             </p>
-            {note && (
-              <span className="mt-1 inline-block rounded-full bg-terracotta/12 px-2 py-0.5 text-[10px] font-medium text-salmon ring-1 ring-inset ring-terracotta/20">
-                {note}
-              </span>
-            )}
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {request.acuity !== "routine" && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    request.acuity === "emergency"
+                      ? "bg-status-critical/15 text-status-critical"
+                      : "bg-status-warn/15 text-status-warn"
+                  }`}
+                >
+                  {ac.label}
+                </span>
+              )}
+              {note && (
+                <span className="rounded-full bg-terracotta/12 px-2 py-0.5 text-[10px] font-medium text-salmon ring-1 ring-inset ring-terracotta/20">
+                  {note}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="text-right">
@@ -61,6 +80,9 @@ export function RequestCard({
       </div>
 
       <p className="mt-3 text-sm text-[var(--text-muted)]">{request.symptoms}</p>
+      {request.triageSummary && (
+        <p className="mt-1 text-xs text-[var(--text-faint)]">Triage: {request.triageSummary}</p>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-faint)]">
         <span className="flex items-center gap-1.5">
@@ -70,27 +92,45 @@ export function RequestCard({
           <Clock className="h-3.5 w-3.5" />
           {mounted ? timeAgo(request.createdAt) : ""}
         </span>
+        {request.etaMins != null && request.status !== "arrived" && (
+          <span className="flex items-center gap-1.5 text-salmon">
+            <Navigation className="h-3.5 w-3.5" /> ETA {request.etaMins} min
+          </span>
+        )}
       </div>
 
-      {(isPending || isAccepted) && (
-        <div className="mt-3 flex gap-2">
-          {isPending && (
-            <>
-              <Button size="sm" className="flex-1" onClick={onAccept}>
-                Accept
-              </Button>
-              <Button size="sm" variant="ghost" onClick={onDecline}>
-                Pass
-              </Button>
-            </>
-          )}
-          {isAccepted && (
-            <Button size="sm" variant="subtle" className="flex-1" onClick={onComplete}>
-              Mark completed
+      <div className="mt-3 flex gap-2">
+        {request.status === "pending" && (
+          <>
+            <Button size="sm" className="flex-1" onClick={onAccept}>
+              Accept
             </Button>
-          )}
-        </div>
-      )}
+            <Button size="sm" variant="ghost" onClick={onDecline}>
+              Pass
+            </Button>
+          </>
+        )}
+        {request.status === "accepted" && inPerson && (
+          <Button size="sm" className="flex-1" onClick={onStart}>
+            <Navigation className="h-3.5 w-3.5" /> On my way
+          </Button>
+        )}
+        {request.status === "accepted" && !inPerson && (
+          <Button size="sm" variant="subtle" className="flex-1" onClick={onPrescribe ?? onComplete}>
+            Complete &amp; prescribe
+          </Button>
+        )}
+        {request.status === "enroute" && (
+          <Button size="sm" className="flex-1" onClick={onArrive}>
+            I&apos;ve arrived
+          </Button>
+        )}
+        {request.status === "arrived" && (
+          <Button size="sm" variant="subtle" className="flex-1" onClick={onPrescribe ?? onComplete}>
+            Complete &amp; prescribe
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,22 @@ export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
   const { setDoctorStatus } = useActions();
   const toast = useToast();
   const online = doctor?.status === "online";
+  const verified = doctor?.verificationStatus === "verified";
+
+  // A doctor who is not yet verified cannot go online.
+  if (doctor && !verified) {
+    return (
+      <div className="flex items-center gap-3 rounded-card border border-status-warn/30 bg-espresso-800 px-4 py-3 shadow-card">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-status-warn" />
+        <div className="leading-tight">
+          <p className="text-sm font-medium text-cream">Verification pending</p>
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+            You can go online once our team verifies your registration.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   function toggle() {
     if (!doctor) return;

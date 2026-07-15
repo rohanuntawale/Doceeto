@@ -28,6 +28,14 @@ export async function GET(req: Request) {
       case "reviews":
         return NextResponse.json(await repo.getReviews());
 
+      case "prescriptions": {
+        const all = await repo.getPrescriptions();
+        if (role === "ops") return NextResponse.json(all);
+        if (role === "patient")
+          return NextResponse.json(all.filter((p) => p.patientId === me));
+        return NextResponse.json(all.filter((p) => p.doctorId === me));
+      }
+
       case "requests": {
         const all = await repo.getRequests();
         if (role === "ops") return NextResponse.json(all);

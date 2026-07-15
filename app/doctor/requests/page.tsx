@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { RequestCard } from "@/components/zumi/request-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
+import { PrescriptionDialog } from "@/components/doctor/prescription-dialog";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
+import type { ConsultRequest } from "@/lib/types/domain";
 
 export default function RequestsPage() {
   const requests = useConsultRequests();
@@ -16,6 +18,7 @@ export default function RequestsPage() {
   // Requests this doctor passed on locally. Passing on a broadcast request
   // only hides it for this doctor, it stays open for everyone else.
   const [passed, setPassed] = useState<Set<string>>(new Set());
+  const [rxFor, setRxFor] = useState<ConsultRequest | null>(null);
 
   // A doctor sees requests open to everyone nearby (doctorId null) and
   // requests a patient sent straight to them.
@@ -25,8 +28,10 @@ export default function RequestsPage() {
       !passed.has(r.id) &&
       (r.doctorId === null || r.doctorId === me?.id),
   );
-  const accepted = requests.filter(
-    (r) => r.status === "accepted" && r.doctorId === me?.id,
+  const active = requests.filter(
+    (r) =>
+      r.doctorId === me?.id &&
+      (r.status === "accepted" || r.status === "enroute" || r.status === "arrived"),
   );
 
   return (
@@ -72,28 +77,32 @@ export default function RequestsPage() {
       </section>
 
       <section>
-        <div className="label mb-3">ACCEPTED BY YOU · {accepted.length}</div>
-        {accepted.length === 0 ? (
+        <div className="label mb-3">IN PROGRESS · {active.length}</div>
+        {active.length === 0 ? (
           <EmptyState
             kanji="診"
             title="Nothing in progress"
-            desc="Accepted consults show up here until you complete them."
+            desc="Accepted visits show up here until you complete them."
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {accepted.map((r) => (
+            {active.map((r) => (
               <RequestCard
                 key={r.id}
                 request={r}
-                onComplete={() => {
-                  actions.completeRequest(r.id);
-                  toast.push({ tone: "success", title: "Consult completed" });
-                }}
+                onStart={() => actions.startVisit(r.id)}
+                onArrive={() => actions.arriveVisit(r.id)}
+                onPrescribe={() => setRxFor(r)}
+                onComplete={() => actions.completeRequest(r.id)}
               />
             ))}
           </div>
         )}
       </section>
+
+      {rxFor && me && (
+        <PrescriptionDialog request={rxFor} doctorId={me.id} onClose={() => setRxFor(null)} />
+      )}
     </>
   );
 }

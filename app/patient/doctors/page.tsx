@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Star,
   BadgeCheck,
@@ -11,6 +12,7 @@ import {
   Map as MapIcon,
   List as ListIcon,
   SlidersHorizontal,
+  ShieldQuestion,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +20,11 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { PatientBookings } from "@/components/patient/patient-bookings";
+import { Triage, type TriageOutcome } from "@/components/patient/triage";
 import { DoctorMap } from "@/components/map/doctor-map";
 import { useDoctors, useActions } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { doctorStatus, doctorKind } from "@/lib/labels";
+import { doctorStatus, doctorKind, acuity as acuityLabels } from "@/lib/labels";
 import { formatINR, initials } from "@/lib/utils/format";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorBlurb } from "@/lib/utils/doctor";
@@ -61,6 +64,7 @@ export default function PatientDoctors() {
   const { patient } = useCurrentPatient();
   const { createRequest } = useActions();
   const toast = useToast();
+  const router = useRouter();
 
   const [symptoms, setSymptoms] = useState("");
   const [mode, setMode] = useState<ConsultType>("home_visit");
@@ -68,6 +72,8 @@ export default function PatientDoctors() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showTriage, setShowTriage] = useState(false);
+  const [triage, setTriage] = useState<TriageOutcome | null>(null);
 
   const feeFor = (d: Doctor, type: ConsultType) =>
     type === "home_visit" ? d.homeVisitFee : d.consultFee;
@@ -143,6 +149,8 @@ export default function PatientDoctors() {
       patientName: patient.name,
       type: mode,
       symptoms: symptoms.trim() || "General consultation.",
+      acuity: triage?.acuity,
+      triageSummary: triage?.summary ?? null,
       fee: indicativeFee,
       address: addressFor(mode),
       lat: patient.lat,
@@ -163,6 +171,8 @@ export default function PatientDoctors() {
       patientName: patient.name,
       type,
       symptoms: symptoms.trim() || "General consultation.",
+      acuity: triage?.acuity,
+      triageSummary: triage?.summary ?? null,
       fee: feeFor(doctor, type),
       address: addressFor(type),
       lat: patient.lat,
@@ -177,6 +187,18 @@ export default function PatientDoctors() {
     setSymptoms("");
   }
 
+  function applyTriage(o: TriageOutcome) {
+    setTriage(o);
+    setMode(o.recommendedMode);
+    if (!symptoms.trim()) setSymptoms(o.complaint);
+    setShowTriage(false);
+    toast.push({
+      tone: "info",
+      title: `Triage: ${acuityLabels[o.acuity].label}`,
+      desc: o.advice,
+    });
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -189,6 +211,47 @@ export default function PatientDoctors() {
       </div>
 
       <PatientBookings patientId={patient.id} />
+
+      {/* Quick check (triage) */}
+      {showTriage ? (
+        <Triage
+          onApply={applyTriage}
+          onEmergency={() => router.push("/patient")}
+          onClose={() => setShowTriage(false)}
+        />
+      ) : triage ? (
+        <div className="glass rounded-card flex items-center justify-between gap-3 p-3.5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <StatusPill tone={acuityLabels[triage.acuity].tone}>
+                {acuityLabels[triage.acuity].label}
+              </StatusPill>
+              <span className="truncate text-xs text-[var(--text-muted)]">{triage.summary}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowTriage(true)}
+            className="shrink-0 text-xs font-medium text-salmon hover:underline"
+          >
+            Redo
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowTriage(true)}
+          className="glass rounded-card flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:border-terracotta/40"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-terracotta/12 text-salmon ring-1 ring-inset ring-terracotta/20">
+            <ShieldQuestion className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-cream">Not sure what you need?</span>
+            <span className="block text-xs text-[var(--text-faint)]">
+              Answer a few quick questions and we&apos;ll guide you.
+            </span>
+          </span>
+        </button>
+      )}
 
       <div>
         <label className="label">What&apos;s the problem? (optional)</label>

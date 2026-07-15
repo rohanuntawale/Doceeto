@@ -25,11 +25,13 @@ import {
   seedReviews,
   seedSos,
 } from "@/lib/demo/seed";
+import { haversineKm } from "@/lib/utils/geo";
 import type {
   ConsultRequest,
   Doctor,
   Order,
   OrderStatus,
+  Prescription,
   Review,
   SosEvent,
 } from "@/lib/types/domain";
@@ -41,6 +43,14 @@ export interface DemoState {
   requests: ConsultRequest[];
   orders: Order[];
   reviews: Review[];
+  prescriptions: Prescription[];
+}
+
+/** Rough ETA (mins) for a home/clinic visit from distance. Video = none. */
+function etaFor(type: ConsultRequest["type"], km: number): number | null {
+  if (type === "video") return null;
+  // ~25 km/h effective city speed + 8 min to get ready.
+  return Math.max(6, Math.round(8 + (km / 25) * 60));
 }
 
 type Listener = () => void;
@@ -75,7 +85,10 @@ function fresh(): DemoState {
     sos: SEED_LEVEL === "full" ? seedSos() : [],
     requests: SEED_LEVEL === "full" ? seedRequests() : [],
     orders: SEED_LEVEL === "full" ? seedOrders() : [],
-    reviews: SEED_LEVEL === "full" ? seedReviews() : [],
+    // Reviews are catalog data (a doctor's reputation exists before you
+    // create activity), so keep them unless the store is fully empty.
+    reviews: catalog ? [] : seedReviews(),
+    prescriptions: [],
   };
 }
 
@@ -172,6 +185,8 @@ export const demoStore = {
     patientName: string;
     type: ConsultRequest["type"];
     symptoms: string;
+    acuity?: ConsultRequest["acuity"];
+    triageSummary?: string | null;
     fee: number;
     address: string;
     lat: number;
@@ -185,11 +200,15 @@ export const demoStore = {
       type: input.type,
       status: "pending",
       symptoms: input.symptoms,
+      acuity: input.acuity ?? "routine",
+      triageSummary: input.triageSummary ?? null,
       fee: input.fee,
       address: input.address,
       lat: input.lat,
       lng: input.lng,
       createdAt: new Date().toISOString(),
+      acceptedAt: null,
+      etaMins: null,
       doctorId: input.doctorId ?? null,
     };
     const s = getState();
@@ -231,6 +250,7 @@ export const demoStore = {
     kind: Doctor["kind"];
     gender: Doctor["gender"];
     experienceYears: number;
+    regNo?: string | null;
     consultFee: number;
     homeVisitFee: number;
   }): Doctor {
@@ -246,9 +266,14 @@ export const demoStore = {
       gender: input.gender,
       experienceYears: input.experienceYears,
       languages: ["English", "Hindi"],
-      status: "online",
+      // New doctors start OFFLINE and UNVERIFIED — they cannot take
+      // patients until ops verifies their registration.
+      status: "offline",
       verified: false,
+      verificationStatus: "pending",
+      regNo: input.regNo ?? null,
       rating: 0,
+      ratingCount: 0,
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
       avatarColor: palette[s.doctors.length % palette.length],
@@ -261,6 +286,21 @@ export const demoStore = {
     return doctor;
   },
 
+  /** Ops verifies (or rejects) a doctor's registration. */
+  verifyDoctor(id: string, approve: boolean) {
+    const s = getState();
+    s.doctors = s.doctors.map((d) =>
+      d.id === id
+        ? {
+            ...d,
+            verified: approve,
+            verificationStatus: approve ? "verified" : "rejected",
+          }
+        : d,
+    );
+    commit();
+  },
+
   updateDoctor(id: string, patch: Partial<Doctor>) {
     const s = getState();
     s.doctors = s.doctors.map((d) => (d.id === id ? { ...d, ...patch } : d));
@@ -270,9 +310,12 @@ export const demoStore = {
   // ── Mutations shared by the consoles ──────────────────────
   setDoctorStatus(id: string, status: Doctor["status"]) {
     const s = getState();
-    s.doctors = s.doctors.map((d) =>
-      d.id === id ? { ...d, status, lastSeen: new Date().toISOString() } : d,
-    );
+    s.doctors = s.doctors.map((d) => {
+      if (d.id !== id) return d;
+      // An unverified doctor can never go online.
+      if (status === "online" && d.verificationStatus !== "verified") return d;
+      return { ...d, status, lastSeen: new Date().toISOString() };
+    });
     commit();
   },
 
@@ -282,8 +325,19 @@ export const demoStore = {
     // pending (another doctor already claimed it).
     const target = s.requests.find((r) => r.id === id);
     if (!target || target.status !== "pending") return;
+    const doctor = s.doctors.find((d) => d.id === doctorId);
+    const km = doctor ? haversineKm(doctor, target) : 3;
+    const eta = etaFor(target.type, km);
     s.requests = s.requests.map((r) =>
-      r.id === id ? { ...r, status: "accepted", doctorId } : r,
+      r.id === id
+        ? {
+            ...r,
+            status: "accepted",
+            doctorId,
+            acceptedAt: new Date().toISOString(),
+            etaMins: eta,
+          }
+        : r,
     );
     commit();
   },
@@ -296,11 +350,92 @@ export const demoStore = {
     commit();
   },
 
+  /** Doctor sets off for a home/clinic visit. */
+  startVisit(id: string) {
+    const s = getState();
+    s.requests = s.requests.map((r) =>
+      r.id === id && r.status === "accepted" ? { ...r, status: "enroute" } : r,
+    );
+    commit();
+  },
+
+  /** Doctor has reached the patient. */
+  arriveVisit(id: string) {
+    const s = getState();
+    s.requests = s.requests.map((r) =>
+      r.id === id && (r.status === "enroute" || r.status === "accepted")
+        ? { ...r, status: "arrived", etaMins: 0 }
+        : r,
+    );
+    commit();
+  },
+
   completeRequest(id: string) {
     const s = getState();
     s.requests = s.requests.map((r) =>
       r.id === id ? { ...r, status: "completed" } : r,
     );
+    commit();
+  },
+
+  /** Doctor issues an e-prescription and marks the visit complete. */
+  createPrescription(input: {
+    requestId: string;
+    doctorId: string;
+    diagnosis: string;
+    items: { name: string; dosage: string; duration: string }[];
+    advice: string;
+  }): Prescription | null {
+    const s = getState();
+    const req = s.requests.find((r) => r.id === input.requestId);
+    const doc = s.doctors.find((d) => d.id === input.doctorId);
+    if (!req || !doc) return null;
+    const rx: Prescription = {
+      id: nextId("rx"),
+      requestId: input.requestId,
+      patientId: req.patientId ?? null,
+      patientName: req.patientName,
+      doctorId: doc.id,
+      doctorName: doc.fullName,
+      doctorRegNo: doc.regNo,
+      diagnosis: input.diagnosis,
+      items: input.items,
+      advice: input.advice,
+      createdAt: new Date().toISOString(),
+    };
+    s.prescriptions = [rx, ...s.prescriptions];
+    s.requests = s.requests.map((r) =>
+      r.id === input.requestId ? { ...r, status: "completed" } : r,
+    );
+    commit();
+    return rx;
+  },
+
+  /** Patient rates a completed visit; the doctor's rating recomputes. */
+  addReview(input: {
+    doctorId: string;
+    requestId: string | null;
+    patientName: string;
+    rating: number;
+    comment: string;
+  }) {
+    const s = getState();
+    const review: Review = {
+      id: nextId("rev"),
+      doctorId: input.doctorId,
+      requestId: input.requestId,
+      patientName: input.patientName,
+      rating: input.rating,
+      comment: input.comment,
+      createdAt: new Date().toISOString(),
+    };
+    s.reviews = [review, ...s.reviews];
+    s.doctors = s.doctors.map((d) => {
+      if (d.id !== input.doctorId) return d;
+      const total = d.rating * d.ratingCount + input.rating;
+      const count = d.ratingCount + 1;
+      return { ...d, rating: total / count, ratingCount: count };
+    });
     commit();
   },
 

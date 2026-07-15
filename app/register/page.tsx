@@ -231,6 +231,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
     kind: "practising" as DoctorKind,
     gender: "female" as "female" | "male",
     experienceYears: 3,
+    regNo: "",
     email: "",
     password: "",
     consultFee: 400,
@@ -250,11 +251,16 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
         kind: form.kind,
         gender: form.gender,
         experienceYears: Number(form.experienceYears) || 0,
+        regNo: form.regNo.trim() || null,
         consultFee: Number(form.consultFee) || 0,
         homeVisitFee: Number(form.homeVisitFee) || 0,
       });
       setCurrentDoctorId(doc.id);
-      toast.push({ tone: "success", title: "You're on the network", desc: `${doc.fullName} · ${doctorKind[doc.kind].label}` });
+      toast.push({
+        tone: "success",
+        title: "Application received",
+        desc: "Our team will verify your registration before you can go online.",
+      });
       router.push("/doctor");
       return;
     }
@@ -273,6 +279,7 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
         kind: form.kind,
         gender: form.gender,
         experienceYears: form.experienceYears,
+        regNo: form.regNo,
         consultFee: form.consultFee,
         homeVisitFee: form.homeVisitFee,
       }),
@@ -334,6 +341,15 @@ function DoctorForm({ onBack }: { onBack: () => void }) {
           />
         </Field>
       </div>
+
+      <Field label="Medical registration number (NMC / state council)">
+        <input
+          className={inputCls}
+          value={form.regNo}
+          onChange={(e) => setForm({ ...form, regNo: e.target.value })}
+          placeholder="e.g. MH-2018-05529"
+        />
+      </Field>
 
       <div>
         <span className="label">Where you are right now</span>

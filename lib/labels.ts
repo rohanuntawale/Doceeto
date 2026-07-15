@@ -1,4 +1,5 @@
 import type {
+  Acuity,
   ConsultStatus,
   ConsultType,
   DoctorKind,
@@ -6,6 +7,7 @@ import type {
   OrderStatus,
   SosCategory,
   SosStatus,
+  VerificationStatus,
 } from "@/lib/types/domain";
 
 type Tone = "critical" | "warn" | "ok" | "idle" | "info";
@@ -28,11 +30,41 @@ export const sosStatus: Record<SosStatus, { label: string; tone: Tone }> = {
 };
 
 export const consultStatus: Record<ConsultStatus, { label: string; tone: Tone }> = {
-  pending: { label: "Pending", tone: "warn" },
+  pending: { label: "Finding a doctor", tone: "warn" },
   accepted: { label: "Accepted", tone: "info" },
+  enroute: { label: "On the way", tone: "info" },
+  arrived: { label: "Arrived", tone: "info" },
   declined: { label: "Declined", tone: "idle" },
   completed: { label: "Completed", tone: "ok" },
   cancelled: { label: "Cancelled", tone: "idle" },
+};
+
+export const acuity: Record<Acuity, { label: string; tone: Tone; blurb: string }> = {
+  emergency: {
+    label: "Emergency",
+    tone: "critical",
+    blurb: "Needs urgent help now",
+  },
+  urgent: {
+    label: "Urgent",
+    tone: "warn",
+    blurb: "Should be seen soon",
+  },
+  routine: {
+    label: "Routine",
+    tone: "ok",
+    blurb: "Can be seen at a normal time",
+  },
+};
+
+export const verificationStatus: Record<
+  VerificationStatus,
+  { label: string; tone: Tone }
+> = {
+  unverified: { label: "Not verified", tone: "idle" },
+  pending: { label: "Verification pending", tone: "warn" },
+  verified: { label: "Verified", tone: "ok" },
+  rejected: { label: "Rejected", tone: "critical" },
 };
 
 export const consultType: Record<ConsultType, { label: string }> = {

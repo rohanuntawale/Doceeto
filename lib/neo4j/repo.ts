@@ -6,6 +6,7 @@ import type {
   ConsultRequest,
   Doctor,
   Order,
+  Prescription,
   Review,
   SosEvent,
 } from "@/lib/types/domain";
@@ -25,8 +26,11 @@ const mapDoctor = (n: Row): Doctor => ({
   experienceYears: Number(n.experienceYears ?? 0),
   languages: Array.isArray(n.languages) ? n.languages : ["English", "Hindi"],
   status: n.status ?? "offline",
-  verified: !!n.verified,
+  verified: n.verificationStatus === "verified" || !!n.verified,
+  verificationStatus: n.verificationStatus ?? (n.verified ? "verified" : "pending"),
+  regNo: n.regNo ?? null,
   rating: Number(n.rating ?? 0),
+  ratingCount: Number(n.ratingCount ?? 0),
   consultFee: Number(n.consultFee ?? 0),
   homeVisitFee: Number(n.homeVisitFee ?? 0),
   avatarColor: n.avatarColor ?? AVATAR[0],
@@ -67,12 +71,30 @@ const mapRequest = (n: Row): ConsultRequest => ({
   type: n.type,
   status: n.status,
   symptoms: n.symptoms ?? "",
+  acuity: n.acuity ?? "routine",
+  triageSummary: n.triageSummary ?? null,
   fee: Number(n.fee ?? 0),
   address: n.address ?? "",
   lat: Number(n.lat ?? 0),
   lng: Number(n.lng ?? 0),
   createdAt: n.createdAt,
+  acceptedAt: n.acceptedAt ?? null,
+  etaMins: n.etaMins ?? null,
   doctorId: n.doctorId ?? null,
+});
+
+const mapPrescription = (n: Row): Prescription => ({
+  id: n.id,
+  requestId: n.requestId,
+  patientId: n.patientId ?? null,
+  patientName: n.patientName ?? "Patient",
+  doctorId: n.doctorId,
+  doctorName: n.doctorName ?? "Doctor",
+  doctorRegNo: n.doctorRegNo ?? null,
+  diagnosis: n.diagnosis ?? "",
+  items: n.items ? JSON.parse(n.items) : [],
+  advice: n.advice ?? "",
+  createdAt: n.createdAt,
 });
 
 const mapOrder = (n: Row): Order => ({
@@ -90,6 +112,8 @@ const mapOrder = (n: Row): Order => ({
 
 const mapReview = (n: Row): Review => ({
   id: n.id,
+  doctorId: n.doctorId ?? null,
+  requestId: n.requestId ?? null,
   patientName: n.patientName ?? "Patient",
   rating: Number(n.rating ?? 0),
   comment: n.comment ?? "",
@@ -149,6 +173,7 @@ export async function createDoctorUser(input: {
   kind: string;
   gender: string;
   experienceYears: number;
+  regNo?: string | null;
   consultFee: number;
   homeVisitFee: number;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
@@ -164,7 +189,9 @@ export async function createDoctorUser(input: {
      CREATE (d:Doctor {
        id: $id, fullName: $fullName, specialty: $specialty, kind: $kind,
        gender: $gender, experienceYears: $experienceYears,
-       languages: $languages, status: 'online', verified: false, rating: 0.0,
+       languages: $languages, status: 'offline',
+       verified: false, verificationStatus: 'pending', regNo: $regNo,
+       rating: 0.0, ratingCount: 0,
        consultFee: $consultFee, homeVisitFee: $homeVisitFee,
        avatarColor: $avatarColor, lat: $lat, lng: $lng, lastSeen: $now
      })
@@ -179,6 +206,7 @@ export async function createDoctorUser(input: {
       kind: input.kind,
       gender: input.gender,
       experienceYears: input.experienceYears,
+      regNo: input.regNo ?? null,
       languages: ["English", "Hindi"],
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
@@ -269,6 +297,8 @@ export async function createRequest(input: {
   patientName: string;
   type: string;
   symptoms: string;
+  acuity?: string;
+  triageSummary?: string | null;
   fee: number;
   address: string;
   lat: number;
@@ -278,10 +308,26 @@ export async function createRequest(input: {
   const rows = await write<{ r: Row }>(
     `CREATE (r:ConsultRequest {
        id: $id, patientId: $patientId, patientName: $patientName, type: $type,
-       status: 'pending', symptoms: $symptoms, fee: $fee, address: $address,
-       lat: $lat, lng: $lng, doctorId: $doctorId, createdAt: $now
+       status: 'pending', symptoms: $symptoms, acuity: $acuity,
+       triageSummary: $triageSummary, fee: $fee, address: $address,
+       lat: $lat, lng: $lng, doctorId: $doctorId, createdAt: $now,
+       acceptedAt: null, etaMins: null
      }) RETURN properties(r) AS r`,
-    { id: uid("req"), ...input, doctorId: input.doctorId ?? null, now: new Date().toISOString() },
+    {
+      id: uid("req"),
+      patientId: input.patientId,
+      patientName: input.patientName,
+      type: input.type,
+      symptoms: input.symptoms,
+      acuity: input.acuity ?? "routine",
+      triageSummary: input.triageSummary ?? null,
+      fee: input.fee,
+      address: input.address,
+      lat: input.lat,
+      lng: input.lng,
+      doctorId: input.doctorId ?? null,
+      now: new Date().toISOString(),
+    },
   );
   return mapRequest(rows[0].r);
 }
@@ -314,11 +360,29 @@ export async function createOrder(input: {
   return mapOrder(rows[0].o);
 }
 
+export const getPrescriptions = () =>
+  read<{ p: Row }>(
+    `MATCH (p:Prescription) RETURN properties(p) AS p ORDER BY p.createdAt DESC`,
+  ).then((rows) => rows.map((x) => mapPrescription(x.p)));
+
 // ── Doctor mutations ─────────────────────────────────────────
 export async function setDoctorStatus(id: string, status: string) {
+  // An unverified doctor can never go online.
   await write(
-    `MATCH (d:Doctor {id: $id}) SET d.status = $status, d.lastSeen = $now`,
+    `MATCH (d:Doctor {id: $id})
+     WHERE NOT ($status = 'online' AND coalesce(d.verificationStatus,'pending') <> 'verified')
+     SET d.status = $status, d.lastSeen = $now`,
     { id, status, now: new Date().toISOString() },
+  );
+}
+
+/** Ops verifies (or rejects) a doctor. */
+export async function verifyDoctor(id: string, approve: boolean) {
+  await write(
+    `MATCH (d:Doctor {id: $id})
+     SET d.verified = $approve,
+         d.verificationStatus = CASE WHEN $approve THEN 'verified' ELSE 'rejected' END`,
+    { id, approve },
   );
 }
 
@@ -360,8 +424,95 @@ export async function declineRequest(id: string) {
   await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'declined'`, { id });
 }
 
+export async function startVisit(id: string) {
+  await write(
+    `MATCH (r:ConsultRequest {id: $id}) WHERE r.status = 'accepted' SET r.status = 'enroute'`,
+    { id },
+  );
+}
+
+export async function arriveVisit(id: string) {
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.status IN ['enroute','accepted'] SET r.status = 'arrived', r.etaMins = 0`,
+    { id },
+  );
+}
+
 export async function completeRequest(id: string) {
   await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'completed'`, { id });
+}
+
+/** Doctor issues an e-prescription and marks the visit complete. */
+export async function createPrescription(input: {
+  requestId: string;
+  doctorId: string;
+  diagnosis: string;
+  items: { name: string; dosage: string; duration: string }[];
+  advice: string;
+}): Promise<Prescription | null> {
+  const reqRows = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+    { id: input.requestId },
+  );
+  const docRows = await read<{ d: Row }>(
+    `MATCH (d:Doctor {id: $id}) RETURN properties(d) AS d`,
+    { id: input.doctorId },
+  );
+  const req = reqRows[0]?.r;
+  const doc = docRows[0]?.d;
+  if (!req || !doc) return null;
+  const rows = await write<{ p: Row }>(
+    `CREATE (p:Prescription {
+       id: $id, requestId: $requestId, patientId: $patientId, patientName: $patientName,
+       doctorId: $doctorId, doctorName: $doctorName, doctorRegNo: $doctorRegNo,
+       diagnosis: $diagnosis, items: $items, advice: $advice, createdAt: $now
+     })
+     WITH p MATCH (r:ConsultRequest {id: $requestId}) SET r.status = 'completed'
+     RETURN properties(p) AS p`,
+    {
+      id: uid("rx"),
+      requestId: input.requestId,
+      patientId: req.patientId ?? null,
+      patientName: req.patientName ?? "Patient",
+      doctorId: doc.id,
+      doctorName: doc.fullName ?? "Doctor",
+      doctorRegNo: doc.regNo ?? null,
+      diagnosis: input.diagnosis,
+      items: JSON.stringify(input.items),
+      advice: input.advice,
+      now: new Date().toISOString(),
+    },
+  );
+  return rows[0]?.p ? mapPrescription(rows[0].p) : null;
+}
+
+/** Patient rates a completed visit; the doctor's rating recomputes. */
+export async function addReview(input: {
+  doctorId: string;
+  requestId: string | null;
+  patientName: string;
+  rating: number;
+  comment: string;
+}) {
+  await write(
+    `CREATE (v:Review {
+       id: $id, doctorId: $doctorId, requestId: $requestId, patientName: $patientName,
+       rating: $rating, comment: $comment, createdAt: $now
+     })
+     WITH v MATCH (d:Doctor {id: $doctorId})
+     SET d.rating = (d.rating * d.ratingCount + $rating) / (d.ratingCount + 1),
+         d.ratingCount = d.ratingCount + 1`,
+    {
+      id: uid("rev"),
+      doctorId: input.doctorId,
+      requestId: input.requestId,
+      patientName: input.patientName,
+      rating: input.rating,
+      comment: input.comment,
+      now: new Date().toISOString(),
+    },
+  );
 }
 
 // ── Ops mutations ────────────────────────────────────────────

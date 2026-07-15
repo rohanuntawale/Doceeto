@@ -20,6 +20,7 @@ import type {
   Order,
   OpsSnapshot,
   OrderStatus,
+  Prescription,
   Review,
   SosEvent,
   SosStatus,
@@ -34,7 +35,15 @@ const ORDER_ORDER: OrderStatus[] = [
 ];
 
 const POLL_MS = 4000;
-const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews"];
+const ENTITY_KEYS = [
+  "doctors",
+  "ambulances",
+  "requests",
+  "sos",
+  "orders",
+  "reviews",
+  "prescriptions",
+];
 
 // ── Demo primitive ──────────────────────────────────────────
 function useDemoState() {
@@ -94,6 +103,13 @@ function useReviewsDemo(): Review[] {
 }
 export const useReviews = isDemoMode ? useReviewsDemo : () => useApiEntity<Review>("reviews");
 
+function usePrescriptionsDemo(): Prescription[] {
+  return useDemoState().prescriptions;
+}
+export const usePrescriptions = isDemoMode
+  ? usePrescriptionsDemo
+  : () => useApiEntity<Prescription>("prescriptions");
+
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
   const sos = useSosEvents();
@@ -143,11 +159,27 @@ export interface CreateRequestInput {
   patientName: string;
   type: ConsultRequest["type"];
   symptoms: string;
+  acuity?: ConsultRequest["acuity"];
+  triageSummary?: string | null;
   fee: number;
   address: string;
   lat: number;
   lng: number;
   doctorId?: string | null;
+}
+export interface CreatePrescriptionInput {
+  requestId: string;
+  doctorId: string;
+  diagnosis: string;
+  items: { name: string; dosage: string; duration: string }[];
+  advice: string;
+}
+export interface AddReviewInput {
+  doctorId: string;
+  requestId: string | null;
+  patientName: string;
+  rating: number;
+  comment: string;
 }
 export interface CreateOrderInput {
   patientId: string;
@@ -164,9 +196,14 @@ export interface Actions {
   createOrder: (input: CreateOrderInput) => void;
   updateDoctor: (id: string, patch: Partial<Doctor>) => void;
   setDoctorStatus: (id: string, status: Doctor["status"]) => void;
+  verifyDoctor: (id: string, approve: boolean) => void;
   acceptRequest: (id: string, doctorId: string) => void;
   declineRequest: (id: string) => void;
+  startVisit: (id: string) => void;
+  arriveVisit: (id: string) => void;
   completeRequest: (id: string) => void;
+  createPrescription: (input: CreatePrescriptionInput) => void;
+  addReview: (input: AddReviewInput) => void;
   assignAmbulance: (sosId: string, ambulanceId: string) => void;
   assignDoctorToSos: (sosId: string, doctorId: string) => void;
   advanceSos: (sosId: string, current: SosStatus) => void;
@@ -208,9 +245,14 @@ export function useActions(): Actions {
         createOrder: (input) => void demoStore.createOrder(input),
         updateDoctor: demoStore.updateDoctor,
         setDoctorStatus: demoStore.setDoctorStatus,
+        verifyDoctor: demoStore.verifyDoctor,
         acceptRequest: demoStore.acceptRequest,
         declineRequest: demoStore.declineRequest,
+        startVisit: demoStore.startVisit,
+        arriveVisit: demoStore.arriveVisit,
         completeRequest: demoStore.completeRequest,
+        createPrescription: (input) => void demoStore.createPrescription(input),
+        addReview: demoStore.addReview,
         assignAmbulance: demoStore.assignAmbulance,
         assignDoctorToSos: demoStore.assignDoctorToSos,
         advanceSos: (id) => demoStore.advanceSos(id),
@@ -225,9 +267,14 @@ export function useActions(): Actions {
       createOrder: (input) => callAction(qc, "createOrder", { ...input }),
       updateDoctor: (id, patch) => callAction(qc, "updateDoctor", { patch }),
       setDoctorStatus: (_id, status) => callAction(qc, "setDoctorStatus", { status }),
+      verifyDoctor: (id, approve) => callAction(qc, "verifyDoctor", { id, approve }),
       acceptRequest: (id) => callAction(qc, "acceptRequest", { id }),
       declineRequest: (id) => callAction(qc, "declineRequest", { id }),
+      startVisit: (id) => callAction(qc, "startVisit", { id }),
+      arriveVisit: (id) => callAction(qc, "arriveVisit", { id }),
       completeRequest: (id) => callAction(qc, "completeRequest", { id }),
+      createPrescription: (input) => callAction(qc, "createPrescription", { ...input }),
+      addReview: (input) => callAction(qc, "addReview", { ...input }),
       assignAmbulance: (sosId, ambulanceId) =>
         callAction(qc, "assignAmbulance", { sosId, ambulanceId }),
       assignDoctorToSos: (sosId, doctorId) =>

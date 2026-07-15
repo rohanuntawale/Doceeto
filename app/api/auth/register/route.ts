@@ -34,6 +34,7 @@ export async function POST(req: Request) {
         kind: body.kind === "resident" ? "resident" : "practising",
         gender: body.gender === "male" ? "male" : "female",
         experienceYears: Number(body.experienceYears ?? 0),
+        regNo: body.regNo ? String(body.regNo) : null,
         consultFee: Number(body.consultFee ?? 400),
         homeVisitFee: Number(body.homeVisitFee ?? 900),
       });
