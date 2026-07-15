@@ -47,14 +47,14 @@ export function PrescriptionDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+    <div className="fixed inset-0 z-[1000] grid place-items-center p-4">
       <button
         aria-hidden
         tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm"
       />
-      <div className="glass-strong relative z-10 w-full max-w-lg rounded-card p-5">
+      <div className="popover relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-card p-5">
         <button
           onClick={onClose}
           aria-label="Close"

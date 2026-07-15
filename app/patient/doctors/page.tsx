@@ -20,6 +20,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { PatientBookings } from "@/components/patient/patient-bookings";
+import { LiveTracking } from "@/components/patient/live-tracking";
 import { Triage, type TriageOutcome } from "@/components/patient/triage";
 import { DoctorMap } from "@/components/map/doctor-map";
 import { useDoctors, useActions } from "@/lib/hooks/data";
@@ -211,6 +212,9 @@ export default function PatientDoctors() {
           best match.
         </p>
       </div>
+
+      {/* Live tracking takes over the top of the page once a doctor is coming. */}
+      <LiveTracking patient={patient} />
 
       <PatientBookings patientId={patient.id} />
 

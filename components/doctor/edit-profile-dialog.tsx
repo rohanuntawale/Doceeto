@@ -75,7 +75,7 @@ export function EditProfileDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="label">ZUMI · EDIT</div>
+            <div className="label">EDIT PROFILE</div>
             <h3 className="font-serif text-xl text-cream">Edit profile</h3>
           </div>
           <button

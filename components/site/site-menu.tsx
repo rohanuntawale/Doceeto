@@ -41,7 +41,7 @@ export function SiteMenu({ className }: { className?: string }) {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div className="absolute right-0 z-50 mt-2 w-60 animate-fade-up overflow-hidden rounded-card border border-[var(--border)] bg-espresso-800 p-1.5 shadow-card">
+          <div className="popover absolute right-0 z-[1000] mt-2 w-60 animate-fade-up overflow-hidden rounded-card p-1.5">
             {LINKS.map((l) => (
               <Link
                 key={l.href}

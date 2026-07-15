@@ -43,13 +43,15 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
               <RotateCcw className="h-3.5 w-3.5" /> Reset
             </button>
           )}
-          <button
-            onClick={() => router.push("/doctor")}
-            title="Open the doctor view"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" /> Doctor view
-          </button>
+          {isDemoMode && (
+            <button
+              onClick={() => router.push("/doctor")}
+              title="Open the doctor view (demo)"
+              className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream sm:flex"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" /> Doctor view
+            </button>
+          )}
           <ThemeSwitcher />
         </div>
       </header>

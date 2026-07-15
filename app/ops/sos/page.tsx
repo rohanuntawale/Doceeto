@@ -42,7 +42,7 @@ export default function SosBoard() {
 
   return (
     <>
-      <PageHeader kanji="助け" label="TASUKE · DISPATCH" title="SOS command" />
+      <PageHeader kanji="助け" label="EMERGENCY DISPATCH" title="SOS command" />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard value={open.length} label="Open" accent />

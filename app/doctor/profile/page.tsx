@@ -22,14 +22,15 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   if (!me) return null;
 
-  const mine = reviews; // demo: reviews belong to the seeded doctor
+  // Only this doctor's own reviews (never someone else's reputation).
+  const mine = reviews.filter((r) => r.doctorId === me.id);
   const st = doctorStatus[me.status];
 
   return (
     <>
       <PageHeader
         kanji="私"
-        label="ZUMI · PROFILE"
+        label="DOCTOR · PROFILE"
         title="Your profile"
         action={
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -82,7 +83,7 @@ export default function ProfilePage() {
         </Card>
 
         <Card>
-          <CardHeader label="ZUMI · REVIEWS" title={`Patient reviews (${mine.length})`} />
+          <CardHeader label="PATIENT REVIEWS" title={`Patient reviews (${mine.length})`} />
           {mine.length === 0 ? (
             <div className="p-4">
               <EmptyState kanji="星" title="No reviews yet" />

@@ -41,11 +41,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[100] flex w-[min(92vw,360px)] flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-5 right-5 z-[1100] flex w-[min(92vw,360px)] flex-col gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="pointer-events-auto flex animate-fade-up items-start gap-3 rounded-card border border-[var(--border)] bg-espresso-800 p-3.5 shadow-card"
+            className="popover pointer-events-auto flex animate-fade-up items-start gap-3 rounded-card p-3.5"
           >
             <div className="mt-0.5 shrink-0">
               {t.tone === "success" && (

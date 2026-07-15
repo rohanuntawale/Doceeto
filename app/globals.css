@@ -102,7 +102,9 @@
   --accent: rgb(var(--c-terracotta));
   /* glass surface, tuned to the theme */
   --glass-bg: rgb(var(--c-espresso-800) / 0.55);
-  --glass-bg-strong: rgb(var(--c-espresso-800) / 0.72);
+  --glass-bg-strong: rgb(var(--c-espresso-800) / 0.85);
+  /* near-opaque surface for floating overlays (dropdowns/dialogs) */
+  --surface-solid: rgb(var(--c-espresso-800) / 0.985);
   --glass-border: rgb(var(--c-cream) / 0.12);
   --glass-highlight: rgb(var(--c-cream) / 0.06);
 }
@@ -184,6 +186,20 @@ body::before {
   border-color: var(--glass-border);
 }
 
+/* Floating overlays (dropdowns, popovers, dialogs) must be OPAQUE — a
+   translucent menu lets the content behind it bleed through. `.popover`
+   wins over `.rounded-card`'s frosted bg (later in source + !important)
+   while keeping a subtle frosted edge. */
+.popover {
+  background: var(--surface-solid) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 20px 50px rgb(0 0 0 / 0.5);
+}
+
 /* Thin, quiet scrollbars that match the shell */
 * {
   scrollbar-width: thin;
@@ -202,6 +218,10 @@ body::before {
 .leaflet-container {
   background: rgb(var(--c-espresso-800)) !important;
   font-family: var(--font-inter), Inter, sans-serif;
+  /* Contain Leaflet's internal z-index (panes/controls go up to ~1000) in
+     its own stacking context, so app dropdowns/dialogs always sit above it. */
+  position: relative;
+  z-index: 0;
 }
 .leaflet-tile {
   filter: var(--map-filter);

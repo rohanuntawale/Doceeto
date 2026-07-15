@@ -29,7 +29,7 @@ export default function DoctorsNetwork() {
 
   return (
     <>
-      <PageHeader kanji="医" label="ZUMI · NETWORK" title="Doctor network" />
+      <PageHeader kanji="医" label="DOCTOR NETWORK" title="Doctor network" />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard value={`${online}/${doctors.length}`} label="Online now" accent />

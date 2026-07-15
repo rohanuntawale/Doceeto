@@ -17,7 +17,7 @@ const nav: NavItem[] = [
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Shell role="doctor" sectionLabel="ZUMI · TASUKE" nav={nav}>
+    <Shell role="doctor" sectionLabel="DOCTOR" nav={nav}>
       {children}
     </Shell>
   );

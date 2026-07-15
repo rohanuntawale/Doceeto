@@ -1,8 +1,10 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ToastProvider } from "@/components/ui/toast";
+import { isDemoMode } from "@/lib/config";
+import { startDemoSimulator } from "@/lib/demo/simulator";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -17,6 +19,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+
+  // In demo mode, a self-driving simulator makes the Uber loop actually run
+  // for a solo visitor (a nearby doctor auto-accepts and comes to you).
+  useEffect(() => {
+    if (isDemoMode) startDemoSimulator();
+  }, []);
 
   return (
     <QueryClientProvider client={client}>

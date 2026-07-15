@@ -32,7 +32,7 @@ export default function Landing() {
   return (
     <main className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.12fr_0.88fr]">
       {/* ── Left: the pitch ─────────────────────────────── */}
-      <section className="relative flex flex-col justify-between overflow-hidden px-7 py-9 sm:px-10 md:px-16 md:py-12">
+      <section className="relative flex flex-col gap-10 overflow-hidden px-5 py-8 sm:px-10 md:justify-between md:gap-0 md:px-16 md:py-12">
         {/* ambient terracotta glow */}
         <div
           aria-hidden
@@ -72,7 +72,7 @@ export default function Landing() {
           </div>
 
           <h1
-            className="animate-rise mt-5 font-serif text-[4.25rem] leading-[0.9] tracking-tight text-cream sm:text-[5.5rem] md:text-[6.5rem]"
+            className="animate-rise mt-5 font-serif text-[clamp(3.25rem,15vw,6.5rem)] leading-[0.9] tracking-tight text-cream"
             style={{ animationDelay: "90ms" }}
           >
             Iyashi
@@ -83,7 +83,7 @@ export default function Landing() {
           />
 
           <p
-            className="animate-rise mt-8 font-serif text-3xl text-cream md:text-4xl"
+            className="animate-rise mt-8 font-serif text-2xl text-cream sm:text-3xl md:text-4xl"
             style={{ animationDelay: "190ms" }}
           >
             A doctor at your door, <span className="text-salmon">in minutes.</span>

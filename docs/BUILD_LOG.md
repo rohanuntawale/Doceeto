@@ -10,6 +10,25 @@
 
 ---
 
+## Session 8 — Uber-flow + 3-lens UX audit (User/Doctor/VC) ✅
+Ran three role-based audits (see `docs/UX_AUDIT.md`) and built/fixed the top items.
+
+- ✅ **Live-tracking screen** (the Uber moment): after accept, the patient watches
+  the doctor's marker move toward them on a map with a counting-down ETA + a
+  Requested→Accepted→On the way→Arrived stepper (video → Join call).
+- ✅ **Self-driving demo simulator**: a nearby verified doctor auto-accepts + drives
+  the visit to completion, so a solo visitor SEES the loop (manual accept still wins).
+- ✅ **Doctor Active-visit card** on the cockpit + **Navigate** (Google Maps) button —
+  the job no longer vanishes after accept.
+- ✅ **UI bug fixes**: opaque `.popover` for dropdowns/menus/toasts (no more
+  see-through); Leaflet contained in its own stacking context (overlays no longer
+  hide under the map); landing hero `clamp()` + responsive flow; purged internal
+  codenames (ZUMI/TASUKE/AURAMED); removed the fake "4m" stat; doctor profile shows
+  only its own reviews; home reorders care-first; demo-only "Doctor view" gated.
+- ⏭ Next (roadmap in UX_AUDIT.md): one-CTA booking, payments+wallet+payout,
+  verification funnel, notifications, distance-in-queue + real geolocation, visible
+  credential card, a11y pass.
+
 ## Session 7 — Third (adversarial) audit + round-3 fixes ✅
 A third audit confirmed the Session-6 critical fixes hold in live mode, then
 tried to break the code. Real bugs it found, now fixed:

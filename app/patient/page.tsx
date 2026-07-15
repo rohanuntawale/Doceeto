@@ -5,6 +5,7 @@ import { Stethoscope, Pill, ChevronRight, MapPin } from "lucide-react";
 import { SosTrigger } from "@/components/patient/sos-trigger";
 import { CareStatus } from "@/components/patient/care-status";
 import { HowItWorks } from "@/components/patient/how-it-works";
+import { LiveTracking } from "@/components/patient/live-tracking";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 
 export default function PatientHome() {
@@ -22,9 +23,8 @@ export default function PatientHome() {
         </p>
       </div>
 
-      <HowItWorks />
-
-      <SosTrigger patient={patient} />
+      {/* When a visit is live, tracking is the hero of the home screen. */}
+      <LiveTracking patient={patient} />
 
       <div className="grid grid-cols-2 gap-3">
         <QuickLink
@@ -42,6 +42,10 @@ export default function PatientHome() {
           icon={<Pill className="h-4 w-4" />}
         />
       </div>
+
+      <SosTrigger patient={patient} />
+
+      <HowItWorks />
 
       <div>
         <div className="label mb-3">Your care right now</div>

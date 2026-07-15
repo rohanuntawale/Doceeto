@@ -21,7 +21,7 @@ export default function OrdersBoard() {
 
   return (
     <>
-      <PageHeader kanji="薬" label="AURAMED · FULFILMENT" title="Medicine orders" />
+      <PageHeader kanji="薬" label="MEDICINE · FULFILMENT" title="Medicine orders" />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard value={active.length} label="In flight" accent />

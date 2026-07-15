@@ -51,7 +51,7 @@ export default function OpsOverview() {
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <Card className="overflow-hidden">
           <CardHeader
-            label="TASUKE · LIVE MAP"
+            label="LIVE MAP"
             title="Pune"
             action={<Legend />}
           />
@@ -67,7 +67,7 @@ export default function OpsOverview() {
 
         <Card>
           <CardHeader
-            label="TASUKE · ACTIVE"
+            label="ACTIVE EMERGENCIES"
             title="Emergencies"
             action={
               <Link href="/ops/sos" className="flex items-center gap-1 text-xs text-salmon hover:underline">
@@ -97,7 +97,7 @@ export default function OpsOverview() {
 
       <Card className="mt-5">
         <CardHeader
-          label="AURAMED · IN FLIGHT"
+          label="MEDICINE · IN TRANSIT"
           title="Medicine deliveries"
           action={
             <Link href="/ops/orders" className="flex items-center gap-1 text-xs text-salmon hover:underline">

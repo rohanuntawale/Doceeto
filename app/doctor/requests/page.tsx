@@ -41,7 +41,7 @@ export default function RequestsPage() {
 
   return (
     <>
-      <PageHeader kanji="頼" label="ZUMI · FREELANCE DOCTOR" title="Requests" />
+      <PageHeader kanji="頼" label="REQUESTS" title="Requests" />
 
       <section className="mb-8">
         <div className="label mb-3">OPEN · {pending.length}</div>

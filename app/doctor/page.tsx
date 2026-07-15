@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Inbox, Siren, Star, Timer, TrendingUp } from "lucide-react";
+import { Inbox, Star, Timer, TrendingUp, Navigation } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 import { OnlineToggle } from "@/components/doctor/online-toggle";
 import { RequestCard } from "@/components/zumi/request-card";
+import { PrescriptionDialog } from "@/components/doctor/prescription-dialog";
 import { SosCard } from "@/components/sos/sos-card";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -29,7 +31,16 @@ export default function DoctorHome() {
   const actions = useActions();
   const toast = useToast();
   const [passed, setPassed] = useState<Set<string>>(new Set());
+  const [rxFor, setRxFor] = useState<import("@/lib/types/domain").ConsultRequest | null>(null);
   const verified = me?.verificationStatus === "verified";
+
+  // The job the doctor is doing right now — kept front-and-centre so it
+  // never vanishes after accepting.
+  const activeVisit = requests.find(
+    (r) =>
+      r.doctorId === me?.id &&
+      (r.status === "accepted" || r.status === "enroute" || r.status === "arrived"),
+  );
 
   const pending = requests
     .filter(
@@ -84,17 +95,48 @@ export default function DoctorHome() {
           icon={<Star className="h-4 w-4" />}
         />
         <StatCard
-          value="4m"
-          label="Avg response"
+          value={me ? `${me.ratingCount}` : "0"}
+          label="Reviews"
           icon={<Timer className="h-4 w-4" />}
         />
       </div>
 
+      {/* Active visit — always visible while a job is in progress */}
+      {activeVisit && (
+        <Card className="mt-5 border-terracotta/30">
+          <CardHeader label="ACTIVE VISIT" title="Your current job" />
+          <div className="p-4">
+            <RequestCard
+              request={activeVisit}
+              onStart={() => actions.startVisit(activeVisit.id)}
+              onArrive={() => actions.arriveVisit(activeVisit.id)}
+              onPrescribe={() => setRxFor(activeVisit)}
+              onComplete={() => actions.completeRequest(activeVisit.id)}
+            />
+            {activeVisit.type !== "video" && (
+              <Button
+                variant="outline"
+                className="mt-3 w-full"
+                onClick={() =>
+                  window.open(
+                    `https://www.google.com/maps/dir/?api=1&destination=${activeVisit.lat},${activeVisit.lng}`,
+                    "_blank",
+                    "noopener",
+                  )
+                }
+              >
+                <Navigation className="h-4 w-4" /> Navigate to {activeVisit.patientName}
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        {/* Incoming Zumi requests */}
+        {/* Incoming requests */}
         <Card>
           <CardHeader
-            label="ZUMI · INCOMING"
+            label="INCOMING REQUESTS"
             title={`Requests (${pending.length})`}
           />
           <div className="space-y-3 p-4">
@@ -143,7 +185,7 @@ export default function DoctorHome() {
 
         {/* Nearby SOS (Tasuke) */}
         <Card>
-          <CardHeader label="TASUKE · NEARBY SOS" title="Golden-minute alerts" />
+          <CardHeader label="NEARBY EMERGENCIES" title="Golden-minute alerts" />
           <div className="space-y-3 p-4">
             {nearbySos.length === 0 ? (
               <EmptyState
@@ -180,6 +222,10 @@ export default function DoctorHome() {
           </div>
         </Card>
       </div>
+
+      {rxFor && me && (
+        <PrescriptionDialog request={rxFor} doctorId={me.id} onClose={() => setRxFor(null)} />
+      )}
     </>
   );
 }

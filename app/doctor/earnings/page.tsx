@@ -31,7 +31,7 @@ export default function EarningsPage() {
 
   return (
     <>
-      <PageHeader kanji="円" label="ZUMI · TAKE RATE" title="Earnings" />
+      <PageHeader kanji="円" label="DOCTOR · EARNINGS" title="Earnings" />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard value={formatINRCompact(net)} label="Net payout" accent icon={<Wallet className="h-4 w-4" />} />

@@ -29,7 +29,7 @@ export default function ConsultsPage() {
 
   return (
     <>
-      <PageHeader kanji="診" label="ZUMI · CONSULTS" title="Your consults" />
+      <PageHeader kanji="診" label="DOCTOR · CONSULTS" title="Your consults" />
 
       {mine.length === 0 ? (
         <EmptyState

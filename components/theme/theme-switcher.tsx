@@ -64,7 +64,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div className="glass-strong absolute right-0 z-50 mt-2 w-56 animate-fade-up overflow-hidden rounded-card p-1.5">
+          <div className="popover absolute right-0 z-[1000] mt-2 w-56 animate-fade-up overflow-hidden rounded-card p-1.5">
             <div className="label px-2.5 py-1.5">Color theme</div>
             {THEMES.map((t) => (
               <button

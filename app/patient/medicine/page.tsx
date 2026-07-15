@@ -59,7 +59,7 @@ export default function PatientMedicine() {
   return (
     <div className="space-y-5 pb-20">
       <div>
-        <div className="font-jp text-sm text-salmon">薬 · AURAMED</div>
+        <div className="font-jp text-sm text-salmon">薬 · MEDICINE</div>
         <h1 className="mt-1 font-serif text-3xl text-cream">Order medicine</h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
           <Store className="h-3.5 w-3.5" /> {DARK_STORES[0]} · delivered to{" "}

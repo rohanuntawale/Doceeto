@@ -41,7 +41,7 @@ export function SosTrigger({ patient }: { patient: PatientIdentity }) {
 
   return (
     <div className="rounded-card border border-terracotta/30 bg-espresso-800 p-6 text-center shadow-card">
-      <div className="label mb-4">助け · TASUKE · EMERGENCY</div>
+      <div className="label mb-4">助け · EMERGENCY</div>
 
       {!open ? (
         <>
