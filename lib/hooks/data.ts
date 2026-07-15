@@ -215,14 +215,23 @@ export function resetTestData() {
   if (isDemoMode) demoStore.reset();
 }
 
-/** POST an action to the live backend, then refresh the affected data. */
+/** POST an action to the live backend, then refresh the affected data.
+ *  Surfaces server rejections (e.g. an ownership/verification block) instead
+ *  of silently pretending the write succeeded. */
 function callAction(qc: QueryClient, action: string, payload: Record<string, unknown>) {
   fetch("/api/actions", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ action, payload }),
   })
-    .then(() => ENTITY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] })))
+    .then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error(`Iyashi action "${action}" rejected:`, body.error ?? res.status);
+      }
+      // Re-sync with server truth either way.
+      ENTITY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    })
     .catch((err) => console.error("Iyashi action failed:", err));
 }
 

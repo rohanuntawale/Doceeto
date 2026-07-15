@@ -25,7 +25,8 @@ export async function seedCatalog() {
        SET n += {
          fullName: $fullName, specialty: $specialty, kind: $kind, gender: $gender,
          experienceYears: $experienceYears, languages: $languages, status: $status,
-         verified: $verified, rating: $rating, consultFee: $consultFee,
+         verified: $verified, verificationStatus: $verificationStatus, regNo: $regNo,
+         rating: $rating, ratingCount: $ratingCount, consultFee: $consultFee,
          homeVisitFee: $homeVisitFee, avatarColor: $avatarColor, lat: $lat,
          lng: $lng, lastSeen: $lastSeen
        }`,
@@ -46,7 +47,11 @@ export async function ensureOpsUser() {
   const email = (process.env.OPS_EMAIL || "ops@iyashi.health").toLowerCase();
   const exists = await read(`MATCH (u:User {email: $email}) RETURN properties(u) AS u`, { email });
   if (exists.length > 0) return { email, created: false };
-  const passwordHash = await hashPassword(process.env.OPS_PASSWORD || "iyashi-ops");
+  const opsPassword = process.env.OPS_PASSWORD;
+  if (!opsPassword && process.env.NODE_ENV === "production") {
+    throw new Error("OPS_PASSWORD must be set to seed the ops account in production.");
+  }
+  const passwordHash = await hashPassword(opsPassword || "iyashi-ops");
   await write(
     `CREATE (u:User { id: $id, email: $email, passwordHash: $passwordHash, role: 'ops', name: 'Iyashi Ops', createdAt: $now })`,
     { id: `ops-${crypto.randomUUID()}`, email, passwordHash, now: new Date().toISOString() },

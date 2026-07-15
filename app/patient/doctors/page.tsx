@@ -84,8 +84,10 @@ export default function PatientDoctors() {
   );
 
   // Doctors that match the patient's filters, ranked by their choice.
+  // Patients only ever see verified doctors.
   const matched = useMemo(() => {
     const out = doctors.filter((d) => {
+      if (!d.verified) return false;
       if (filters.specialty !== "any" && d.specialty !== filters.specialty) return false;
       if (filters.maxPrice !== null && feeFor(d, mode) > filters.maxPrice) return false;
       if (d.rating < filters.minRating) return false;

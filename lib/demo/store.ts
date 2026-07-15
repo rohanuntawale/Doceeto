@@ -325,8 +325,12 @@ export const demoStore = {
     // pending (another doctor already claimed it).
     const target = s.requests.find((r) => r.id === id);
     if (!target || target.status !== "pending") return;
+    // A request directed at another doctor can't be grabbed.
+    if (target.doctorId !== null && target.doctorId !== doctorId) return;
     const doctor = s.doctors.find((d) => d.id === doctorId);
-    const km = doctor ? haversineKm(doctor, target) : 3;
+    // Only a verified doctor may accept.
+    if (!doctor || doctor.verificationStatus !== "verified") return;
+    const km = haversineKm(doctor, target);
     const eta = etaFor(target.type, km);
     s.requests = s.requests.map((r) =>
       r.id === id
@@ -411,7 +415,8 @@ export const demoStore = {
     return rx;
   },
 
-  /** Patient rates a completed visit; the doctor's rating recomputes. */
+  /** Patient rates a completed visit; the doctor's rating recomputes.
+   *  Only a completed visit with this doctor, and only once. */
   addReview(input: {
     doctorId: string;
     requestId: string | null;
@@ -420,6 +425,12 @@ export const demoStore = {
     comment: string;
   }) {
     const s = getState();
+    if (input.requestId) {
+      // No double-rating.
+      if (s.reviews.some((v) => v.requestId === input.requestId)) return;
+      const req = s.requests.find((r) => r.id === input.requestId);
+      if (!req || req.status !== "completed" || req.doctorId !== input.doctorId) return;
+    }
     const review: Review = {
       id: nextId("rev"),
       doctorId: input.doctorId,

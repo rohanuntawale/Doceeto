@@ -10,6 +10,25 @@
 
 ---
 
+## Session 6 — Security hardening (fixing the re-audit criticals) ✅
+Closed the critical/high holes the re-audit (`docs/CODE_AUDIT.md`) found — the
+"role checked, ownership not" pattern in the new features.
+
+- ✅ **Ownership authz** (F1/F3): prescribe + start/arrive/complete/decline now
+  require `r.doctorId = session.sub` and the expected status, server-side; `me`
+  comes from the session, not the client. Rejections return 403.
+- ✅ **Verification on the action** (F2): only verified doctors can accept (repo +
+  demo); UI blocks accept with an honest message until verified.
+- ✅ **Rating integrity** (F4): a review requires a completed request the caller
+  owns, matching the doctor, and only once (blocks review-bombing).
+- ✅ **Secret hard-fail** (F5): AUTH_SECRET / OPS_PASSWORD throw in production if
+  unset (no public fallback).
+- ✅ **Verified-only discovery** (F7) + seed fixes (F9); pending doctor is offline.
+- ✅ **Server-side distance ETA** at accept (F10, live); **acuity-priority dispatch**
+  ordering (partial F6); honest action-error logging (partial F11).
+- ⏭ Still open: Schedule-X/formulary blocking (F8), SOS PII minimisation (F12),
+  cancellation/no-show (F14), tests/CI (F15), server-forced-SOS + real GPS.
+
 ## Session 5 — Clinical care journey ✅
 Turned the booking demo into a real care product: **Triage → Verified doctor →
 Dispatch with live ETA & on-the-way stages → e-Prescription → Rating flywheel.**

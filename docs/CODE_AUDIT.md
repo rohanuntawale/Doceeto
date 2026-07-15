@@ -5,6 +5,41 @@
 > stages, e-prescriptions, ratings, Neo4j auth). Companion to `VC_AUDIT.md`
 > (market) and `BUILD_LOG.md` (history). Share freely with the team.
 
+## Update — fixes applied (2026-07-15, same day)
+
+The Critical findings and several Highs were fixed the same day. Summary:
+
+- **F1 (cross-doctor prescribing)** — FIXED. `createPrescription` now matches
+  `ConsultRequest {id, doctorId: $me}` with an active status and a verified doctor;
+  rejects with 403 otherwise.
+- **F2 (verification only on the toggle)** — FIXED. `acceptRequest` now requires
+  `verificationStatus='verified'` in both the Neo4j query and the demo store; the
+  doctor UI blocks accept with an honest error until verified.
+- **F3 (unowned visit transitions)** — FIXED. start/arrive/complete/decline now
+  require `r.doctorId = $me` and the expected status; `me` comes from the session.
+- **F4 (open ratings)** — FIXED. `addReview` requires a **completed** request the
+  caller **owns**, matching the doctor, **not already reviewed**; rating clamped 1–5.
+- **F5 (forgeable secrets)** — FIXED. `AUTH_SECRET` and `OPS_PASSWORD` now hard-fail
+  at boot in production instead of falling back to public strings.
+- **F6 (triage cosmetic)** — PARTIAL. Pending requests are now **acuity-priority
+  sorted** (emergency → urgent → routine) in the doctor queues, so acuity drives
+  dispatch order. Server-forced SOS on emergency + mandatory triage still pending.
+- **F7 (unverified in discovery)** — FIXED. Patient discovery (API + demo) now
+  returns **verified doctors only**; the pending seed doctor is offline.
+- **F9 (live seed drops verificationStatus)** — FIXED. `seedCatalog` now persists it.
+- **F10 (no ETA in live)** — FIXED. `acceptRequest` computes a distance-based ETA
+  server-side (haversine in Cypher) and stamps `acceptedAt`. (Real live-GPS/heartbeat
+  still pending — coords are still seeded/random; see the geolocation backlog item.)
+- **F11 (dishonest success toasts)** — PARTIAL. `callAction` now logs server
+  rejections and re-syncs; the accept flow shows an honest error. Full toast-on-reject
+  for every action still pending.
+- **F8 (Schedule-X blocking), F12 (SOS PII), F14 (cancellation), F15 (tests/CI)** —
+  still open; tracked in the backlog.
+
+typecheck + lint + build pass; demo mode driven; no runtime errors.
+
+---
+
 ## Bottom line up front
 
 Real work landed since the pure demo — genuine JWT auth, a Neo4j read/write

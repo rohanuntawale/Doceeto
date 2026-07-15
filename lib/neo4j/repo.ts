@@ -408,39 +408,62 @@ export async function updateDoctor(
   );
 }
 
-/** Atomic claim: only succeeds if the request is still pending. */
+/**
+ * Atomic claim. Succeeds only if the request is still pending, is open to
+ * this doctor (broadcast or directed to them), AND the doctor is verified.
+ * Computes an arrival ETA from the two positions at accept time.
+ */
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
   const rows = await write<{ r: Row }>(
     `MATCH (r:ConsultRequest {id: $id})
-     WHERE r.status = 'pending'
-     SET r.status = 'accepted', r.doctorId = $doctorId
+     WHERE r.status = 'pending' AND (r.doctorId IS NULL OR r.doctorId = $doctorId)
+     MATCH (d:Doctor {id: $doctorId}) WHERE d.verificationStatus = 'verified'
+     WITH r, d, (6371 * 2 * asin(sqrt(
+       sin(radians(d.lat - r.lat)/2)^2 +
+       cos(radians(r.lat)) * cos(radians(d.lat)) * sin(radians(d.lng - r.lng)/2)^2
+     ))) AS km
+     SET r.status = 'accepted', r.doctorId = $doctorId, r.acceptedAt = $now,
+         r.etaMins = CASE WHEN r.type = 'video' THEN null ELSE toInteger(8 + km/25.0*60) END
      RETURN properties(r) AS r`,
-    { id, doctorId },
+    { id, doctorId, now: new Date().toISOString() },
   );
   return rows.length > 0;
 }
 
-export async function declineRequest(id: string) {
-  await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'declined'`, { id });
-}
-
-export async function startVisit(id: string) {
-  await write(
-    `MATCH (r:ConsultRequest {id: $id}) WHERE r.status = 'accepted' SET r.status = 'enroute'`,
-    { id },
-  );
-}
-
-export async function arriveVisit(id: string) {
+/** Only the doctor a directed request was sent to may decline it. */
+export async function declineRequest(id: string, doctorId: string) {
   await write(
     `MATCH (r:ConsultRequest {id: $id})
-     WHERE r.status IN ['enroute','accepted'] SET r.status = 'arrived', r.etaMins = 0`,
-    { id },
+     WHERE r.status = 'pending' AND r.doctorId = $doctorId
+     SET r.status = 'declined'`,
+    { id, doctorId },
   );
 }
 
-export async function completeRequest(id: string) {
-  await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'completed'`, { id });
+export async function startVisit(id: string, doctorId: string) {
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.doctorId = $doctorId AND r.status = 'accepted' SET r.status = 'enroute'`,
+    { id, doctorId },
+  );
+}
+
+export async function arriveVisit(id: string, doctorId: string) {
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.doctorId = $doctorId AND r.status IN ['enroute','accepted']
+     SET r.status = 'arrived', r.etaMins = 0`,
+    { id, doctorId },
+  );
+}
+
+export async function completeRequest(id: string, doctorId: string) {
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.doctorId = $doctorId AND r.status IN ['accepted','enroute','arrived']
+     SET r.status = 'completed'`,
+    { id, doctorId },
+  );
 }
 
 /** Doctor issues an e-prescription and marks the visit complete. */
@@ -451,12 +474,15 @@ export async function createPrescription(input: {
   items: { name: string; dosage: string; duration: string }[];
   advice: string;
 }): Promise<Prescription | null> {
+  // Only the doctor who owns an active visit may prescribe on it, and only
+  // if they are verified. Anything else returns null (rejected).
   const reqRows = await read<{ r: Row }>(
-    `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
-    { id: input.requestId },
+    `MATCH (r:ConsultRequest {id: $id, doctorId: $doctorId})
+     WHERE r.status IN ['accepted','enroute','arrived'] RETURN properties(r) AS r`,
+    { id: input.requestId, doctorId: input.doctorId },
   );
   const docRows = await read<{ d: Row }>(
-    `MATCH (d:Doctor {id: $id}) RETURN properties(d) AS d`,
+    `MATCH (d:Doctor {id: $id}) WHERE d.verificationStatus = 'verified' RETURN properties(d) AS d`,
     { id: input.doctorId },
   );
   const req = reqRows[0]?.r;
@@ -487,32 +513,43 @@ export async function createPrescription(input: {
   return rows[0]?.p ? mapPrescription(rows[0].p) : null;
 }
 
-/** Patient rates a completed visit; the doctor's rating recomputes. */
+/**
+ * Patient rates a completed visit; the doctor's rating recomputes. Only the
+ * patient who owns a completed request with this doctor may rate it, and only
+ * once — otherwise this is a no-op (blocks review-bombing).
+ */
 export async function addReview(input: {
   doctorId: string;
   requestId: string | null;
+  patientId: string;
   patientName: string;
   rating: number;
   comment: string;
-}) {
-  await write(
-    `CREATE (v:Review {
+}): Promise<boolean> {
+  if (!input.requestId) return false;
+  const rows = await write<{ v: Row }>(
+    `MATCH (r:ConsultRequest {id: $requestId, patientId: $patientId, doctorId: $doctorId, status: 'completed'})
+     WHERE NOT EXISTS { MATCH (:Review {requestId: $requestId}) }
+     CREATE (v:Review {
        id: $id, doctorId: $doctorId, requestId: $requestId, patientName: $patientName,
        rating: $rating, comment: $comment, createdAt: $now
      })
      WITH v MATCH (d:Doctor {id: $doctorId})
      SET d.rating = (d.rating * d.ratingCount + $rating) / (d.ratingCount + 1),
-         d.ratingCount = d.ratingCount + 1`,
+         d.ratingCount = d.ratingCount + 1
+     RETURN properties(v) AS v`,
     {
       id: uid("rev"),
       doctorId: input.doctorId,
       requestId: input.requestId,
+      patientId: input.patientId,
       patientName: input.patientName,
-      rating: input.rating,
+      rating: Math.max(1, Math.min(5, Math.round(input.rating))),
       comment: input.comment,
       now: new Date().toISOString(),
     },
   );
+  return rows.length > 0;
 }
 
 // ── Ops mutations ────────────────────────────────────────────

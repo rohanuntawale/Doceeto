@@ -19,8 +19,14 @@ export async function GET(req: Request) {
 
   try {
     switch (entity) {
-      case "doctors":
-        return NextResponse.json(await repo.getDoctors());
+      case "doctors": {
+        const all = await repo.getDoctors();
+        // Patients only ever see verified doctors. Ops/doctors see all
+        // (ops needs the verification queue).
+        if (role === "patient")
+          return NextResponse.json(all.filter((d) => d.verified));
+        return NextResponse.json(all);
+      }
 
       case "ambulances":
         return NextResponse.json(await repo.getAmbulances());

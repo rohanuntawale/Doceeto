@@ -107,7 +107,8 @@ export function seedDoctors(): Doctor[] {
       gender: "female",
       experienceYears: 2,
       languages: ["English", "Hindi", "Urdu"],
-      status: "online",
+      // Still awaiting verification, so cannot be online or bookable.
+      status: "offline",
       verified: false,
       verificationStatus: "pending",
       regNo: "MH-2022-11834",

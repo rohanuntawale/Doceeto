@@ -18,6 +18,9 @@ import {
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { haversineKm } from "@/lib/utils/geo";
 import { formatINRCompact } from "@/lib/utils/format";
+import type { Acuity } from "@/lib/types/domain";
+
+const ACUITY_RANK: Record<Acuity, number> = { emergency: 0, urgent: 1, routine: 2 };
 
 export default function DoctorHome() {
   const me = useCurrentDoctor();
@@ -26,13 +29,16 @@ export default function DoctorHome() {
   const actions = useActions();
   const toast = useToast();
   const [passed, setPassed] = useState<Set<string>>(new Set());
+  const verified = me?.verificationStatus === "verified";
 
-  const pending = requests.filter(
-    (r) =>
-      r.status === "pending" &&
-      !passed.has(r.id) &&
-      (r.doctorId === null || r.doctorId === me?.id),
-  );
+  const pending = requests
+    .filter(
+      (r) =>
+        r.status === "pending" &&
+        !passed.has(r.id) &&
+        (r.doctorId === null || r.doctorId === me?.id),
+    )
+    .sort((a, b) => ACUITY_RANK[a.acuity] - ACUITY_RANK[b.acuity]);
   const myCompletedToday = requests.filter(
     (r) => r.status === "completed" && r.doctorId === me?.id,
   );
@@ -110,6 +116,14 @@ export default function DoctorHome() {
                   }
                   onAccept={() => {
                     if (!me) return;
+                    if (!verified) {
+                      toast.push({
+                        tone: "error",
+                        title: "Verification needed",
+                        desc: "You can accept requests once our team verifies you.",
+                      });
+                      return;
+                    }
                     actions.acceptRequest(r.id, me.id);
                     toast.push({
                       tone: "success",

@@ -8,7 +8,9 @@ import { useToast } from "@/components/ui/toast";
 import { PrescriptionDialog } from "@/components/doctor/prescription-dialog";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
-import type { ConsultRequest } from "@/lib/types/domain";
+import type { Acuity, ConsultRequest } from "@/lib/types/domain";
+
+const ACUITY_RANK: Record<Acuity, number> = { emergency: 0, urgent: 1, routine: 2 };
 
 export default function RequestsPage() {
   const requests = useConsultRequests();
@@ -21,13 +23,16 @@ export default function RequestsPage() {
   const [rxFor, setRxFor] = useState<ConsultRequest | null>(null);
 
   // A doctor sees requests open to everyone nearby (doctorId null) and
-  // requests a patient sent straight to them.
-  const pending = requests.filter(
-    (r) =>
-      r.status === "pending" &&
-      !passed.has(r.id) &&
-      (r.doctorId === null || r.doctorId === me?.id),
-  );
+  // requests a patient sent straight to them — most urgent first.
+  const pending = requests
+    .filter(
+      (r) =>
+        r.status === "pending" &&
+        !passed.has(r.id) &&
+        (r.doctorId === null || r.doctorId === me?.id),
+    )
+    .sort((a, b) => ACUITY_RANK[a.acuity] - ACUITY_RANK[b.acuity]);
+  const verified = me?.verificationStatus === "verified";
   const active = requests.filter(
     (r) =>
       r.doctorId === me?.id &&
@@ -57,6 +62,14 @@ export default function RequestsPage() {
                 }
                 onAccept={() => {
                   if (!me) return;
+                  if (!verified) {
+                    toast.push({
+                      tone: "error",
+                      title: "Verification needed",
+                      desc: "You can accept requests once our team verifies you.",
+                    });
+                    return;
+                  }
                   actions.acceptRequest(r.id, me.id);
                   toast.push({
                     tone: "success",

@@ -55,41 +55,53 @@ export async function POST(req: Request) {
       }
       case "declineRequest":
         if (role !== "doctor") return needs("doctors");
-        await repo.declineRequest(String(payload.id));
+        await repo.declineRequest(String(payload.id), me);
         return NextResponse.json({ ok: true });
       case "startVisit":
         if (role !== "doctor") return needs("doctors");
-        await repo.startVisit(String(payload.id));
+        await repo.startVisit(String(payload.id), me);
         return NextResponse.json({ ok: true });
       case "arriveVisit":
         if (role !== "doctor") return needs("doctors");
-        await repo.arriveVisit(String(payload.id));
+        await repo.arriveVisit(String(payload.id), me);
         return NextResponse.json({ ok: true });
       case "completeRequest":
         if (role !== "doctor") return needs("doctors");
-        await repo.completeRequest(String(payload.id));
+        await repo.completeRequest(String(payload.id), me);
         return NextResponse.json({ ok: true });
-      case "createPrescription":
+      case "createPrescription": {
         if (role !== "doctor") return needs("doctors");
-        return NextResponse.json(
-          await repo.createPrescription({
-            requestId: String(payload.requestId),
-            doctorId: me,
-            diagnosis: String(payload.diagnosis ?? ""),
-            items: Array.isArray(payload.items) ? payload.items : [],
-            advice: String(payload.advice ?? ""),
-          }),
-        );
-      case "addReview":
+        const rx = await repo.createPrescription({
+          requestId: String(payload.requestId),
+          doctorId: me,
+          diagnosis: String(payload.diagnosis ?? ""),
+          items: Array.isArray(payload.items) ? payload.items : [],
+          advice: String(payload.advice ?? ""),
+        });
+        if (!rx)
+          return NextResponse.json(
+            { error: "You can only prescribe on your own active visit." },
+            { status: 403 },
+          );
+        return NextResponse.json(rx);
+      }
+      case "addReview": {
         if (role !== "patient") return needs("patients");
-        await repo.addReview({
+        const ok = await repo.addReview({
           doctorId: String(payload.doctorId),
           requestId: payload.requestId ? String(payload.requestId) : null,
+          patientId: me,
           patientName: session.name,
           rating: Number(payload.rating ?? 5),
           comment: String(payload.comment ?? ""),
         });
+        if (!ok)
+          return NextResponse.json(
+            { error: "You can only rate your own completed visit, once." },
+            { status: 403 },
+          );
         return NextResponse.json({ ok: true });
+      }
 
       // ── Ops verification ──
       case "verifyDoctor":

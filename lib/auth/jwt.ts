@@ -15,7 +15,13 @@ const ALG = { name: "HMAC", hash: "SHA-256" };
 const WEEK_SECONDS = 60 * 60 * 24 * 7;
 
 function secret(): string {
-  return process.env.AUTH_SECRET || "iyashi-dev-secret-change-me";
+  const s = process.env.AUTH_SECRET;
+  if (s) return s;
+  // Never sign/verify with a public fallback in production.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET must be set in production.");
+  }
+  return "iyashi-dev-secret-change-me";
 }
 
 const enc = new TextEncoder();
