@@ -1,6 +1,7 @@
 import type {
   ConsultStatus,
   ConsultType,
+  DoctorKind,
   DoctorStatus,
   OrderStatus,
   SosCategory,
@@ -52,4 +53,15 @@ export const doctorStatus: Record<DoctorStatus, { label: string; tone: Tone }> =
   online: { label: "Online", tone: "ok" },
   busy: { label: "Busy", tone: "warn" },
   offline: { label: "Offline", tone: "idle" },
+};
+
+export const doctorKind: Record<DoctorKind, { label: string; blurb: string }> = {
+  resident: {
+    label: "Junior doctor",
+    blurb: "Licensed, not in a full-time job yet",
+  },
+  practising: {
+    label: "Practising doctor",
+    blurb: "Full-time doctor taking extra visits",
+  },
 };

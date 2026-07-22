@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, ArrowLeftRight } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
+import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { clearOpsAuthed } from "@/lib/ops-auth";
 
 export interface NavItem {
@@ -34,12 +34,17 @@ export function Shell({
   const switchTo =
     role === "doctor"
       ? { href: "/patient", label: "Patient app" }
-      : { href: "/doctor", label: "Doctor cockpit" };
+      : { href: "/doctor", label: "Doctor space" };
 
   async function logout() {
     if (role === "ops") clearOpsAuthed();
-    const sb = getSupabaseBrowser();
-    if (sb) await sb.auth.signOut();
+    if (!isDemoMode) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        /* ignore */
+      }
+    }
     if (role === "ops") router.push("/ops-signin");
     else router.push(isDemoMode ? "/" : "/login");
     router.refresh();
@@ -93,16 +98,11 @@ export function Shell({
               {role === "doctor" ? "助け" : "検診"}
             </span>
             <span className="label">
-              {role === "doctor" ? "DOCTOR COCKPIT" : "OPS COMMAND"}
+              {role === "doctor" ? "Doctor space" : "Team console"}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {isDemoMode && (
-              <span className="hidden items-center gap-1.5 rounded-full bg-terracotta/12 px-2.5 py-1 text-[11px] font-medium text-salmon ring-1 ring-terracotta/25 sm:flex">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
-                LIVE DEMO
-              </span>
-            )}
+            <ThemeSwitcher />
           </div>
         </header>
 

@@ -8,7 +8,6 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
 import { OPS_PASSCODE, setOpsAuthed } from "@/lib/ops-auth";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 
 export default function OpsSignIn() {
   const router = useRouter();
@@ -33,14 +32,15 @@ export default function OpsSignIn() {
     }
 
     setLoading(true);
-    const sb = getSupabaseBrowser();
-    if (!sb) {
-      setLoading(false);
-      return;
-    }
-    const { error } = await sb.auth.signInWithPassword({ email, password });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
-    if (error) return setError(error.message);
+    if (!res.ok) return setError(data.error ?? "Could not sign in.");
+    if (data.role !== "ops") return setError("This account is not an ops account.");
     router.push("/ops");
     router.refresh();
   }

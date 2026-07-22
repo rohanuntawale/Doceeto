@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
 import { SiteMenu } from "@/components/site/site-menu";
+import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 
 /** Public header for About / Contact pages: brand + hamburger menu. */
 export function SiteHeader() {
@@ -10,7 +11,10 @@ export function SiteHeader() {
         <Link href="/">
           <Wordmark />
         </Link>
-        <SiteMenu />
+        <div className="flex items-center gap-2.5">
+          <ThemeSwitcher />
+          <SiteMenu />
+        </div>
       </div>
     </header>
   );

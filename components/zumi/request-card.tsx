@@ -16,11 +16,14 @@ const typeIcon = {
 
 export function RequestCard({
   request,
+  note,
   onAccept,
   onDecline,
   onComplete,
 }: {
   request: ConsultRequest;
+  /** Small badge, e.g. "Open to nearby doctors" or "Chose you". */
+  note?: string;
   onAccept?: () => void;
   onDecline?: () => void;
   onComplete?: () => void;
@@ -42,6 +45,11 @@ export function RequestCard({
             <p className="text-xs text-[var(--text-muted)]">
               {consultType[request.type].label}
             </p>
+            {note && (
+              <span className="mt-1 inline-block rounded-full bg-terracotta/12 px-2 py-0.5 text-[10px] font-medium text-salmon ring-1 ring-inset ring-terracotta/20">
+                {note}
+              </span>
+            )}
           </div>
         </div>
         <div className="text-right">

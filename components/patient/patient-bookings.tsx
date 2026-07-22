@@ -14,7 +14,7 @@ const typeIcon = {
   clinic: <Building2 className="h-3.5 w-3.5" />,
 };
 
-/** The patient's booked doctors — current (pending/accepted) and past. */
+/** The patient's booked doctors: current (pending/accepted) and past. */
 export function PatientBookings({ patientId }: { patientId: string }) {
   const mounted = useMounted();
   const doctors = useDoctors();

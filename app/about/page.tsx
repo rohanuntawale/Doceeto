@@ -5,20 +5,20 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "About · Iyashi Health",
-  description: "One front door to care in India — emergencies, doctors, diagnostics and medicine.",
+  description: "One place for care in India: emergencies, doctors, diagnostics and medicine.",
 };
 
 const PILLARS = [
-  { kanji: "助", name: "Tasuke", role: "the button", desc: "One SOS press sends your location and profile to the nearest ambulance and a doctor — care in the golden minutes." },
-  { kanji: "医", name: "Zumi", role: "the doctor", desc: "On-demand freelance doctors, the way Uber moved cars — nearest, available and transparent, video or at your door." },
-  { kanji: "検", name: "Kenshin", role: "the network", desc: "Diagnostic kiosks across the city, like metro machines — walk up, get screened, walk away with a plan." },
-  { kanji: "薬", name: "AuraMed", role: "the medicine", desc: "The moment a doctor prescribes, medicine is delivered — closing the loop from diagnosis to recovery in ~10 minutes." },
+  { kanji: "助", name: "Tasuke", role: "the button", desc: "One SOS press sends your location and profile to the nearest ambulance and a doctor, so help reaches you in the first few minutes." },
+  { kanji: "医", name: "Zumi", role: "the doctor", desc: "Freelance doctors on demand, the way Uber did for cabs. See who is nearby, book a home visit, a clinic visit, or a video call." },
+  { kanji: "検", name: "Kenshin", role: "the network", desc: "Diagnostic kiosks around the city, like metro machines. Walk up, get screened, and walk away with a plan." },
+  { kanji: "薬", name: "AuraMed", role: "the medicine", desc: "When a doctor writes a prescription, the medicine is delivered to your door in about ten minutes." },
 ];
 
 const STATS = [
-  { value: "0.7", label: "doctors per 1,000 — below the WHO benchmark of 1" },
-  { value: "1.7L", label: "road-accident deaths a year, most without golden-hour care" },
-  { value: "50%", label: "of health spending is out-of-pocket, among the world's highest" },
+  { value: "0.7", label: "doctors per 1,000 people, below the WHO benchmark of 1" },
+  { value: "1.7L", label: "road-accident deaths a year, most without care in the first hour" },
+  { value: "50%", label: "of health spending is paid out of pocket, among the world's highest" },
 ];
 
 export default function AboutPage() {
@@ -37,10 +37,9 @@ export default function AboutPage() {
             One front door <span className="text-salmon">to care.</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-[var(--text-muted)]">
-            In India, when the moment comes, care is improvised — which number,
-            which doctor, which app. Iyashi assembles emergencies, doctors,
-            diagnostics and medicine into a single platform, brought to the
-            instant they’re needed.
+            In India, when something goes wrong, care is a scramble: which
+            number, which doctor, which app. Iyashi puts emergencies, doctors,
+            diagnostics and medicine in one place, ready when you need them.
           </p>
         </div>
 
@@ -69,12 +68,11 @@ export default function AboutPage() {
             </h2>
           </div>
           <p className="text-[15px] leading-relaxed text-[var(--text-muted)]">
-            The rails finally exist — a phone in every hand, public identity and
-            payment rails, normalised telehealth, and a generation that expects
-            things in ten minutes. Everything Iyashi needs has been built. We are
-            assembling it into healing — starting with the highest-urgency,
-            highest-frequency moments, then expanding into the full continuum of
-            care, one patient relationship at a time.
+            The pieces finally exist: a phone in every hand, digital identity and
+            payments, telehealth people now trust, and a generation that expects
+            things in ten minutes. We are putting those pieces together into care.
+            We start with the most urgent, most common moments, then grow into
+            everyday health, one patient at a time.
           </p>
         </div>
 
@@ -106,7 +104,7 @@ export default function AboutPage() {
             ))}
           </div>
           <p className="mt-6 text-sm text-[var(--text-muted)]">
-            Each phase makes the next stronger — more users, more doctors, more
+            Each part makes the next one stronger: more users, more doctors, more
             data, and faster, cheaper, better care.
           </p>
         </div>

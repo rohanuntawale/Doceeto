@@ -7,7 +7,6 @@ import { ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   return (
@@ -30,18 +29,20 @@ function LoginInner() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const sb = getSupabaseBrowser();
-    if (!sb) {
-      setLoading(false);
-      return;
-    }
-    const { error } = await sb.auth.signInWithPassword({ email, password });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      setError(data.error ?? "Could not sign in.");
       return;
     }
-    router.push(next);
+    const dest =
+      data.role === "ops" ? "/ops" : data.role === "patient" ? "/patient" : next;
+    router.push(dest);
     router.refresh();
   }
 
@@ -60,9 +61,9 @@ function LoginInner() {
           <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
             <div className="label mb-2">DEMO MODE</div>
             <p className="text-sm text-[var(--text-muted)]">
-              No Supabase keys detected — auth is skipped. Sign in as a doctor or
-              a patient. Add keys in <span className="font-mono">.env.local</span>{" "}
-              to enable real login.
+              This is demo mode, so login is skipped. Sign in as a doctor or a
+              patient. Set <span className="font-mono">NEXT_PUBLIC_BACKEND=neo4j</span>{" "}
+              with Neo4j credentials to turn on real accounts.
             </p>
             <div className="mt-5 flex gap-2">
               <Button className="flex-1" onClick={() => router.push("/doctor")}>

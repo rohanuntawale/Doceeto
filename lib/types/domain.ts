@@ -2,12 +2,21 @@
  * Domain types for the Iyashi dashboard.
  * These mirror the Supabase schema (supabase/migrations/0001_init.sql)
  * but are the clean shape the UI consumes. All lib/api + hooks return
- * these, never raw DB rows — one seam for teammates to swap the source.
+ * these, never raw DB rows - one seam for teammates to swap the source.
  */
 
 export type Role = "doctor" | "ops" | "admin";
 
 export type DoctorStatus = "online" | "offline" | "busy";
+
+/**
+ * The kind of freelance doctor on the network:
+ *  - "resident"   : a licensed junior doctor who is not in a full-time job yet.
+ *  - "practising" : a working doctor taking extra visits for side income.
+ */
+export type DoctorKind = "resident" | "practising";
+
+export type Gender = "female" | "male";
 
 export type SosCategory =
   | "cardiac"
@@ -51,6 +60,10 @@ export interface Doctor {
   id: string;
   fullName: string;
   specialty: string;
+  kind: DoctorKind;
+  gender: Gender;
+  experienceYears: number;
+  languages: string[];
   status: DoctorStatus;
   verified: boolean;
   rating: number;

@@ -22,7 +22,7 @@ export default function ContactPage() {
     toast.push({
       tone: "success",
       title: "Message sent",
-      desc: "Thanks — the Iyashi team will get back to you shortly.",
+      desc: "Thanks. The Iyashi team will get back to you shortly.",
     });
     setForm({ name: "", email: "", topic: TOPICS[0], message: "" });
   }
@@ -41,7 +41,7 @@ export default function ContactPage() {
             Get in <span className="text-salmon">touch.</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-[var(--text-muted)]">
-            Partnerships, press, investment, or support — tell us what you need
+            Partnerships, press, investment, or support: tell us what you need
             and we’ll respond.
           </p>
         </div>

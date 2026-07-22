@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
 import { DEMO_DOCTOR_ID } from "@/lib/demo/seed";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { useDoctors } from "@/lib/hooks/data";
 import type { Doctor } from "@/lib/types/domain";
 
@@ -28,8 +27,8 @@ function readStoredDoctorId(): string {
 }
 
 /** The doctor row representing the signed-in user ("me").
- *  Demo → the registered/stored doctor (falls back to the seed doctor).
- *  Live → doctors row by profile_id. */
+ *  Demo -> the registered/stored doctor (falls back to the seed doctor).
+ *  Live -> the doctor returned by /api/auth/me. */
 export function useCurrentDoctor(): Doctor | undefined {
   const doctors = useDoctors();
   const [demoId, setDemoId] = useState<string>(DEMO_DOCTOR_ID);
@@ -38,25 +37,21 @@ export function useCurrentDoctor(): Doctor | undefined {
     if (isDemoMode) setDemoId(readStoredDoctorId());
   }, []);
 
-  const { data: liveId } = useQuery({
-    queryKey: ["me-doctor-id"],
+  const { data: liveDoctor } = useQuery({
+    queryKey: ["me-doctor"],
     enabled: !isDemoMode,
-    queryFn: async () => {
-      const sb = getSupabaseBrowser();
-      if (!sb) return null;
-      const {
-        data: { user },
-      } = await sb.auth.getUser();
-      if (!user) return null;
-      const { data } = await sb
-        .from("doctors")
-        .select("id")
-        .eq("profile_id", user.id)
-        .maybeSingle();
-      return data?.id ?? null;
+    queryFn: async (): Promise<Doctor | null> => {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.role === "doctor" ? (data.doctor ?? null) : null;
     },
+    refetchInterval: 5000,
   });
 
-  const id = isDemoMode ? demoId : liveId;
-  return doctors.find((d) => d.id === id) ?? doctors[0];
+  if (isDemoMode) {
+    return doctors.find((d) => d.id === demoId) ?? doctors[0];
+  }
+  // Prefer the freshest copy from the polled doctors list.
+  return doctors.find((d) => d.id === liveDoctor?.id) ?? liveDoctor ?? undefined;
 }
