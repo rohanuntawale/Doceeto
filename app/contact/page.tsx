@@ -110,7 +110,7 @@ export default function ContactPage() {
             <InfoCard
               icon={<MapPin className="h-4 w-4" />}
               title="Where we are"
-              lines={["Iyashi Health", "Pune, Maharashtra, India"]}
+              lines={["Iyashi Health", "Nagpur, Maharashtra, India"]}
             />
             <InfoCard
               icon={<Clock className="h-4 w-4" />}

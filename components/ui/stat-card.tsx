@@ -22,7 +22,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-card border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card",
+        "relative overflow-hidden rounded-card border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card sm:p-5",
         className,
       )}
     >
@@ -34,17 +34,17 @@ export function StatCard({
         )}
       />
       {icon && (
-        <div className="mb-3 text-[var(--text-faint)]">{icon}</div>
+        <div className="mb-2.5 text-[var(--text-faint)] sm:mb-3">{icon}</div>
       )}
       <div
         className={cn(
-          "metric text-4xl md:text-[2.75rem]",
+          "metric text-3xl sm:text-4xl md:text-[2.75rem]",
           accent ? "text-salmon" : "text-[var(--text)]",
         )}
       >
         {value}
       </div>
-      <div className="label mt-2">{label}</div>
+      <div className="label mt-2 leading-tight">{label}</div>
       {sub && (
         <div className="mt-1 text-xs text-[var(--text-faint)]">{sub}</div>
       )}
