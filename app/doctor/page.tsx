@@ -1,28 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Inbox, Siren, Star, Timer, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Inbox, Star, Timer, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OnlineToggle } from "@/components/doctor/online-toggle";
 import { RequestCard } from "@/components/zumi/request-card";
-import { SosCard } from "@/components/sos/sos-card";
+import { LiveMap } from "@/components/map/live-map";
+import { DoctorConsultTracker } from "@/components/consult/consult-tracker";
 import { useToast } from "@/components/ui/toast";
-import {
-  useConsultRequests,
-  useSosEvents,
-  useActions,
-} from "@/lib/hooks/data";
+import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
-import { haversineKm } from "@/lib/utils/geo";
 import { formatINRCompact } from "@/lib/utils/format";
 
 export default function DoctorHome() {
   const me = useCurrentDoctor();
   const requests = useConsultRequests();
-  const sos = useSosEvents();
   const actions = useActions();
   const toast = useToast();
   const [passed, setPassed] = useState<Set<string>>(new Set());
@@ -39,24 +34,16 @@ export default function DoctorHome() {
   const acceptedByMe = requests.filter(
     (r) => r.status === "accepted" && r.doctorId === me?.id,
   );
-
+  // One active consult at a time: gate new accepts while one is in progress.
+  const hasActive = acceptedByMe.length > 0;
   const earningsToday = myCompletedToday.reduce((a, r) => a + r.fee, 0);
-
-  const nearbySos = useMemo(() => {
-    if (!me) return [];
-    return sos
-      .filter((e) => e.status === "open" || e.status === "assigned")
-      .map((e) => ({ e, km: haversineKm(me, e) }))
-      .sort((a, b) => a.km - b.km)
-      .slice(0, 3);
-  }, [sos, me]);
 
   return (
     <>
       <PageHeader
         kanji="助け"
         label="DOCTOR · TODAY"
-        title={me ? me.fullName.replace("Dr. ", "Dr. ") : "Doctor"}
+        title={me ? me.fullName : "Doctor"}
         action={<OnlineToggle doctor={me} />}
       />
 
@@ -77,95 +64,96 @@ export default function DoctorHome() {
           label="Rating"
           icon={<Star className="h-4 w-4" />}
         />
-        <StatCard
-          value="4m"
-          label="Avg response"
-          icon={<Timer className="h-4 w-4" />}
-        />
+        <StatCard value="4m" label="Avg response" icon={<Timer className="h-4 w-4" />} />
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        {/* Incoming Zumi requests */}
-        <Card>
-          <CardHeader
-            label="ZUMI · INCOMING"
-            title={`Requests (${pending.length})`}
+      {/* Live tracking of patients you've accepted (appears when active) */}
+      {me && (
+        <div className="mt-5">
+          <DoctorConsultTracker doctor={me} />
+        </div>
+      )}
+
+      {/* Patients around you — live positions of incoming requests */}
+      <Card className="mt-5 overflow-hidden">
+        <CardHeader label="ZUMI · AROUND YOU" title="Patients near you" action={<MapLegend />} />
+        <div className="p-4">
+          <LiveMap
+            self={me ? { lat: me.lat, lng: me.lng, label: "You (visible to patients)" } : null}
+            center={me ? { lat: me.lat, lng: me.lng } : undefined}
+            requests={requests.filter(
+              (r) =>
+                (r.status === "pending" &&
+                  (r.doctorId === null || r.doctorId === me?.id)) ||
+                (r.status === "accepted" && r.doctorId === me?.id),
+            )}
+            events={[]}
+            height={320}
           />
-          <div className="space-y-3 p-4">
-            {pending.length === 0 ? (
-              <EmptyState
-                kanji="頼"
-                title="No open requests"
-                desc="New consults will appear here the moment they come in."
-              />
-            ) : (
-              pending.map((r) => (
-                <RequestCard
-                  key={r.id}
-                  request={r}
-                  note={
-                    r.doctorId === me?.id
-                      ? "Chose you"
-                      : "Open to nearby doctors"
-                  }
-                  onAccept={() => {
-                    if (!me) return;
-                    actions.acceptRequest(r.id, me.id);
+        </div>
+      </Card>
+
+      {/* Incoming requests */}
+      <Card className="mt-5">
+        <CardHeader label="ZUMI · INCOMING" title={`Requests (${pending.length})`} />
+        <div className="space-y-3 p-4">
+          {pending.length === 0 ? (
+            <EmptyState
+              kanji="頼"
+              title="No open requests"
+              desc="New consults will appear here the moment they come in."
+            />
+          ) : (
+            pending.map((r) => (
+              <RequestCard
+                key={r.id}
+                request={r}
+                canAccept={!hasActive}
+                note={r.doctorId === me?.id ? "Chose you" : "Open to nearby doctors"}
+                onAccept={async () => {
+                  if (!me) return;
+                  try {
+                    await actions.acceptRequest(r.id, me.id);
                     toast.push({
                       tone: "success",
                       title: "Consult accepted",
                       desc: `${r.patientName} · ${r.address}`,
                     });
-                  }}
-                  onDecline={() => {
-                    if (r.doctorId === me?.id) actions.declineRequest(r.id);
-                    else setPassed((p) => new Set(p).add(r.id));
-                  }}
-                />
-              ))
-            )}
-          </div>
-        </Card>
-
-        {/* Nearby SOS (Tasuke) */}
-        <Card>
-          <CardHeader label="TASUKE · NEARBY SOS" title="Golden-minute alerts" />
-          <div className="space-y-3 p-4">
-            {nearbySos.length === 0 ? (
-              <EmptyState
-                kanji="助"
-                title="No emergencies nearby"
-                desc="You'll be alerted if an SOS fires near your location."
+                  } catch (e) {
+                    toast.push({
+                      tone: "error",
+                      title: "Couldn't accept",
+                      desc: e instanceof Error ? e.message : "Please try again.",
+                    });
+                  }
+                }}
+                onDecline={() => {
+                  if (r.doctorId === me?.id) actions.declineRequest(r.id);
+                  else setPassed((p) => new Set(p).add(r.id));
+                }}
               />
-            ) : (
-              nearbySos.map(({ e, km }) => (
-                <div key={e.id}>
-                  <div className="mb-1 flex items-center justify-between px-1">
-                    <span className="label">{km.toFixed(1)} km away</span>
-                    {!e.doctorId && (
-                      <button
-                        onClick={() => {
-                          if (!me) return;
-                          actions.assignDoctorToSos(e.id, me.id);
-                          toast.push({
-                            tone: "success",
-                            title: "You're responding",
-                            desc: `${e.patientName} · ${e.address}`,
-                          });
-                        }}
-                        className="text-xs font-medium text-terracotta hover:text-salmon"
-                      >
-                        Respond →
-                      </button>
-                    )}
-                  </div>
-                  <SosCard event={e} compact />
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      </div>
+            ))
+          )}
+        </div>
+      </Card>
     </>
+  );
+}
+
+function MapLegend() {
+  return (
+    <div className="hidden items-center gap-3 text-[11px] text-[var(--text-muted)] sm:flex">
+      <LegendDot className="bg-[rgb(var(--c-cream))]" label="Patient" />
+      <LegendDot className="bg-tan" label="You" />
+    </div>
+  );
+}
+
+function LegendDot({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={`h-2 w-2 rounded-full ${className}`} />
+      {label}
+    </span>
   );
 }

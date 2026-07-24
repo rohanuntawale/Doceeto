@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils/cn";
 
 /**
- * The signature Iyashi metric tile: a large serif number over a
+ * The signature Doceeto metric tile: a large serif number over a
  * tracked, uppercase label, straight from the deck's stat slides.
  */
 export function StatCard({

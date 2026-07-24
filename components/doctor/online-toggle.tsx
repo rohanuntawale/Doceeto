@@ -38,7 +38,7 @@ export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
       >
         <span
           className={cn(
-            "h-5 w-5 rounded-full bg-cream shadow transition-transform duration-200",
+            "h-5 w-5 rounded-full bg-on-accent shadow transition-transform duration-200",
             online ? "translate-x-5" : "translate-x-0",
           )}
         />

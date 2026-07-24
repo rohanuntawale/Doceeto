@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { StarInput } from "@/components/ui/star-rating";
 import { useToast } from "@/components/ui/toast";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
@@ -71,6 +72,33 @@ export default function ConsultsPage() {
                     >
                       Complete
                     </Button>
+                  )}
+                  {r.status === "completed" && (
+                    <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+                      {r.patientRated ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)]">
+                          <span className="text-tan">✓</span> You rated this patient
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-xs text-[var(--text-muted)]">Rate patient</span>
+                          <StarInput
+                            onRate={async (rating) => {
+                              try {
+                                await actions.ratePatient({ requestId: r.id, rating });
+                                toast.push({ tone: "success", title: "Patient rated" });
+                              } catch (e) {
+                                toast.push({
+                                  tone: "error",
+                                  title: "Couldn't submit rating",
+                                  desc: e instanceof Error ? e.message : "Please try again.",
+                                });
+                              }
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               );

@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Iyashi design system. Colors are exposed as CSS-variable RGB triplets
+ * Doceeto design system. Colors are exposed as CSS-variable RGB triplets
  * in app/globals.css so each data-theme can remap them; Tailwind consumes
  * them via rgb(var(--x) / <alpha-value>) which keeps /opacity modifiers.
  */
@@ -36,6 +36,9 @@ const config: Config = {
         },
         salmon: v("--c-salmon"),
         ink: v("--c-ink"),
+        // Text/icon color that sits ON the accent (buttons, SOS, chips).
+        // Cream in the dark-accent themes; deep green in Mori's white accent.
+        "on-accent": v("--c-on-accent"),
         // Functional status hues, harmonized with the brand.
         status: {
           critical: v("--c-status-critical"),

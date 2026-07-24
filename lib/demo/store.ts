@@ -8,24 +8,18 @@
  *   • Mutations broadcast over a BroadcastChannel, so a request raised
  *     in the PATIENT tab shows up live in the DOCTOR / OPS tabs on the
  *     same browser - patient → doctor actually connects.
- *   • There is NO fake auto-generated activity. SOS events, consult
- *     requests and orders are the ones YOU create via the patient app.
- *     (SEED_LEVEL controls the starting catalog; default "catalog" =
- *     doctors/ambulances only, zero activity.)
+ *   • There is NO demo/seed data at all. The store starts EMPTY; every
+ *     doctor, SOS, request and order is created through real product
+ *     flows (register / book / SOS).
  *
- * In LIVE mode (Supabase configured) this is never started; hooks use
- * Supabase Realtime for the same cross-client behaviour, cross-device.
+ * In LIVE mode (Neo4j backend) this is never started; hooks read the
+ * /api routes instead.
  */
-import { MAP_CENTER, SEED_LEVEL } from "@/lib/config";
-import {
-  seedAmbulances,
-  seedDoctors,
-  seedOrders,
-  seedRequests,
-  seedReviews,
-  seedSos,
-} from "@/lib/demo/seed";
+import { MAP_CENTER } from "@/lib/config";
+import { AVATAR_COLORS } from "@/lib/demo/seed";
+import { seedDoctors } from "@/lib/seed-doctors";
 import type {
+  Ambulance,
   ConsultRequest,
   Doctor,
   Order,
@@ -36,7 +30,7 @@ import type {
 
 export interface DemoState {
   doctors: Doctor[];
-  ambulances: ReturnType<typeof seedAmbulances>;
+  ambulances: Ambulance[];
   sos: SosEvent[];
   requests: ConsultRequest[];
   orders: Order[];
@@ -52,8 +46,13 @@ const ORDER_FLOW: OrderStatus[] = [
   "delivered",
 ];
 
-const STORAGE_KEY = "iyashi:demo-state:v1";
+// v2: pre-seeded demo data removed — old v1 payloads are ignored so
+// every browser starts genuinely empty.
+const STORAGE_KEY = "iyashi:demo-state:v2";
 const CHANNEL = "iyashi:demo";
+// Set once the demo roster has been seeded, so we never seed over a reset
+// or over doctors the user created themselves.
+const SEED_KEY = "iyashi:demo-seeded:v1";
 
 let state: DemoState | null = null;
 let listeners: Listener[] = [];
@@ -66,16 +65,14 @@ function nextId(prefix: string) {
 }
 
 function fresh(): DemoState {
-  // Infrastructure catalog - present unless SEED_LEVEL is "none".
-  const catalog = SEED_LEVEL === "none";
+  // Always empty — there is no seeded data anywhere in the app.
   return {
-    doctors: catalog ? [] : seedDoctors(),
-    ambulances: catalog ? [] : seedAmbulances(),
-    // Activity is empty unless SEED_LEVEL === "full".
-    sos: SEED_LEVEL === "full" ? seedSos() : [],
-    requests: SEED_LEVEL === "full" ? seedRequests() : [],
-    orders: SEED_LEVEL === "full" ? seedOrders() : [],
-    reviews: SEED_LEVEL === "full" ? seedReviews() : [],
+    doctors: [],
+    ambulances: [],
+    sos: [],
+    requests: [],
+    orders: [],
+    reviews: [],
   };
 }
 
@@ -224,6 +221,70 @@ export const demoStore = {
     return order;
   },
 
+  // ── Reviews (one per completed request) ───────────────────
+  createReview(input: {
+    patientId: string;
+    patientName: string;
+    doctorId: string;
+    requestId: string;
+    rating: number;
+    comment: string;
+  }): Review | null {
+    const s = getState();
+    const req = s.requests.find((r) => r.id === input.requestId);
+    const already = s.reviews.some((v) => (v as Review & { requestId?: string }).requestId === input.requestId);
+    if (!req || req.status !== "completed" || req.patientId !== input.patientId || already) {
+      return null;
+    }
+    const review: Review & { requestId: string; doctorId: string } = {
+      id: nextId("rev"),
+      requestId: input.requestId,
+      doctorId: input.doctorId,
+      patientName: input.patientName,
+      rating: Math.min(5, Math.max(1, Math.round(input.rating))),
+      comment: input.comment.slice(0, 600),
+      createdAt: new Date().toISOString(),
+    };
+    s.reviews = [review, ...s.reviews];
+    // Refresh the doctor's aggregate rating.
+    const mine = s.reviews.filter(
+      (v) => (v as Review & { doctorId?: string }).doctorId === input.doctorId,
+    );
+    const avg = mine.reduce((a, v) => a + v.rating, 0) / Math.max(1, mine.length);
+    s.doctors = s.doctors.map((d) =>
+      d.id === input.doctorId ? { ...d, rating: Math.round(avg * 10) / 10 } : d,
+    );
+    commit();
+    return review;
+  },
+
+  // ── Ambulance CRUD (ops) ──────────────────────────────────
+  createAmbulance(input: {
+    vehicleNo: string;
+    driverName: string;
+    lat?: number;
+    lng?: number;
+  }): Ambulance {
+    const s = getState();
+    const ambulance: Ambulance = {
+      id: nextId("amb"),
+      vehicleNo: input.vehicleNo,
+      driverName: input.driverName,
+      status: "free",
+      lat: input.lat ?? MAP_CENTER.lat,
+      lng: input.lng ?? MAP_CENTER.lng,
+    };
+    s.ambulances = [ambulance, ...s.ambulances];
+    commit();
+    return ambulance;
+  },
+
+  updateAmbulance(id: string, patch: Partial<Ambulance>) {
+    const s = getState();
+    s.ambulances = s.ambulances.map((a) => (a.id === id ? { ...a, ...patch } : a));
+    commit();
+  },
+
   // ── Doctor onboarding + profile edits ─────────────────────
   registerDoctor(input: {
     fullName: string;
@@ -233,8 +294,11 @@ export const demoStore = {
     experienceYears: number;
     consultFee: number;
     homeVisitFee: number;
+    /** Real device location, when the browser granted it. */
+    lat?: number;
+    lng?: number;
   }): Doctor {
-    const palette = ["#C15A38", "#C9A876", "#7C8B63", "#E0A890", "#8A6F52"];
+    const palette = AVATAR_COLORS;
     const s = getState();
     const doctor: Doctor = {
       id: nextId("doc"),
@@ -252,8 +316,10 @@ export const demoStore = {
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
       avatarColor: palette[s.doctors.length % palette.length],
-      lat: MAP_CENTER.lat + (Math.random() - 0.5) * 0.06,
-      lng: MAP_CENTER.lng + (Math.random() - 0.5) * 0.06,
+      // Real location when granted; otherwise near the fallback center
+      // until the doctor goes online and their device reports position.
+      lat: input.lat ?? MAP_CENTER.lat + (Math.random() - 0.5) * 0.02,
+      lng: input.lng ?? MAP_CENTER.lng + (Math.random() - 0.5) * 0.02,
       lastSeen: new Date().toISOString(),
     };
     s.doctors = [doctor, ...s.doctors];
@@ -323,6 +389,12 @@ export const demoStore = {
     commit();
   },
 
+  setSosCategory(sosId: string, category: SosEvent["category"]) {
+    const s = getState();
+    s.sos = s.sos.map((e) => (e.id === sosId ? { ...e, category } : e));
+    commit();
+  },
+
   advanceSos(sosId: string) {
     const order: SosEvent["status"][] = ["open", "assigned", "enroute", "resolved"];
     const s = getState();
@@ -371,6 +443,24 @@ function setupClient() {
     }
   } catch {
     /* corrupt payload - fall back to fresh() */
+  }
+
+  // First run (or a legacy empty state): seed a realistic roster of demo
+  // doctors so the patient map/list/booking work out of the box. The marker
+  // stops us re-seeding after a reset, or once real doctors exist.
+  try {
+    if (!window.localStorage.getItem(SEED_KEY)) {
+      if (!state || state.doctors.length === 0) {
+        state = { ...(state ?? fresh()), doctors: seedDoctors() };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+      window.localStorage.setItem(SEED_KEY, "1");
+    }
+  } catch {
+    // Storage unavailable (private mode): seed in memory for this session.
+    if (!state || state.doctors.length === 0) {
+      state = { ...(state ?? fresh()), doctors: seedDoctors() };
+    }
   }
 
   // Subscribe to updates from other tabs (patient ↔ doctor ↔ ops).

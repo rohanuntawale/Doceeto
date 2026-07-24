@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site/site-header";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "About · Iyashi Health",
+  title: "About · Doceeto Health",
   description: "One place for care in India: emergencies, doctors, diagnostics and medicine.",
 };
 
@@ -31,14 +31,14 @@ export default function AboutPage() {
         <div className="max-w-2xl">
           <div className="flex items-center gap-3">
             <span className="h-px w-8 bg-terracotta" />
-            <span className="label">About Iyashi · 癒し</span>
+            <span className="label">About Doceeto</span>
           </div>
           <h1 className="mt-5 font-serif text-4xl leading-tight text-cream md:text-6xl">
             One front door <span className="text-salmon">to care.</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-[var(--text-muted)]">
             In India, when something goes wrong, care is a scramble: which
-            number, which doctor, which app. Iyashi puts emergencies, doctors,
+            number, which doctor, which app. Doceeto puts emergencies, doctors,
             diagnostics and medicine in one place, ready when you need them.
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function AboutPage() {
 
         {/* CTA */}
         <div className="mt-16 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-12">
-          <Link href="/register">
+          <Link href="/">
             <Button size="lg">
               Get started <ArrowRight className="h-4 w-4" />
             </Button>

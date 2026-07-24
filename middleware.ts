@@ -2,10 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/jwt";
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 
-const isLiveMode = process.env.NEXT_PUBLIC_BACKEND === "neo4j";
+const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 
 const isDoctorPath = (p: string) => p === "/doctor" || p.startsWith("/doctor/");
 const isOpsPath = (p: string) => p === "/ops" || p.startsWith("/ops/");
+const isPatientPath = (p: string) => p === "/patient" || p.startsWith("/patient/");
 
 export async function middleware(request: NextRequest) {
   // Demo mode: no real auth; everything is open (client-side ops gate only).
@@ -27,11 +28,19 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
-  // Signed-in doctors skip the auth pages.
-  if ((path === "/login" || path === "/register") && session?.role === "doctor") {
+  if (isPatientPath(path) && session?.role !== "patient") {
     const url = request.nextUrl.clone();
-    url.pathname = "/doctor";
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
     return NextResponse.redirect(url);
+  }
+  // Signed-in users skip the auth pages, landing on their own space.
+  if (path === "/login") {
+    if (session?.role === "doctor" || session?.role === "patient") {
+      const url = request.nextUrl.clone();
+      url.pathname = session.role === "doctor" ? "/doctor" : "/patient";
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

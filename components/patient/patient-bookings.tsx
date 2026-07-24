@@ -1,7 +1,9 @@
 "use client";
 
-import { Video, Home, Building2 } from "lucide-react";
+import Link from "next/link";
+import { Video, Home, Building2, ChevronRight } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
+import { RateDoctor } from "@/components/patient/rate-doctor";
 import { consultStatus, consultType } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
@@ -50,7 +52,13 @@ export function PatientBookings({ patientId }: { patientId: string }) {
           <div className="label mb-2.5">PREVIOUSLY BOOKED</div>
           <div className="space-y-2.5">
             {previous.map((r) => (
-              <BookingRow key={r.id} req={r} doctor={doctorOf(r.doctorId)} mounted={mounted} past />
+              <BookingRow
+                key={r.id}
+                req={r}
+                doctor={doctorOf(r.doctorId)}
+                mounted={mounted}
+                past
+              />
             ))}
           </div>
         </section>
@@ -71,13 +79,12 @@ function BookingRow({
   past?: boolean;
 }) {
   const st = consultStatus[req.status];
-  const name = doctor?.fullName ?? "Iyashi doctor";
+  const name = doctor?.fullName ?? "Doceeto doctor";
   const waiting = req.status === "pending";
+  const canRate = req.status === "completed" && !!req.doctorId && !req.reviewed;
 
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-card border border-[var(--border)] bg-espresso-800 p-3.5 shadow-card ${past ? "opacity-80" : ""}`}
-    >
+  const head = (
+    <>
       <span
         className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-xs font-medium text-cream"
         style={{ background: doctor?.avatarColor ?? "#6B615A" }}
@@ -85,7 +92,12 @@ function BookingRow({
         {initials(name.replace("Dr. ", ""))}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-cream">{name}</p>
+        <p className="flex items-center gap-1 truncate text-sm font-medium text-cream group-hover:text-salmon">
+          {name}
+          {doctor && (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5 group-hover:text-terracotta" />
+          )}
+        </p>
         <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
           {typeIcon[req.type]}
           {consultType[req.type].label}
@@ -101,6 +113,26 @@ function BookingRow({
           {formatINR(req.fee)} · {mounted ? timeAgo(req.createdAt) : ""}
         </span>
       </div>
+    </>
+  );
+
+  return (
+    <div
+      className={`rounded-card border border-[var(--border)] bg-espresso-800 p-3.5 shadow-card transition-colors ${past ? "opacity-80" : ""} ${doctor ? "hover:border-terracotta/40" : ""}`}
+    >
+      {doctor ? (
+        <Link
+          href={`/patient/doctors/${doctor.id}`}
+          aria-label={`View ${name}'s profile`}
+          className="group flex items-center gap-3"
+        >
+          {head}
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3">{head}</div>
+      )}
+
+      {canRate && <RateDoctor req={req} doctorName={doctor?.fullName} />}
     </div>
   );
 }

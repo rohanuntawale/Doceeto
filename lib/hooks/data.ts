@@ -34,7 +34,15 @@ const ORDER_ORDER: OrderStatus[] = [
 ];
 
 const POLL_MS = 4000;
+const POLL_MS_SSE = 30_000; // slow safety-net poll while SSE is connected
 const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews"];
+
+// Flipped by the RealtimeBridge when /api/stream is connected — polling
+// then backs off to a slow safety net and SSE events drive refreshes.
+let sseConnected = false;
+export function setSseConnected(v: boolean) {
+  sseConnected = v;
+}
 
 // ── Demo primitive ──────────────────────────────────────────
 function useDemoState() {
@@ -53,7 +61,7 @@ function useApiEntity<T>(entity: string): T[] {
   const { data } = useQuery({
     queryKey: [entity],
     queryFn: () => fetchEntity<T>(entity),
-    refetchInterval: POLL_MS,
+    refetchInterval: () => (sseConnected ? POLL_MS_SSE : POLL_MS),
     refetchOnWindowFocus: true,
   });
   return data ?? [];
@@ -89,10 +97,17 @@ export const useAmbulances = isDemoMode
   ? useAmbulancesDemo
   : () => useApiEntity<Ambulance>("ambulances");
 
-function useReviewsDemo(): Review[] {
-  return useDemoState().reviews;
+function useReviewsDemo(doctorId?: string): Review[] {
+  const all = useDemoState().reviews;
+  return doctorId
+    ? all.filter((r) => (r as Review & { doctorId?: string }).doctorId === doctorId)
+    : all;
 }
-export const useReviews = isDemoMode ? useReviewsDemo : () => useApiEntity<Review>("reviews");
+/** Reviews, optionally scoped to one doctor (server filters via ?doctorId=). */
+export const useReviews = isDemoMode
+  ? (doctorId?: string) => useReviewsDemo(doctorId)
+  : (doctorId?: string) =>
+      useApiEntity<Review>(doctorId ? `reviews&doctorId=${encodeURIComponent(doctorId)}` : "reviews");
 
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
@@ -158,10 +173,37 @@ export interface CreateOrderInput {
   darkStore: string;
 }
 
+export interface CreateReviewInput {
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  requestId: string;
+  rating: number;
+  comment: string;
+}
+export interface RatePatientInput {
+  requestId: string;
+  rating: number;
+  comment?: string;
+}
+export interface CreateAmbulanceInput {
+  vehicleNo: string;
+  driverName: string;
+  lat?: number;
+  lng?: number;
+}
+
 export interface Actions {
-  createSos: (input: CreateSosInput) => void;
+  /** Fire an SOS immediately (location goes to doctors first). Returns the
+   *  created event so its category can be refined right after. */
+  createSos: (input: CreateSosInput) => Promise<SosEvent>;
+  /** Refine an already-sent SOS's category (patient, on their own event). */
+  categorizeSos: (sosId: string, category: SosEvent["category"]) => Promise<void>;
   createRequest: (input: CreateRequestInput) => void;
   createOrder: (input: CreateOrderInput) => void;
+  createReview: (input: CreateReviewInput) => void;
+  /** Doctor → patient rating after a completed consult. */
+  ratePatient: (input: RatePatientInput) => Promise<void>;
   updateDoctor: (id: string, patch: Partial<Doctor>) => void;
   setDoctorStatus: (id: string, status: Doctor["status"]) => void;
   acceptRequest: (id: string, doctorId: string) => void;
@@ -171,6 +213,8 @@ export interface Actions {
   assignDoctorToSos: (sosId: string, doctorId: string) => void;
   advanceSos: (sosId: string, current: SosStatus) => void;
   advanceOrder: (orderId: string, current: OrderStatus) => void;
+  createAmbulance: (input: CreateAmbulanceInput) => void;
+  updateAmbulance: (id: string, patch: Partial<Ambulance>) => void;
 }
 
 /** Wipe locally-created test data (demo mode only). No-op in live mode. */
@@ -178,15 +222,29 @@ export function resetTestData() {
   if (isDemoMode) demoStore.reset();
 }
 
-/** POST an action to the live backend, then refresh the affected data. */
-function callAction(qc: QueryClient, action: string, payload: Record<string, unknown>) {
-  fetch("/api/actions", {
+/** POST an action to the live backend and refresh the affected data. Unlike
+ *  a fire-and-forget call, this SURFACES server rejections (400/403/409/500):
+ *  the returned promise rejects with the server's error message so callers can
+ *  `await` it and show a real error toast instead of a false "success". */
+async function callAction<T = Record<string, unknown>>(
+  qc: QueryClient,
+  action: string,
+  payload: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch("/api/actions", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ action, payload }),
-  })
-    .then(() => ENTITY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] })))
-    .catch((err) => console.error("Iyashi action failed:", err));
+  });
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  // Refresh regardless — a rejected write may still have touched related state.
+  ENTITY_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  if (!res.ok) {
+    const msg = typeof body.error === "string" ? body.error : "Action failed.";
+    console.error("Doceeto action failed:", action, msg);
+    throw new Error(msg);
+  }
+  return body as unknown as T;
 }
 
 export function useActions(): Actions {
@@ -203,9 +261,17 @@ export function useActions(): Actions {
   return useMemo<Actions>(() => {
     if (isDemoMode) {
       return {
-        createSos: (input) => void demoStore.createSosEvent(input),
+        createSos: async (input) => demoStore.createSosEvent(input),
+        categorizeSos: async (sosId, category) => {
+          demoStore.setSosCategory(sosId, category);
+        },
         createRequest: (input) => void demoStore.createConsultRequest(input),
         createOrder: (input) => void demoStore.createOrder(input),
+        createReview: (input) => void demoStore.createReview(input),
+        // Demo store has no patient-rating model; no-op keeps the surface identical.
+        ratePatient: async () => {},
+        createAmbulance: (input) => void demoStore.createAmbulance(input),
+        updateAmbulance: demoStore.updateAmbulance,
         updateDoctor: demoStore.updateDoctor,
         setDoctorStatus: demoStore.setDoctorStatus,
         acceptRequest: demoStore.acceptRequest,
@@ -220,9 +286,15 @@ export function useActions(): Actions {
     // Live: the server takes patient identity from the session, so the
     // patientId/patientName here are ignored server-side (anti-spoof).
     return {
-      createSos: (input) => callAction(qc, "createSos", { ...input }),
+      createSos: (input) => callAction<SosEvent>(qc, "createSos", { ...input }),
+      categorizeSos: (sosId, category) =>
+        callAction<void>(qc, "categorizeSos", { sosId, category }),
       createRequest: (input) => callAction(qc, "createRequest", { ...input }),
       createOrder: (input) => callAction(qc, "createOrder", { ...input }),
+      createReview: (input) => callAction(qc, "createReview", { ...input }),
+      ratePatient: (input) => callAction<void>(qc, "ratePatient", { ...input }),
+      createAmbulance: (input) => callAction(qc, "createAmbulance", { ...input }),
+      updateAmbulance: (id, patch) => callAction(qc, "updateAmbulance", { id, patch }),
       updateDoctor: (id, patch) => callAction(qc, "updateDoctor", { patch }),
       setDoctorStatus: (_id, status) => callAction(qc, "setDoctorStatus", { status }),
       acceptRequest: (id) => callAction(qc, "acceptRequest", { id }),

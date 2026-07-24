@@ -96,7 +96,7 @@ export default function OpsSignIn() {
                   required
                   onChange={(e) => setEmail(e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-espresso px-3 py-2.5 text-sm text-cream outline-none focus:border-terracotta/60"
-                  placeholder="ops@iyashi.health"
+                  placeholder="ops@doceeto.health"
                 />
               </label>
               <label className="block">
@@ -121,7 +121,7 @@ export default function OpsSignIn() {
         </form>
 
         <p className="mt-5 text-center text-xs text-[var(--text-faint)]">
-          Restricted to Iyashi operations & admin staff.
+          Restricted to Doceeto operations & admin staff.
         </p>
       </div>
     </main>

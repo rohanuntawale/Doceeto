@@ -1,30 +1,29 @@
 /**
  * Runtime config. The app works in two modes:
- *  - DEMO : no backend env -> seeded in-browser store, zero setup.
- *  - LIVE : Neo4j backend -> real auth + graph data via /api routes.
+ *  - DEMO : no backend env -> in-browser store (per-browser), zero setup.
+ *  - LIVE : a real server backend via the /api routes. The server picks
+ *           its store automatically: Neo4j when NEO4J_URI is set, else a
+ *           zero-setup file store. Either way the client is identical.
  *
  * The client can only read NEXT_PUBLIC_* vars, so the mode flag is public.
- * The Neo4j connection itself (NEO4J_URI/USER/PASSWORD) is server-only and
- * never reaches the browser.
+ * The store connection details are server-only and never reach the browser.
+ *
+ * Set NEXT_PUBLIC_BACKEND to "server" (file store) or "neo4j" to go live.
  */
 
-/** True when the Neo4j-backed live mode is enabled. */
-export const isLiveMode = process.env.NEXT_PUBLIC_BACKEND === "neo4j";
+/** True when a real server backend is enabled (any non-empty value). */
+export const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 
 /** True when we should run the in-browser demo engine (default). */
 export const isDemoMode = !isLiveMode;
 
 /**
- * How much data the demo engine starts with.
- *   full     - doctors/ambulances + sample SOS/requests/orders (showcase)
- *   catalog  - doctors/ambulances/stores only, NO activity (test-clean, default)
- *   none     - completely empty
+ * There is NO seeded demo data. Every doctor, patient, SOS, request and
+ * order in the app is created through the product itself (register,
+ * book, SOS) — in demo mode into the in-browser store, in live mode
+ * into Neo4j.
  */
-export const SEED_LEVEL = (process.env.NEXT_PUBLIC_SEED ?? "catalog") as
-  | "full"
-  | "catalog"
-  | "none";
 
-/** Map default center - Pune, India (matches seed data). */
-export const MAP_CENTER = { lat: 18.5204, lng: 73.8567 };
+/** Map fallback center - Nagpur, India (used until real geolocation arrives). */
+export const MAP_CENTER = { lat: 21.1458, lng: 79.0882 };
 export const MAP_ZOOM = 12;

@@ -89,7 +89,7 @@ function LoginInner() {
               type="email"
               value={email}
               onChange={setEmail}
-              placeholder="you@iyashi.health"
+              placeholder="you@doceeto.health"
             />
             <div className="h-3" />
             <Field
@@ -111,7 +111,7 @@ function LoginInner() {
             </Button>
             <p className="mt-4 text-center text-sm text-[var(--text-muted)]">
               New here?{" "}
-              <Link href="/register" className="text-salmon hover:underline">
+              <Link href="/" className="text-salmon hover:underline">
                 Create an account
               </Link>
             </p>
@@ -119,7 +119,7 @@ function LoginInner() {
         )}
 
         <p className="mt-6 text-center text-xs text-[var(--text-faint)]">
-          Iyashi Health · Healing, on demand
+          Doceeto Health · Healing, on demand
         </p>
       </div>
     </main>

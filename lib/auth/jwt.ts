@@ -18,6 +18,14 @@ function secret(): string {
   return process.env.AUTH_SECRET || "iyashi-dev-secret-change-me";
 }
 
+/** Secrets accepted for VERIFICATION. Rotation: move the old secret to
+ *  AUTH_SECRET_PREVIOUS, put the new one in AUTH_SECRET — live sessions
+ *  keep working for a week while new tokens sign with the new secret. */
+function verifySecrets(): string[] {
+  const prev = process.env.AUTH_SECRET_PREVIOUS;
+  return prev ? [secret(), prev] : [secret()];
+}
+
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -39,8 +47,8 @@ function b64urlToBytes(s: string): Uint8Array {
   return out;
 }
 
-async function key(): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", buf(enc.encode(secret())), ALG, false, [
+async function key(sec: string = secret()): Promise<CryptoKey> {
+  return crypto.subtle.importKey("raw", buf(enc.encode(sec)), ALG, false, [
     "sign",
     "verify",
   ]);
@@ -71,12 +79,16 @@ export async function verifySession(token: string): Promise<SessionClaims | null
     if (parts.length !== 3) return null;
     const [head, body, sig] = parts;
     const data = `${head}.${body}`;
-    const ok = await crypto.subtle.verify(
-      ALG,
-      await key(),
-      buf(b64urlToBytes(sig)),
-      buf(enc.encode(data)),
-    );
+    let ok = false;
+    for (const sec of verifySecrets()) {
+      ok = await crypto.subtle.verify(
+        ALG,
+        await key(sec),
+        buf(b64urlToBytes(sig)),
+        buf(enc.encode(data)),
+      );
+      if (ok) break;
+    }
     if (!ok) return null;
     const claims = JSON.parse(dec.decode(b64urlToBytes(body))) as SessionClaims;
     if (!claims.exp || claims.exp < Math.floor(Date.now() / 1000)) return null;

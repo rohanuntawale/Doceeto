@@ -120,8 +120,7 @@ resetTestData()       // wipe locally-created test data (demo mode)
 **Local mode connection:** in demo/local mode the create actions write to
 `lib/demo/store.ts`, which persists to `localStorage` and broadcasts over a
 `BroadcastChannel` — so a patient action in one tab pushes live into the doctor/ops tabs.
-`SEED_LEVEL` (`NEXT_PUBLIC_SEED`) controls the starting data: `catalog` (default, no
-activity), `full`, or `none`.
+The store starts **empty** — no seeded data of any kind; everything is user-created.
 
 **To wire a different backend:** implement these hooks/actions in `lib/hooks/data.ts`
 returning the same domain types. Nothing in `app/` or `components/` changes.

@@ -22,7 +22,7 @@ export default function ContactPage() {
     toast.push({
       tone: "success",
       title: "Message sent",
-      desc: "Thanks. The Iyashi team will get back to you shortly.",
+      desc: "Thanks. The Doceeto team will get back to you shortly.",
     });
     setForm({ name: "", email: "", topic: TOPICS[0], message: "" });
   }
@@ -110,7 +110,7 @@ export default function ContactPage() {
             <InfoCard
               icon={<MapPin className="h-4 w-4" />}
               title="Where we are"
-              lines={["Iyashi Health", "Nagpur, Maharashtra, India"]}
+              lines={["Doceeto Health", "Nagpur, Maharashtra, India"]}
             />
             <InfoCard
               icon={<Clock className="h-4 w-4" />}

@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { MapPin, Video, Home, Building2, Clock } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
+import { StarDisplay } from "@/components/ui/star-rating";
 import { Button } from "@/components/ui/button";
 import { formatINR, timeAgo } from "@/lib/utils/format";
 import { consultStatus, consultType } from "@/lib/labels";
@@ -20,6 +22,8 @@ export function RequestCard({
   onAccept,
   onDecline,
   onComplete,
+  canAccept = true,
+  footer,
 }: {
   request: ConsultRequest;
   /** Small badge, e.g. "Open to nearby doctors" or "Chose you". */
@@ -27,11 +31,16 @@ export function RequestCard({
   onAccept?: () => void;
   onDecline?: () => void;
   onComplete?: () => void;
+  /** When false, Accept is disabled (doctor already has an active consult). */
+  canAccept?: boolean;
+  /** Extra content below the card body, e.g. a rating input. */
+  footer?: ReactNode;
 }) {
   const mounted = useMounted();
   const st = consultStatus[request.status];
   const isPending = request.status === "pending";
   const isAccepted = request.status === "accepted";
+  const patientRating = request.patientRating ?? 0;
 
   return (
     <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-4 shadow-card transition-colors hover:border-white/15">
@@ -41,7 +50,12 @@ export function RequestCard({
             {typeIcon[request.type]}
           </span>
           <div>
-            <p className="font-medium text-cream">{request.patientName}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-cream">{request.patientName}</p>
+              {patientRating > 0 && (
+                <StarDisplay value={patientRating} count={request.patientRatingCount} />
+              )}
+            </div>
             <p className="text-xs text-[var(--text-muted)]">
               {consultType[request.type].label}
             </p>
@@ -76,7 +90,13 @@ export function RequestCard({
         <div className="mt-3 flex gap-2">
           {isPending && (
             <>
-              <Button size="sm" className="flex-1" onClick={onAccept}>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={onAccept}
+                disabled={!canAccept}
+                title={canAccept ? undefined : "Finish your current consult first"}
+              >
                 Accept
               </Button>
               <Button size="sm" variant="ghost" onClick={onDecline}>
@@ -91,6 +111,12 @@ export function RequestCard({
           )}
         </div>
       )}
+
+      {isPending && !canAccept && (
+        <p className="mt-2 text-xs text-tan">Finish your current consult to accept another.</p>
+      )}
+
+      {footer && <div className="mt-3 border-t border-[var(--border)] pt-3">{footer}</div>}
     </div>
   );
 }

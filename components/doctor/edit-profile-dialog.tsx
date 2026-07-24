@@ -29,23 +29,23 @@ export function EditProfileDialog({
 }) {
   const { updateDoctor } = useActions();
   const toast = useToast();
-  const [form, setForm] = useState({
+  const snapshot = () => ({
     fullName: doctor.fullName,
     specialty: doctor.specialty,
     consultFee: doctor.consultFee,
     homeVisitFee: doctor.homeVisitFee,
+    experienceYears: doctor.experienceYears,
+    languages: doctor.languages.join(", "),
+    qualifications: doctor.qualifications ?? "",
+    education: doctor.education ?? "",
+    about: doctor.about ?? "",
+    registrationNo: doctor.registrationNo ?? "",
   });
+  const [form, setForm] = useState(snapshot);
 
   // Re-sync if the underlying doctor changes while closed.
   useEffect(() => {
-    if (open) {
-      setForm({
-        fullName: doctor.fullName,
-        specialty: doctor.specialty,
-        consultFee: doctor.consultFee,
-        homeVisitFee: doctor.homeVisitFee,
-      });
-    }
+    if (open) setForm(snapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -58,6 +58,18 @@ export function EditProfileDialog({
       specialty: form.specialty,
       consultFee: Number(form.consultFee) || 0,
       homeVisitFee: Number(form.homeVisitFee) || 0,
+      experienceYears: Math.max(0, Number(form.experienceYears) || 0),
+      // Comma-separated → array; empty entries dropped.
+      languages: form.languages
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      // Empty strings are allowed — they revert the field to its
+      // specialty-derived fallback on the patient profile.
+      qualifications: form.qualifications.trim(),
+      education: form.education.trim(),
+      about: form.about.trim(),
+      registrationNo: form.registrationNo.trim(),
     });
     toast.push({ tone: "success", title: "Profile updated" });
     onClose();
@@ -71,7 +83,7 @@ export function EditProfileDialog({
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={save}
-        className="w-full max-w-md animate-fade-up rounded-t-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card sm:rounded-card"
+        className="max-h-[90vh] w-full max-w-lg animate-fade-up overflow-y-auto rounded-t-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card sm:rounded-card"
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -135,6 +147,70 @@ export function EditProfileDialog({
               />
             </Field>
           </div>
+
+          {/* Credentials patients see on your public profile */}
+          <div className="label pt-1 text-salmon">What patients see</div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Experience (years)">
+              <input
+                type="number"
+                min={0}
+                max={70}
+                value={form.experienceYears}
+                onChange={(e) =>
+                  setForm({ ...form, experienceYears: Number(e.target.value) })
+                }
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Medical reg. no.">
+              <input
+                value={form.registrationNo}
+                onChange={(e) => setForm({ ...form, registrationNo: e.target.value })}
+                className={inputCls}
+                placeholder="MH-12345"
+              />
+            </Field>
+          </div>
+
+          <Field label="Languages (comma-separated)">
+            <input
+              value={form.languages}
+              onChange={(e) => setForm({ ...form, languages: e.target.value })}
+              className={inputCls}
+              placeholder="English, Hindi, Marathi"
+            />
+          </Field>
+
+          <Field label="Qualifications">
+            <input
+              value={form.qualifications}
+              onChange={(e) => setForm({ ...form, qualifications: e.target.value })}
+              className={inputCls}
+              placeholder="MBBS, MD (General Medicine)"
+            />
+          </Field>
+
+          <Field label="Academic background">
+            <input
+              value={form.education}
+              onChange={(e) => setForm({ ...form, education: e.target.value })}
+              className={inputCls}
+              placeholder="Seth GS Medical College, Mumbai"
+            />
+          </Field>
+
+          <Field label="About you">
+            <textarea
+              value={form.about}
+              onChange={(e) => setForm({ ...form, about: e.target.value })}
+              rows={3}
+              maxLength={600}
+              className={`${inputCls} resize-none`}
+              placeholder="A short bio patients will see on your profile."
+            />
+          </Field>
         </div>
 
         <div className="mt-5 flex gap-2">

@@ -28,6 +28,8 @@ export default function RequestsPage() {
   const accepted = requests.filter(
     (r) => r.status === "accepted" && r.doctorId === me?.id,
   );
+  // One active consult at a time: block new accepts while one is in progress.
+  const hasActive = accepted.length > 0;
 
   return (
     <>
@@ -47,17 +49,26 @@ export default function RequestsPage() {
               <RequestCard
                 key={r.id}
                 request={r}
+                canAccept={!hasActive}
                 note={
                   r.doctorId === me?.id ? "Chose you" : "Open to nearby doctors"
                 }
-                onAccept={() => {
+                onAccept={async () => {
                   if (!me) return;
-                  actions.acceptRequest(r.id, me.id);
-                  toast.push({
-                    tone: "success",
-                    title: "Consult accepted",
-                    desc: r.patientName,
-                  });
+                  try {
+                    await actions.acceptRequest(r.id, me.id);
+                    toast.push({
+                      tone: "success",
+                      title: "Consult accepted",
+                      desc: r.patientName,
+                    });
+                  } catch (e) {
+                    toast.push({
+                      tone: "error",
+                      title: "Couldn't accept",
+                      desc: e instanceof Error ? e.message : "Please try again.",
+                    });
+                  }
                 }}
                 onDecline={() => {
                   // Directed to me → decline it. Open broadcast → just

@@ -96,7 +96,7 @@ export default function PatientMedicine() {
                   <span className="w-5 text-center text-sm text-cream">{qty}</span>
                   <button
                     onClick={() => add(m.name)}
-                    className="grid h-7 w-7 place-items-center rounded-md bg-terracotta text-cream hover:bg-terracotta-700"
+                    className="grid h-7 w-7 place-items-center rounded-md bg-terracotta text-on-accent hover:bg-terracotta-700"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>

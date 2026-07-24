@@ -5,9 +5,35 @@
 /* ── Theme tokens ────────────────────────────────────────────
    Every brand hue is an "R G B" triplet so Tailwind can do
    rgb(var(--x) / <alpha>) and any data-theme can reskin the app.
-   Default theme = Sumi (墨), the warm espresso shell. */
+   Default theme = Mori (森): the Investor Brief 2026 palette —
+   deep forest green shell, paper text, WHITE accent (CTAs, SOS),
+   gold for highlights; warm status-critical kept for map SOS pins. */
 :root,
+[data-theme="mori"] {
+  --c-espresso: 20 48 38; /* Doceeto deck deepest green #143026 */
+  --c-espresso-800: 31 63 55; /* deck green   #1F3F37 */
+  --c-espresso-700: 44 87 75; /* deck green-3 #2C574B */
+  --c-espresso-600: 55 105 90;
+  --c-cream: 232 233 225; /* deck paper #E8E9E1 */
+  --c-sand: 205 213 195;
+  --c-tan: 198 166 76; /* deck gold-soft #C6A64C */
+  --c-terracotta: 255 255 255; /* WHITE accent — CTAs + SOS */
+  --c-terracotta-700: 219 222 214; /* pressed/hover: dimmed paper */
+  --c-terracotta-300: 238 240 233; /* soft white */
+  --c-salmon: 214 186 106; /* light gold highlight */
+  --c-ink: 25 40 35;
+  --c-on-accent: 23 48 41; /* text on the white accent = deep green */
+  --c-status-critical: 187 74 42;
+  --c-status-warn: 198 166 76;
+  --c-status-ok: 93 138 110;
+  --c-status-idle: 105 117 106; /* deck sage #69756A */
+  /* map tiles tuned per shell */
+  --map-filter: grayscale(0.3) brightness(0.8) contrast(1.05) hue-rotate(65deg) sepia(0.18);
+}
+
+/* Sumi (墨) — the original warm espresso shell */
 [data-theme="sumi"] {
+  --c-on-accent: 241 233 216;
   --c-espresso: 42 35 32;
   --c-espresso-800: 52 44 38;
   --c-espresso-700: 63 53 46;
@@ -24,12 +50,12 @@
   --c-status-warn: 201 168 118;
   --c-status-ok: 124 139 99;
   --c-status-idle: 107 97 90;
-  /* map tiles tuned per shell */
   --map-filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
 }
 
 /* Matcha (抹茶) — tea-green shell, soft gold accent */
 [data-theme="matcha"] {
+  --c-on-accent: 240 236 219;
   --c-espresso: 30 37 29;
   --c-espresso-800: 40 49 38;
   --c-espresso-700: 51 62 47;
@@ -51,6 +77,7 @@
 
 /* Sakura (桜) — dusk plum shell, blossom-pink accent */
 [data-theme="sakura"] {
+  --c-on-accent: 244 233 231;
   --c-espresso: 36 30 36;
   --c-espresso-800: 46 38 46;
   --c-espresso-700: 57 47 57;
@@ -72,6 +99,7 @@
 
 /* Ai (藍) — indigo night shell, lantern-blue accent */
 [data-theme="ai"] {
+  --c-on-accent: 233 231 221;
   --c-espresso: 25 31 45;
   --c-espresso-800: 33 41 58;
   --c-espresso-700: 43 53 73;
@@ -206,6 +234,10 @@ body::before {
 .leaflet-container {
   background: rgb(var(--c-espresso-800)) !important;
   font-family: var(--font-inter), Inter, sans-serif;
+  /* Leaflet gives its panes/controls z-index up to ~1000. Without its own
+     stacking context those leak to the page and paint over the fixed header
+     and bottom nav (z-30). `isolate` contains them inside the map box. */
+  isolation: isolate;
 }
 .leaflet-tile {
   filter: var(--map-filter);

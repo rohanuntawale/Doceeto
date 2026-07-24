@@ -1,6 +1,8 @@
 import "server-only";
 import { read, write } from "@/lib/neo4j/driver";
 import { MAP_CENTER } from "@/lib/config";
+import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
+import { DomainError, type Near, type UserRecord } from "@/lib/db/shared";
 import type {
   Ambulance,
   ConsultRequest,
@@ -10,8 +12,15 @@ import type {
   SosEvent,
 } from "@/lib/types/domain";
 
-const AVATAR = ["#C15A38", "#C9A876", "#7C8B63", "#E0A890", "#8A6F52"];
+export { DomainError };
+export type { Near, UserRecord };
+
+const AVATAR = AVATAR_COLORS;
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
+
+/** Cypher fragment: distance in meters from $nlat/$nlng to node `v`. */
+const DIST = (v: string) =>
+  `point.distance(point({latitude: ${v}.lat, longitude: ${v}.lng}), point({latitude: $nlat, longitude: $nlng}))`;
 
 type Row = Record<string, any>;
 
@@ -33,6 +42,11 @@ const mapDoctor = (n: Row): Doctor => ({
   lat: Number(n.lat ?? 0),
   lng: Number(n.lng ?? 0),
   lastSeen: n.lastSeen ?? new Date().toISOString(),
+  // Patient-facing profile detail (optional; fallbacks live in lib/utils/doctor).
+  qualifications: n.qualifications ?? undefined,
+  education: n.education ?? undefined,
+  about: n.about ?? undefined,
+  registrationNo: n.registrationNo ?? undefined,
 });
 
 const mapAmbulance = (n: Row): Ambulance => ({
@@ -97,14 +111,6 @@ const mapReview = (n: Row): Review => ({
 });
 
 // ── Auth ─────────────────────────────────────────────────────
-export interface UserRecord {
-  id: string;
-  email: string;
-  passwordHash: string;
-  role: "patient" | "doctor" | "ops";
-  name: string;
-}
-
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const rows = await read<{ u: Row }>(
     `MATCH (u:User {email: $email}) RETURN properties(u) AS u`,
@@ -151,6 +157,9 @@ export async function createDoctorUser(input: {
   experienceYears: number;
   consultFee: number;
   homeVisitFee: number;
+  /** Real device location at signup (nullable → falls back near center). */
+  lat?: number | null;
+  lng?: number | null;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
   const id = uid("doc");
   const fullName = input.fullName.startsWith("Dr.")
@@ -166,7 +175,8 @@ export async function createDoctorUser(input: {
        gender: $gender, experienceYears: $experienceYears,
        languages: $languages, status: 'online', verified: false, rating: 0.0,
        consultFee: $consultFee, homeVisitFee: $homeVisitFee,
-       avatarColor: $avatarColor, lat: $lat, lng: $lng, lastSeen: $now
+       avatarColor: $avatarColor, lat: $lat, lng: $lng,
+       location: point({latitude: $lat, longitude: $lng}), lastSeen: $now
      })
      CREATE (u)-[:IS_DOCTOR]->(d)
      RETURN properties(u) AS u, properties(d) AS d`,
@@ -183,8 +193,10 @@ export async function createDoctorUser(input: {
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
       avatarColor: AVATAR[Math.floor(Math.random() * AVATAR.length)],
-      lat: MAP_CENTER.lat + (Math.random() - 0.5) * 0.06,
-      lng: MAP_CENTER.lng + (Math.random() - 0.5) * 0.06,
+      // Real GPS when granted; otherwise near the fallback center until
+      // the cockpit's location publisher reports the true position.
+      lat: input.lat ?? MAP_CENTER.lat + (Math.random() - 0.5) * 0.02,
+      lng: input.lng ?? MAP_CENTER.lng + (Math.random() - 0.5) * 0.02,
       now: new Date().toISOString(),
     },
   );
@@ -213,34 +225,92 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
   return rows[0]?.d ? mapDoctor(rows[0].d) : null;
 }
 
-// ── Reads ────────────────────────────────────────────────────
-export const getDoctors = () =>
-  read<{ d: Row }>(`MATCH (d:Doctor) RETURN properties(d) AS d`).then((r) => r.map((x) => mapDoctor(x.d)));
+// ── Reads (optionally geo-filtered with `near`) ──────────────
+const nearParams = (near: Near) => ({
+  nlat: near.lat,
+  nlng: near.lng,
+  meters: Math.max(0.1, near.km) * 1000,
+});
+
+export const getDoctors = (near?: Near) =>
+  (near
+    ? read<{ d: Row }>(
+        `MATCH (d:Doctor)
+         WHERE d.lat IS NOT NULL AND d.lng IS NOT NULL AND ${DIST("d")} < $meters
+         RETURN properties(d) AS d ORDER BY ${DIST("d")} ASC LIMIT 100`,
+        nearParams(near),
+      )
+    : read<{ d: Row }>(`MATCH (d:Doctor) RETURN properties(d) AS d`)
+  ).then((r) => r.map((x) => mapDoctor(x.d)));
 
 export const getAmbulances = () =>
   read<{ a: Row }>(`MATCH (a:Ambulance) RETURN properties(a) AS a`).then((r) =>
     r.map((x) => mapAmbulance(x.a)),
   );
 
-export const getRequests = () =>
-  read<{ r: Row }>(`MATCH (r:ConsultRequest) RETURN properties(r) AS r ORDER BY r.createdAt DESC`).then(
-    (rows) => rows.map((x) => mapRequest(x.r)),
-  );
+/** Attach mutual-rating context: the patient's aggregate rating and
+ *  whether this consult has already been rated by the doctor. */
+const RATING_CTX = `
+  OPTIONAL MATCH (p:User {id: r.patientId})
+  RETURN properties(r) AS r,
+         p.rating AS patientRating,
+         p.ratingCount AS patientRatingCount,
+         EXISTS { MATCH (:PatientReview {requestId: r.id}) } AS patientRated,
+         EXISTS { MATCH (:Review {requestId: r.id}) } AS reviewed`;
 
-export const getSosEvents = () =>
-  read<{ s: Row }>(`MATCH (s:Sos) RETURN properties(s) AS s ORDER BY s.createdAt DESC`).then((rows) =>
-    rows.map((x) => mapSos(x.s)),
-  );
+const mapRequestWithRating = (x: Row): ConsultRequest => ({
+  ...mapRequest(x.r),
+  patientRating: x.patientRating != null ? Number(x.patientRating) : null,
+  patientRatingCount: Number(x.patientRatingCount ?? 0),
+  patientRated: !!x.patientRated,
+  reviewed: !!x.reviewed,
+});
+
+export const getRequests = (near?: Near) =>
+  (near
+    ? read<Row>(
+        `MATCH (r:ConsultRequest)
+         WHERE r.lat IS NOT NULL AND r.lng IS NOT NULL AND ${DIST("r")} < $meters
+         WITH r ORDER BY r.createdAt DESC LIMIT 200
+         ${RATING_CTX}`,
+        nearParams(near),
+      )
+    : read<Row>(
+        `MATCH (r:ConsultRequest)
+         WITH r ORDER BY r.createdAt DESC
+         ${RATING_CTX}`,
+      )
+  ).then((rows) => rows.map(mapRequestWithRating));
+
+export const getSosEvents = (near?: Near) =>
+  (near
+    ? read<{ s: Row }>(
+        `MATCH (s:Sos)
+         WHERE s.lat IS NOT NULL AND s.lng IS NOT NULL AND ${DIST("s")} < $meters
+         RETURN properties(s) AS s ORDER BY s.createdAt DESC LIMIT 200`,
+        nearParams(near),
+      )
+    : read<{ s: Row }>(`MATCH (s:Sos) RETURN properties(s) AS s ORDER BY s.createdAt DESC`)
+  ).then((rows) => rows.map((x) => mapSos(x.s)));
 
 export const getOrders = () =>
   read<{ o: Row }>(`MATCH (o:Order) RETURN properties(o) AS o ORDER BY o.createdAt DESC`).then((rows) =>
     rows.map((x) => mapOrder(x.o)),
   );
 
-export const getReviews = () =>
-  read<{ v: Row }>(`MATCH (v:Review) RETURN properties(v) AS v ORDER BY v.createdAt DESC`).then((rows) =>
-    rows.map((x) => mapReview(x.v)),
-  );
+export const getReviews = (doctorId?: string) =>
+  (doctorId
+    ? read<{ v: Row }>(
+        `MATCH (v:Review {doctorId: $doctorId}) RETURN properties(v) AS v ORDER BY v.createdAt DESC`,
+        { doctorId },
+      )
+    : read<{ v: Row }>(`MATCH (v:Review) RETURN properties(v) AS v ORDER BY v.createdAt DESC`)
+  ).then((rows) => rows.map((x) => mapReview(x.v)));
+
+export async function getSosById(id: string): Promise<SosEvent | null> {
+  const rows = await read<{ s: Row }>(`MATCH (s:Sos {id: $id}) RETURN properties(s) AS s`, { id });
+  return rows[0]?.s ? mapSos(rows[0].s) : null;
+}
 
 // ── Patient-side creates ─────────────────────────────────────
 export async function createSos(input: {
@@ -252,15 +322,50 @@ export async function createSos(input: {
   lng: number;
   notes?: string;
 }): Promise<SosEvent> {
+  const id = uid("sos");
+  const now = new Date().toISOString();
   const rows = await write<{ s: Row }>(
     `CREATE (s:Sos {
        id: $id, patientId: $patientId, patientName: $patientName,
        category: $category, status: 'open', address: $address,
-       lat: $lat, lng: $lng, ambulanceId: null, doctorId: null,
+       lat: $lat, lng: $lng, location: point({latitude: $lat, longitude: $lng}),
+       ambulanceId: null, doctorId: null,
        notes: $notes, createdAt: $now, resolvedAt: null
      }) RETURN properties(s) AS s`,
-    { id: uid("sos"), ...input, notes: input.notes ?? "Patient-triggered SOS.", now: new Date().toISOString() },
+    { id, ...input, notes: input.notes ?? "Patient-triggered SOS.", now },
   );
+
+  // Fan-out (best effort): alert the nearest online doctors and suggest
+  // the nearest free ambulance so dispatch starts pre-computed.
+  try {
+    await write(
+      `MATCH (s:Sos {id: $id})
+       MATCH (d:Doctor)
+       WHERE d.status = 'online' AND d.lat IS NOT NULL AND d.lng IS NOT NULL
+       WITH s, d,
+            point.distance(point({latitude: s.lat, longitude: s.lng}),
+                           point({latitude: d.lat, longitude: d.lng})) AS dist
+       WHERE dist < $radius
+       WITH s, d, dist ORDER BY dist ASC LIMIT 5
+       MERGE (s)-[n:NOTIFIES]->(d)
+       SET n.at = $now, n.distanceMeters = round(dist)`,
+      { id, now, radius: 15_000 },
+    );
+    await write(
+      `MATCH (s:Sos {id: $id})
+       MATCH (a:Ambulance {status: 'free'})
+       WHERE a.lat IS NOT NULL AND a.lng IS NOT NULL
+       WITH s, a,
+            point.distance(point({latitude: s.lat, longitude: s.lng}),
+                           point({latitude: a.lat, longitude: a.lng})) AS dist
+       ORDER BY dist ASC LIMIT 1
+       SET s.suggestedAmbulanceId = a.id`,
+      { id },
+    );
+  } catch (err) {
+    console.error("sos fan-out failed (non-fatal):", err);
+  }
+
   return mapSos(rows[0].s);
 }
 
@@ -279,7 +384,8 @@ export async function createRequest(input: {
     `CREATE (r:ConsultRequest {
        id: $id, patientId: $patientId, patientName: $patientName, type: $type,
        status: 'pending', symptoms: $symptoms, fee: $fee, address: $address,
-       lat: $lat, lng: $lng, doctorId: $doctorId, createdAt: $now
+       lat: $lat, lng: $lng, location: point({latitude: $lat, longitude: $lng}),
+       doctorId: $doctorId, createdAt: $now
      }) RETURN properties(r) AS r`,
     { id: uid("req"), ...input, doctorId: input.doctorId ?? null, now: new Date().toISOString() },
   );
@@ -290,10 +396,23 @@ export async function createOrder(input: {
   patientId: string;
   patientName: string;
   items: { name: string; qty: number }[];
-  total: number;
+  total: number; // ignored — the server prices from the catalog
   address: string;
   darkStore: string;
 }): Promise<Order> {
+  // Server-side pricing: never trust a client total.
+  if (!Array.isArray(input.items) || input.items.length === 0) {
+    throw new DomainError("The order has no items.");
+  }
+  let total = 0;
+  const items = input.items.map((it) => {
+    const cat = MED_CATALOG.find((m) => m.name === it.name);
+    if (!cat) throw new DomainError(`Unknown item: ${String(it.name).slice(0, 60)}`);
+    const qty = Math.min(20, Math.max(1, Math.round(Number(it.qty) || 1)));
+    total += cat.price * qty;
+    return { name: cat.name, qty };
+  });
+
   const rows = await write<{ o: Row }>(
     `CREATE (o:Order {
        id: $id, patientId: $patientId, patientName: $patientName,
@@ -304,8 +423,8 @@ export async function createOrder(input: {
       id: uid("ord"),
       patientId: input.patientId,
       patientName: input.patientName,
-      items: JSON.stringify(input.items),
-      total: input.total,
+      items: JSON.stringify(items),
+      total,
       address: input.address,
       darkStore: input.darkStore,
       now: new Date().toISOString(),
@@ -324,28 +443,75 @@ export async function setDoctorStatus(id: string, status: string) {
 
 export async function updateDoctor(
   id: string,
-  patch: { fullName?: string; specialty?: string; consultFee?: number; homeVisitFee?: number },
+  patch: {
+    fullName?: string;
+    specialty?: string;
+    consultFee?: number;
+    homeVisitFee?: number;
+    experienceYears?: number;
+    languages?: string[];
+    qualifications?: string;
+    education?: string;
+    about?: string;
+    registrationNo?: string;
+    /** Live device position from the cockpit's location publisher. */
+    lat?: number;
+    lng?: number;
+  },
 ) {
+  const hasGeo = typeof patch.lat === "number" && typeof patch.lng === "number";
+  const languages =
+    Array.isArray(patch.languages) && patch.languages.length > 0 ? patch.languages : null;
   await write(
     `MATCH (d:Doctor {id: $id})
      SET d += {
        fullName: coalesce($fullName, d.fullName),
        specialty: coalesce($specialty, d.specialty),
        consultFee: coalesce($consultFee, d.consultFee),
-       homeVisitFee: coalesce($homeVisitFee, d.homeVisitFee)
-     }`,
+       homeVisitFee: coalesce($homeVisitFee, d.homeVisitFee),
+       experienceYears: coalesce($experienceYears, d.experienceYears),
+       languages: coalesce($languages, d.languages),
+       qualifications: coalesce($qualifications, d.qualifications),
+       education: coalesce($education, d.education),
+       about: coalesce($about, d.about),
+       registrationNo: coalesce($registrationNo, d.registrationNo),
+       lat: coalesce($lat, d.lat),
+       lng: coalesce($lng, d.lng)
+     }
+     SET d.lastSeen = $now
+     FOREACH (_ IN CASE WHEN $hasGeo THEN [1] ELSE [] END |
+       SET d.location = point({latitude: $lat, longitude: $lng}))`,
     {
       id,
       fullName: patch.fullName ?? null,
       specialty: patch.specialty ?? null,
       consultFee: patch.consultFee ?? null,
       homeVisitFee: patch.homeVisitFee ?? null,
+      experienceYears: patch.experienceYears ?? null,
+      languages,
+      qualifications: patch.qualifications ?? null,
+      education: patch.education ?? null,
+      about: patch.about ?? null,
+      registrationNo: patch.registrationNo ?? null,
+      lat: hasGeo ? patch.lat : null,
+      lng: hasGeo ? patch.lng : null,
+      hasGeo,
+      now: new Date().toISOString(),
     },
   );
 }
 
-/** Atomic claim: only succeeds if the request is still pending. */
+/** Atomic claim: only succeeds if the request is still pending AND the
+ *  doctor has no other accepted consult in progress. */
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
+  const active = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {doctorId: $doctorId, status: 'accepted'})
+     RETURN properties(r) AS r LIMIT 1`,
+    { doctorId },
+  );
+  if (active.length > 0) {
+    throw new DomainError("You already have an active consult — complete it first.", 409);
+  }
   const rows = await write<{ r: Row }>(
     `MATCH (r:ConsultRequest {id: $id})
      WHERE r.status = 'pending'
@@ -360,8 +526,38 @@ export async function declineRequest(id: string) {
   await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'declined'`, { id });
 }
 
-export async function completeRequest(id: string) {
-  await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'completed'`, { id });
+export async function completeRequest(
+  id: string,
+  opts?: { notes?: string; prescription?: { name: string; qty: number }[] },
+) {
+  const now = new Date().toISOString();
+  // Flip the request and persist a Consult record of what happened.
+  const rows = await write<{ r: Row }>(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.status IN ['accepted', 'pending']
+     SET r.status = 'completed'
+     CREATE (c:Consult {
+       id: $cid, requestId: r.id, doctorId: r.doctorId, patientId: r.patientId,
+       startedAt: r.createdAt, endedAt: $now, notes: $notes
+     })
+     CREATE (r)-[:RESULTED_IN]->(c)
+     RETURN properties(r) AS r`,
+    { id, cid: uid("con"), now, notes: opts?.notes ?? "" },
+  );
+  if (!rows[0]) return;
+
+  // Optional prescription → its own node, ready for AuraMed to fulfil.
+  if (opts?.prescription && opts.prescription.length > 0) {
+    await write(
+      `MATCH (r:ConsultRequest {id: $id})-[:RESULTED_IN]->(c:Consult)
+       CREATE (rx:Prescription {
+         id: $rxid, consultId: c.id, doctorId: r.doctorId,
+         patientId: r.patientId, items: $items, createdAt: $now
+       })
+       CREATE (c)-[:PRESCRIBED]->(rx)`,
+      { id, rxid: uid("rx"), items: JSON.stringify(opts.prescription), now },
+    );
+  }
 }
 
 // ── Ops mutations ────────────────────────────────────────────
@@ -379,6 +575,10 @@ export async function assignDoctorToSos(sosId: string, doctorId: string) {
   await write(`MATCH (s:Sos {id: $sosId}) SET s.doctorId = $doctorId`, { sosId, doctorId });
 }
 
+export async function setSosCategory(sosId: string, category: string) {
+  await write(`MATCH (s:Sos {id: $sosId}) SET s.category = $category`, { sosId, category });
+}
+
 const SOS_FLOW = ["open", "assigned", "enroute", "resolved"];
 export async function advanceSos(sosId: string) {
   const rows = await read<{ s: Row }>(`MATCH (s:Sos {id: $sosId}) RETURN properties(s) AS s`, { sosId });
@@ -391,6 +591,184 @@ export async function advanceSos(sosId: string) {
          s.resolvedAt = CASE $next WHEN 'resolved' THEN $now ELSE s.resolvedAt END`,
     { sosId, next, now: new Date().toISOString() },
   );
+}
+
+// ── Reviews ──────────────────────────────────────────────────
+/** One review per completed request, only by its own patient for its
+ *  own doctor. Also refreshes the doctor's aggregate rating. */
+export async function createReview(input: {
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  requestId: string;
+  rating: number;
+  comment: string;
+}): Promise<Review | null> {
+  const rating = Math.min(5, Math.max(1, Math.round(Number(input.rating) || 0)));
+  const rows = await write<{ v: Row }>(
+    `MATCH (r:ConsultRequest {id: $requestId})
+     WHERE r.status = 'completed'
+       AND r.patientId = $patientId
+       AND r.doctorId = $doctorId
+       AND NOT EXISTS { MATCH (:Review {requestId: $requestId}) }
+     CREATE (v:Review {
+       id: $id, requestId: $requestId, doctorId: $doctorId,
+       patientId: $patientId, patientName: $patientName,
+       rating: $rating, comment: $comment, createdAt: $now
+     })
+     RETURN properties(v) AS v`,
+    {
+      ...input,
+      rating,
+      comment: String(input.comment ?? "").slice(0, 600),
+      id: uid("rev"),
+      now: new Date().toISOString(),
+    },
+  );
+  if (!rows[0]) {
+    throw new DomainError("You can only review a consult you completed, once.", 409);
+  }
+  await write(
+    `MATCH (v:Review {doctorId: $doctorId})
+     WITH avg(v.rating) AS avgRating
+     MATCH (d:Doctor {id: $doctorId})
+     SET d.rating = round(avgRating * 10) / 10.0`,
+    { doctorId: input.doctorId },
+  );
+  return mapReview(rows[0].v);
+}
+
+/** Doctor → patient rating after a completed consult (mutual ratings).
+ *  One rating per completed request, by its own doctor. Refreshes the
+ *  patient's aggregate rating on their User node. */
+export async function ratePatient(input: {
+  doctorId: string;
+  doctorName: string;
+  requestId: string;
+  rating: number;
+  comment: string;
+}): Promise<void> {
+  const rating = Math.min(5, Math.max(1, Math.round(Number(input.rating) || 0)));
+  const rows = await write<{ v: Row }>(
+    `MATCH (r:ConsultRequest {id: $requestId})
+     WHERE r.status = 'completed'
+       AND r.doctorId = $doctorId
+       AND r.patientId IS NOT NULL
+       AND NOT EXISTS { MATCH (:PatientReview {requestId: $requestId}) }
+     CREATE (v:PatientReview {
+       id: $id, requestId: $requestId, patientId: r.patientId,
+       doctorId: $doctorId, doctorName: $doctorName,
+       rating: $rating, comment: $comment, createdAt: $now
+     })
+     RETURN properties(v) AS v`,
+    {
+      requestId: input.requestId,
+      doctorId: input.doctorId,
+      doctorName: input.doctorName,
+      rating,
+      comment: String(input.comment ?? "").slice(0, 600),
+      id: uid("prev"),
+      now: new Date().toISOString(),
+    },
+  );
+  if (!rows[0]) {
+    throw new DomainError("You can only rate a patient from a consult you completed, once.", 409);
+  }
+  await write(
+    `MATCH (v:PatientReview {patientId: $patientId})
+     WITH avg(v.rating) AS avgRating, count(v) AS c
+     MATCH (p:User {id: $patientId})
+     SET p.rating = round(avgRating * 10) / 10.0, p.ratingCount = c`,
+    { patientId: rows[0].v.patientId },
+  );
+}
+
+// ── Ambulance CRUD (ops) ─────────────────────────────────────
+export async function createAmbulance(input: {
+  vehicleNo: string;
+  driverName: string;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<Ambulance> {
+  if (!input.vehicleNo?.trim() || !input.driverName?.trim()) {
+    throw new DomainError("Vehicle number and driver name are required.");
+  }
+  const rows = await write<{ a: Row }>(
+    `CREATE (a:Ambulance {
+       id: $id, vehicleNo: $vehicleNo, driverName: $driverName,
+       status: 'free', lat: $lat, lng: $lng
+     }) RETURN properties(a) AS a`,
+    {
+      id: uid("amb"),
+      vehicleNo: input.vehicleNo.trim(),
+      driverName: input.driverName.trim(),
+      lat: input.lat ?? MAP_CENTER.lat,
+      lng: input.lng ?? MAP_CENTER.lng,
+    },
+  );
+  return mapAmbulance(rows[0].a);
+}
+
+export async function updateAmbulance(
+  id: string,
+  patch: {
+    vehicleNo?: string;
+    driverName?: string;
+    status?: string;
+    lat?: number;
+    lng?: number;
+  },
+) {
+  const status =
+    patch.status && ["free", "dispatched", "busy"].includes(patch.status)
+      ? patch.status
+      : null;
+  await write(
+    `MATCH (a:Ambulance {id: $id})
+     SET a += {
+       vehicleNo: coalesce($vehicleNo, a.vehicleNo),
+       driverName: coalesce($driverName, a.driverName),
+       status: coalesce($status, a.status),
+       lat: coalesce($lat, a.lat),
+       lng: coalesce($lng, a.lng)
+     }`,
+    {
+      id,
+      vehicleNo: patch.vehicleNo ?? null,
+      driverName: patch.driverName ?? null,
+      status,
+      lat: typeof patch.lat === "number" ? patch.lat : null,
+      lng: typeof patch.lng === "number" ? patch.lng : null,
+    },
+  );
+}
+
+// ── Audit trail ──────────────────────────────────────────────
+/** Cheap append-only audit node per write. Fire-and-forget. */
+export async function audit(entry: {
+  actorId: string;
+  role: string;
+  action: string;
+  meta?: unknown;
+}) {
+  try {
+    await write(
+      `CREATE (:Audit {
+         id: $id, actorId: $actorId, role: $role, action: $action,
+         meta: $meta, at: $now
+       })`,
+      {
+        id: uid("aud"),
+        actorId: entry.actorId,
+        role: entry.role,
+        action: entry.action,
+        meta: JSON.stringify(entry.meta ?? {}).slice(0, 2000),
+        now: new Date().toISOString(),
+      },
+    );
+  } catch (err) {
+    console.error("audit write failed (non-fatal):", err);
+  }
 }
 
 const ORDER_FLOW = ["placed", "packed", "out_for_delivery", "delivered"];

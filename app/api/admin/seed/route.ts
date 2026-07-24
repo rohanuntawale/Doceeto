@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { runSetup } from "@/lib/neo4j/seed";
+import { runSetup } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

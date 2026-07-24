@@ -1,5 +1,5 @@
 /**
- * Domain types for the Iyashi dashboard.
+ * Domain types for the Doceeto dashboard.
  * These mirror the Supabase schema (supabase/migrations/0001_init.sql)
  * but are the clean shape the UI consumes. All lib/api + hooks return
  * these, never raw DB rows - one seam for teammates to swap the source.
@@ -73,6 +73,13 @@ export interface Doctor {
   lat: number;
   lng: number;
   lastSeen: string; // ISO
+  // Patient-facing profile detail. Optional: seeded doctors carry rich data;
+  // registered doctors fall back to specialty-derived defaults (see
+  // lib/utils/doctor.ts) until they fill their profile.
+  qualifications?: string; // e.g. "MBBS, MD (General Medicine)"
+  education?: string; // academic background, e.g. "Seth GS Medical College, Mumbai"
+  about?: string; // short bio
+  registrationNo?: string; // medical council registration
 }
 
 export interface Ambulance {
@@ -113,6 +120,14 @@ export interface ConsultRequest {
   lng: number;
   createdAt: string; // ISO
   doctorId: string | null;
+  // Mutual-rating context (attached on reads, doctor-facing):
+  /** The patient's aggregate rating from past doctors, if any. */
+  patientRating?: number | null;
+  patientRatingCount?: number;
+  /** True once the doctor has rated the patient for this consult. */
+  patientRated?: boolean;
+  /** True once the patient has reviewed the doctor for this consult. */
+  reviewed?: boolean;
 }
 
 export interface Order {

@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Star, MapPin, Stethoscope, Pencil } from "lucide-react";
+import {
+  BadgeCheck,
+  Star,
+  MapPin,
+  Stethoscope,
+  Pencil,
+  Award,
+  GraduationCap,
+  ShieldCheck,
+  Briefcase,
+  Languages as LanguagesIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -13,16 +24,17 @@ import { useReviews } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { doctorStatus } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
+import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
 import { useMounted } from "@/lib/hooks/use-mounted";
 
 export default function ProfilePage() {
   const me = useCurrentDoctor();
-  const reviews = useReviews();
+  const reviews = useReviews(me?.id);
   const mounted = useMounted();
   const [editing, setEditing] = useState(false);
   if (!me) return null;
 
-  const mine = reviews; // demo: reviews belong to the seeded doctor
+  const mine = reviews; // scoped to this doctor via useReviews(me.id)
   const st = doctorStatus[me.status];
 
   return (
@@ -76,6 +88,28 @@ export default function ProfilePage() {
             {me.lat.toFixed(3)}, {me.lng.toFixed(3)}
           </p>
 
+          {/* About + credentials — exactly what patients see. Use “Edit
+              profile” to change any of it. */}
+          <div className="mt-5 space-y-3 border-t border-[var(--border)] pt-4">
+            <div className="flex items-center justify-between">
+              <div className="label">What patients see</div>
+              <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-salmon transition-colors hover:text-cream"
+              >
+                Edit
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+              {doctorAbout(me)}
+            </p>
+            <CredLine icon={<Award className="h-4 w-4 text-salmon" />} label="Qualifications" value={doctorQualification(me)} />
+            <CredLine icon={<GraduationCap className="h-4 w-4 text-salmon" />} label="Academic background" value={doctorEducation(me)} />
+            <CredLine icon={<Briefcase className="h-4 w-4 text-salmon" />} label="Experience" value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`} />
+            <CredLine icon={<LanguagesIcon className="h-4 w-4 text-salmon" />} label="Languages" value={me.languages.join(", ") || "—"} />
+            <CredLine icon={<ShieldCheck className="h-4 w-4 text-salmon" />} label="Medical reg. no." value={me.registrationNo || "Not added yet"} />
+          </div>
+
           <div className="mt-5">
             <OnlineToggle doctor={me} />
           </div>
@@ -128,6 +162,28 @@ function FeeTile({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-[var(--border)] bg-espresso p-3">
       <div className="metric text-xl text-cream">{value}</div>
       <div className="label mt-1">{label}</div>
+    </div>
+  );
+}
+
+function CredLine({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-terracotta/10">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <div className="text-xs text-[var(--text-faint)]">{label}</div>
+        <div className="text-sm text-cream">{value}</div>
+      </div>
     </div>
   );
 }

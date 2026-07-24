@@ -25,7 +25,7 @@ export default function EarningsPage() {
 
   const settled = completed.reduce((a, r) => a + r.fee, 0);
   const pending = accepted.reduce((a, r) => a + r.fee, 0);
-  // Iyashi take rate on Zumi is a transparent commission (deck: business model).
+  // Doceeto take rate on Zumi is a transparent commission (deck: business model).
   const TAKE = 0.15;
   const net = Math.round(settled * (1 - TAKE));
 

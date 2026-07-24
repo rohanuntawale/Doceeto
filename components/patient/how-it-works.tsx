@@ -55,7 +55,7 @@ export function HowItWorks() {
       >
         <X className="h-4 w-4" />
       </button>
-      <div className="label mb-3">How Iyashi works</div>
+      <div className="label mb-3">How Doceeto works</div>
       <ol className="space-y-3">
         {STEPS.map((s, i) => (
           <li key={s.title} className="flex gap-3">

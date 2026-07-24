@@ -47,13 +47,12 @@ export function ThemeSwitcher({ className }: { className?: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Change color theme"
         aria-expanded={open}
-        className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-2.5 text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
+        className={cn(
+          "grid h-9 w-9 place-items-center rounded-lg text-[var(--text-muted)] transition-colors",
+          open ? "bg-white/8 text-[var(--text)]" : "hover:bg-white/5 hover:text-[var(--text)]",
+        )}
       >
-        <Palette className="h-4 w-4" />
-        <span
-          className="h-3.5 w-3.5 rounded-full ring-1 ring-inset ring-black/20"
-          style={{ background: active.accent }}
-        />
+        <Palette className="h-[18px] w-[18px]" />
       </button>
 
       {open && (
@@ -64,7 +63,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 cursor-default"
           />
-          <div className="glass-strong absolute right-0 z-50 mt-2 w-56 animate-fade-up overflow-hidden rounded-card p-1.5">
+          <div className="absolute right-0 z-50 mt-2 w-56 animate-fade-up overflow-hidden rounded-[14px] border border-[var(--border)] bg-espresso-800 p-1.5 shadow-card">
             <div className="label px-2.5 py-1.5">Color theme</div>
             {THEMES.map((t) => (
               <button

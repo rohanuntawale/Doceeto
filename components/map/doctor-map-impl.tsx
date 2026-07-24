@@ -47,8 +47,10 @@ export default function DoctorMapImpl({
   });
   useEffect(() => {
     setColors({
-      accent: themeColor("--c-terracotta", "#C15A38"),
-      accentSoft: themeColor("--c-terracotta-300", "#E0A890"),
+      // Doctors render in gold so they stay distinct from the white
+      // "you are here" marker now that the UI accent is white.
+      accent: themeColor("--c-tan", "#C6A64C"),
+      accentSoft: themeColor("--c-salmon", "#D6BA6A"),
       cream: themeColor("--c-cream", "#F1E9D8"),
     });
   }, [selectedId]);

@@ -51,7 +51,7 @@ export function SosCard({
             className={cn(
               "grid h-11 w-11 place-items-center rounded-lg font-jp text-lg",
               isOpen
-                ? "bg-terracotta text-cream animate-pulse-ring"
+                ? "bg-terracotta text-on-accent animate-pulse-ring"
                 : "bg-white/5 text-salmon",
             )}
           >

@@ -6,9 +6,9 @@ type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-terracotta text-cream hover:bg-terracotta-700 shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]",
+    "bg-terracotta text-on-accent hover:bg-terracotta-700 shadow-[0_1px_0_rgba(255,255,255,0.12)_inset]",
   danger:
-    "bg-terracotta text-cream hover:bg-terracotta-700 animate-pulse-ring",
+    "bg-terracotta text-on-accent hover:bg-terracotta-700 animate-pulse-ring",
   outline:
     "border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)]",
   ghost: "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]",

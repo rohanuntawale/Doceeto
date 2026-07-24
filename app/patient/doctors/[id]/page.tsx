@@ -1,0 +1,263 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Star,
+  BadgeCheck,
+  Video,
+  Home,
+  Building2,
+  Briefcase,
+  Languages as LanguagesIcon,
+  GraduationCap,
+  Award,
+  User as UserIcon,
+  MapPin,
+  ShieldCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/ui/status-pill";
+import { useToast } from "@/components/ui/toast";
+import { useDoctors, useReviews, useActions } from "@/lib/hooks/data";
+import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
+import { doctorStatus, doctorKind } from "@/lib/labels";
+import { formatINR, initials, timeAgo } from "@/lib/utils/format";
+import { haversineKm, formatKm } from "@/lib/utils/geo";
+import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
+import { useMounted } from "@/lib/hooks/use-mounted";
+import type { ConsultType } from "@/lib/types/domain";
+
+const MODES: { type: ConsultType; label: string; icon: React.ReactNode; help: string }[] = [
+  { type: "video", label: "Video", icon: <Video className="h-4 w-4" />, help: "Talk from home" },
+  { type: "clinic", label: "Clinic", icon: <Building2 className="h-4 w-4" />, help: "Visit the clinic" },
+  { type: "home_visit", label: "Home", icon: <Home className="h-4 w-4" />, help: "Doctor comes to you" },
+];
+
+export default function DoctorProfilePage() {
+  const params = useParams<{ id: string }>();
+  const id = String(params?.id ?? "");
+  const router = useRouter();
+  const toast = useToast();
+  const doctors = useDoctors();
+  const reviews = useReviews(id);
+  const { patient } = useCurrentPatient();
+  const { createRequest } = useActions();
+  const [busy, setBusy] = useState<ConsultType | null>(null);
+
+  const doctor = doctors.find((d) => d.id === id);
+
+  if (!doctor) {
+    return (
+      <div className="space-y-4">
+        <BackLink />
+        <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-10 text-center text-sm text-[var(--text-muted)]">
+          Loading this doctor… if nothing appears, they may be off the network.
+        </div>
+      </div>
+    );
+  }
+
+  const isOnline = doctor.status === "online";
+  const st = doctorStatus[doctor.status];
+  const feeFor = (t: ConsultType) => (t === "home_visit" ? doctor.homeVisitFee : doctor.consultFee);
+  const addressFor = (t: ConsultType) =>
+    t === "home_visit" ? patient.address || "Your address" : t === "clinic" ? "At the doctor's clinic" : "Video call";
+
+  async function book(type: ConsultType) {
+    if (!doctor) return;
+    setBusy(type);
+    try {
+      await createRequest({
+        patientId: patient.id,
+        patientName: patient.name,
+        type,
+        symptoms: "General consultation.",
+        fee: feeFor(type),
+        address: addressFor(type),
+        lat: patient.lat,
+        lng: patient.lng,
+        doctorId: doctor.id,
+      });
+      toast.push({
+        tone: "success",
+        title: `Request sent to ${doctor.fullName}`,
+        desc: "You'll see it under your care the moment they accept.",
+      });
+      router.push("/patient");
+    } catch (e) {
+      toast.push({
+        tone: "error",
+        title: "Couldn't send the request",
+        desc: e instanceof Error ? e.message : "Please try again.",
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <BackLink />
+
+      {/* ── Identity header ─────────────────────────────── */}
+      <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card">
+        <div className="flex items-start gap-4">
+          <span
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-xl text-lg font-medium text-cream"
+            style={{ background: doctor.avatarColor }}
+          >
+            {initials(doctor.fullName.replace("Dr. ", ""))}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h1 className="truncate font-serif text-2xl text-cream">{doctor.fullName}</h1>
+              {doctor.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-status-ok" />}
+            </div>
+            <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+              {doctor.specialty} · {doctorKind[doctor.kind].label}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+              <span className="flex items-center gap-1 text-tan">
+                <Star className="h-3.5 w-3.5 fill-tan" />
+                {doctor.rating > 0 ? doctor.rating.toFixed(1) : "New"}
+                <span className="text-[var(--text-faint)]">
+                  ({reviews.length} review{reviews.length === 1 ? "" : "s"})
+                </span>
+              </span>
+              <span className="flex items-center gap-1 text-[var(--text-faint)]">
+                <MapPin className="h-3.5 w-3.5" />
+                {formatKm(haversineKm(patient, doctor))} away
+              </span>
+              <StatusPill tone={st.tone}>{st.label}</StatusPill>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm leading-relaxed text-[var(--text-muted)]">{doctorAbout(doctor)}</p>
+      </div>
+
+      {/* ── Quick facts ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Fact icon={<Briefcase className="h-4 w-4" />} label="Experience" value={`${doctor.experienceYears} yr${doctor.experienceYears === 1 ? "" : "s"}`} />
+        <Fact icon={<UserIcon className="h-4 w-4" />} label="Doctor" value={doctor.gender === "male" ? "Male" : "Female"} />
+        <Fact icon={<LanguagesIcon className="h-4 w-4" />} label="Speaks" value={doctor.languages.slice(0, 2).join(", ")} />
+        <Fact icon={<ShieldCheck className="h-4 w-4" />} label="Reg. no." value={doctor.registrationNo || "On file"} />
+      </div>
+
+      {/* ── Credentials ─────────────────────────────────── */}
+      <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card">
+        <div className="label mb-3">Credentials</div>
+        <div className="space-y-3">
+          <CredRow icon={<Award className="h-4 w-4 text-salmon" />} title="Qualifications" body={doctorQualification(doctor)} />
+          <CredRow icon={<GraduationCap className="h-4 w-4 text-salmon" />} title="Academic background" body={doctorEducation(doctor)} />
+          <CredRow icon={<Briefcase className="h-4 w-4 text-salmon" />} title="Experience" body={`${doctor.experienceYears} years in ${doctor.specialty.toLowerCase()} — ${doctorKind[doctor.kind].label.toLowerCase()}.`} />
+        </div>
+      </div>
+
+      {/* ── Book a visit ────────────────────────────────── */}
+      <div className="rounded-card border border-terracotta/30 bg-espresso-800 p-5 shadow-card">
+        <div className="flex items-center justify-between">
+          <div className="label">Book a visit</div>
+          {!isOnline && (
+            <span className="text-xs text-[var(--text-faint)]">{doctor.fullName.split(" ")[1]} is {st.label.toLowerCase()}</span>
+          )}
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {MODES.map((m) => (
+            <button
+              key={m.type}
+              onClick={() => book(m.type)}
+              disabled={!isOnline || busy !== null}
+              className="flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-espresso px-2 py-3 text-center transition-colors hover:border-terracotta/50 hover:bg-terracotta/10 disabled:pointer-events-none disabled:opacity-50"
+            >
+              <span className="text-salmon">{m.icon}</span>
+              <span className="text-xs font-medium text-cream">{m.label}</span>
+              <span className="text-sm font-semibold text-cream">
+                {busy === m.type ? "Sending…" : formatINR(feeFor(m.type))}
+              </span>
+              <span className="text-[10px] text-[var(--text-faint)]">{m.help}</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-center text-[11px] text-[var(--text-faint)]">
+          You only pay after the doctor accepts. Transparent fees, no surprises.
+        </p>
+      </div>
+
+      {/* ── Reviews ─────────────────────────────────────── */}
+      <div>
+        <div className="label mb-3">Patient reviews ({reviews.length})</div>
+        {reviews.length === 0 ? (
+          <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center text-sm text-[var(--text-muted)]">
+            No reviews yet — be the first after your consult.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map((r) => (
+              <ReviewCard key={r.id} name={r.patientName} rating={r.rating} comment={r.comment} createdAt={r.createdAt} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BackLink() {
+  return (
+    <Link
+      href="/patient/doctors"
+      className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-cream"
+    >
+      <ArrowLeft className="h-4 w-4" /> All doctors
+    </Link>
+  );
+}
+
+function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-3 text-center shadow-card">
+      <div className="flex items-center justify-center text-[var(--text-faint)]">{icon}</div>
+      <div className="mt-1 truncate text-sm font-medium text-cream">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-[var(--text-faint)]">{label}</div>
+    </div>
+  );
+}
+
+function CredRow({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-terracotta/10">{icon}</span>
+      <div className="min-w-0">
+        <div className="text-xs text-[var(--text-faint)]">{title}</div>
+        <div className="text-sm text-cream">{body}</div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewCard({ name, rating, comment, createdAt }: { name: string; rating: number; comment: string; createdAt: string }) {
+  const mounted = useMounted();
+  return (
+    <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-cream">{name}</span>
+        <span className="flex items-center gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star
+              key={i}
+              className={i < rating ? "h-3.5 w-3.5 fill-tan text-tan" : "h-3.5 w-3.5 text-[var(--text-faint)]"}
+            />
+          ))}
+        </span>
+      </div>
+      <p className="mt-1.5 text-sm text-[var(--text-muted)]">{comment}</p>
+      <p className="mt-1 font-mono text-[10px] text-[var(--text-faint)]">
+        {mounted ? timeAgo(createdAt) : ""}
+      </p>
+    </div>
+  );
+}

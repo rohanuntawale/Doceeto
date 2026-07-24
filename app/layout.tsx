@@ -27,14 +27,14 @@ const notoJp = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "Iyashi · Healing, on demand",
+  title: "Doceeto · Care that reaches you",
   description:
-    "Iyashi Health: emergency help, freelance doctors, and medicine delivery, all in one place.",
+    "Doceeto: emergency help, on-demand doctors, and medicine delivery — India's single front door to care.",
   icons: { icon: "/favicon.svg" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2A2320",
+  themeColor: "#143026",
   width: "device-width",
   initialScale: 1,
 };
@@ -43,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${playfair.variable} ${inter.variable} ${mono.variable} ${notoJp.variable}`}
     >
       <head>

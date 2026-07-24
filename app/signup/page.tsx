@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Doctor onboarding now lives in the unified /register flow.
+// Doctor onboarding now lives on the landing (the single sign-up).
 export default function SignupRedirect() {
-  redirect("/register?as=doctor");
+  redirect("/?as=doctor");
 }

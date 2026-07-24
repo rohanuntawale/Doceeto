@@ -57,7 +57,7 @@ Emergencies can't lag, so the app is push-based:
   action in one tab pushes live into the doctor/ops tabs (patient→provider actually
   connects, no server). UI subscribes via `useSyncExternalStore`. There is **no fake
   auto-generated activity** — all SOS/consults/orders are created by the patient app.
-  `SEED_LEVEL` (`catalog` default / `full` / `none`) sets the starting catalog.
+  The store starts **completely empty** — there is no seeded data of any kind.
 
 Mutations (accept request, dispatch ambulance, advance order) update state immediately
 (optimistic in spirit); in live mode the Realtime echo reconciles across every open client.

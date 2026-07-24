@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils/cn";
 const LINKS = [
   { href: "/about", label: "About us", icon: <Info className="h-4 w-4" /> },
   { href: "/contact", label: "Contact", icon: <Mail className="h-4 w-4" /> },
-  { href: "/register", label: "Register", icon: <UserPlus className="h-4 w-4" /> },
+  { href: "/", label: "Get started", icon: <UserPlus className="h-4 w-4" /> },
   { href: "/login", label: "Sign in", icon: <LogIn className="h-4 w-4" /> },
 ];
 
