@@ -1,64 +1,123 @@
 "use client";
 
-import { Wallet, CheckCircle2, Clock3 } from "lucide-react";
+import { Wallet, ArrowDownToLine, TrendingUp, Banknote } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useConsultRequests } from "@/lib/hooks/data";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { useTransactions, useActions } from "@/lib/hooks/data";
+import { walletBalance } from "@/lib/demo/store";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
+import { COMMISSION_RATE } from "@/lib/config";
 import { formatINR, formatINRCompact, timeAgo } from "@/lib/utils/format";
-import { consultType } from "@/lib/labels";
 import { useMounted } from "@/lib/hooks/use-mounted";
 
 export default function EarningsPage() {
-  const requests = useConsultRequests();
   const me = useCurrentDoctor();
+  const txns = useTransactions();
+  const { requestPayout } = useActions();
+  const toast = useToast();
   const mounted = useMounted();
 
-  const completed = requests.filter(
-    (r) => r.status === "completed" && r.doctorId === me?.id,
-  );
-  const accepted = requests.filter(
-    (r) => r.status === "accepted" && r.doctorId === me?.id,
-  );
+  if (!me) return null;
 
-  const settled = completed.reduce((a, r) => a + r.fee, 0);
-  const pending = accepted.reduce((a, r) => a + r.fee, 0);
-  // Doceeto take rate on Zumi is a transparent commission (deck: business model).
-  const TAKE = 0.15;
-  const net = Math.round(settled * (1 - TAKE));
+  const mine = txns.filter((t) => t.doctorId === me.id);
+  const balance = walletBalance(mine, me.id);
+  const earned = mine.filter((t) => t.kind === "earning").reduce((a, t) => a + t.net, 0);
+  const paidOut = mine.filter((t) => t.kind === "payout").reduce((a, t) => a - t.net, 0);
+
+  function withdraw() {
+    if (balance <= 0) {
+      toast.push({ tone: "info", title: "Nothing to withdraw yet" });
+      return;
+    }
+    requestPayout(me!.id);
+    toast.push({
+      tone: "success",
+      title: "Payout on its way",
+      desc: `${formatINR(balance)} is being sent to your bank.`,
+    });
+  }
 
   return (
     <>
-      <PageHeader kanji="円" label="ZUMI · TAKE RATE" title="Earnings" />
+      <PageHeader kanji="円" label="DOCTOR · WALLET" title="Wallet" />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard value={formatINRCompact(net)} label="Net payout" accent icon={<Wallet className="h-4 w-4" />} />
-        <StatCard value={formatINRCompact(settled)} label="Gross settled" icon={<CheckCircle2 className="h-4 w-4" />} />
-        <StatCard value={formatINRCompact(pending)} label="In progress" icon={<Clock3 className="h-4 w-4" />} />
-        <StatCard value={`${Math.round(TAKE * 100)}%`} label="Platform fee" />
+      <Card className="border-terracotta/30 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="label flex items-center gap-1.5">
+              <Wallet className="h-3.5 w-3.5" /> Available balance
+            </div>
+            <div className="metric mt-1 text-4xl text-cream">{formatINR(balance)}</div>
+          </div>
+          <Button onClick={withdraw} disabled={balance <= 0}>
+            <ArrowDownToLine className="h-4 w-4" /> Withdraw to bank
+          </Button>
+        </div>
+      </Card>
+
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <StatCard
+          value={formatINRCompact(earned)}
+          label="Total earned"
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <StatCard
+          value={formatINRCompact(paidOut)}
+          label="Paid out"
+          icon={<Banknote className="h-4 w-4" />}
+        />
+        <StatCard value={`${Math.round(COMMISSION_RATE * 100)}%`} label="Platform fee" />
       </div>
 
       <Card className="mt-5">
-        <CardHeader label="LEDGER" title="Completed consults" />
-        {completed.length === 0 ? (
+        <CardHeader label="LEDGER" title="Transactions" />
+        {mine.length === 0 ? (
           <div className="p-4">
-            <EmptyState kanji="円" title="No settled earnings yet" />
+            <EmptyState
+              kanji="円"
+              title="No transactions yet"
+              desc="Completed visits credit your wallet here."
+            />
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            {completed.map((r) => (
-              <div key={r.id} className="flex items-center gap-3 px-5 py-3.5">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-cream">{r.patientName}</p>
+            {mine.map((t) => (
+              <div key={t.id} className="flex items-center gap-3 px-5 py-3.5">
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                    t.kind === "payout"
+                      ? "bg-white/5 text-[var(--text-muted)]"
+                      : "bg-status-ok/15 text-status-ok"
+                  }`}
+                >
+                  {t.kind === "payout" ? (
+                    <ArrowDownToLine className="h-4 w-4" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-cream">
+                    {t.kind === "payout" ? "Withdrawal to bank" : `Visit · ${t.patientName}`}
+                  </p>
                   <p className="text-xs text-[var(--text-faint)]">
-                    {consultType[r.type].label} ·{" "}
-                    {mounted ? timeAgo(r.createdAt) : ""}
+                    {t.kind === "earning"
+                      ? `${formatINR(t.gross)} fee · ${formatINR(t.commission)} fee taken${
+                          t.method ? ` · ${t.method}` : ""
+                        }`
+                      : ""}
+                    {mounted ? ` ${timeAgo(t.createdAt)}` : ""}
                   </p>
                 </div>
-                <span className="metric text-base text-cream">
-                  {formatINR(r.fee)}
+                <span
+                  className={`metric text-base ${t.net >= 0 ? "text-status-ok" : "text-cream"}`}
+                >
+                  {t.net >= 0 ? "+" : "−"}
+                  {formatINR(Math.abs(t.net))}
                 </span>
               </div>
             ))}

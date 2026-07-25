@@ -18,6 +18,12 @@ export type DoctorKind = "resident" | "practising";
 
 export type Gender = "female" | "male";
 
+/** How the patient pays: online (UPI/card, escrowed) or cash on the visit. */
+export type PaymentMethod = "online" | "cash";
+
+/** A doctor wallet ledger entry. */
+export type TransactionKind = "earning" | "payout";
+
 export type SosCategory =
   | "cardiac"
   | "trauma"
@@ -114,6 +120,7 @@ export interface ConsultRequest {
   type: ConsultType;
   status: ConsultStatus;
   symptoms: string;
+  paymentMethod?: PaymentMethod; // online (escrowed) or cash on visit
   fee: number;
   address: string;
   lat: number;
@@ -149,6 +156,21 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+/** A doctor's wallet ledger entry — an earning from a completed visit, or a
+ *  payout withdrawn to their bank. Net moves the wallet balance. */
+export interface Transaction {
+  id: string;
+  doctorId: string;
+  kind: TransactionKind;
+  requestId: string | null;
+  patientName: string | null;
+  method: PaymentMethod | null;
+  gross: number; // fee before commission (earnings)
+  commission: number; // platform cut (earnings)
+  net: number; // +earning to wallet, -payout from wallet
+  createdAt: string; // ISO
 }
 
 /** Aggregated KPI snapshot for the ops overview. */

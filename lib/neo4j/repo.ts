@@ -1,6 +1,6 @@
 import "server-only";
 import { read, write } from "@/lib/neo4j/driver";
-import { MAP_CENTER } from "@/lib/config";
+import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import { DomainError, type Near, type UserRecord } from "@/lib/db/shared";
 import type {
@@ -10,6 +10,7 @@ import type {
   Order,
   Review,
   SosEvent,
+  Transaction,
 } from "@/lib/types/domain";
 
 export { DomainError };
@@ -81,12 +82,26 @@ const mapRequest = (n: Row): ConsultRequest => ({
   type: n.type,
   status: n.status,
   symptoms: n.symptoms ?? "",
+  paymentMethod: n.paymentMethod === "cash" ? "cash" : "online",
   fee: Number(n.fee ?? 0),
   address: n.address ?? "",
   lat: Number(n.lat ?? 0),
   lng: Number(n.lng ?? 0),
   createdAt: n.createdAt,
   doctorId: n.doctorId ?? null,
+});
+
+const mapTransaction = (n: Row): Transaction => ({
+  id: n.id,
+  doctorId: n.doctorId,
+  kind: n.kind === "payout" ? "payout" : "earning",
+  requestId: n.requestId ?? null,
+  patientName: n.patientName ?? null,
+  method: n.method ?? null,
+  gross: Number(n.gross ?? 0),
+  commission: Number(n.commission ?? 0),
+  net: Number(n.net ?? 0),
+  createdAt: n.createdAt,
 });
 
 const mapOrder = (n: Row): Order => ({
@@ -374,6 +389,7 @@ export async function createRequest(input: {
   patientName: string;
   type: string;
   symptoms: string;
+  paymentMethod?: string;
   fee: number;
   address: string;
   lat: number;
@@ -383,11 +399,18 @@ export async function createRequest(input: {
   const rows = await write<{ r: Row }>(
     `CREATE (r:ConsultRequest {
        id: $id, patientId: $patientId, patientName: $patientName, type: $type,
-       status: 'pending', symptoms: $symptoms, fee: $fee, address: $address,
+       status: 'pending', symptoms: $symptoms, paymentMethod: $paymentMethod,
+       fee: $fee, address: $address,
        lat: $lat, lng: $lng, location: point({latitude: $lat, longitude: $lng}),
        doctorId: $doctorId, createdAt: $now
      }) RETURN properties(r) AS r`,
-    { id: uid("req"), ...input, doctorId: input.doctorId ?? null, now: new Date().toISOString() },
+    {
+      id: uid("req"),
+      ...input,
+      paymentMethod: input.paymentMethod === "cash" ? "cash" : "online",
+      doctorId: input.doctorId ?? null,
+      now: new Date().toISOString(),
+    },
   );
   return mapRequest(rows[0].r);
 }
@@ -545,6 +568,33 @@ export async function completeRequest(
     { id, cid: uid("con"), now, notes: opts?.notes ?? "" },
   );
   if (!rows[0]) return;
+  const r = rows[0].r;
+
+  // Credit the doctor's wallet once: platform commission + net.
+  if (r.doctorId) {
+    const gross = Number(r.fee ?? 0);
+    const commission = Math.round(gross * COMMISSION_RATE);
+    await write(
+      `MATCH (req:ConsultRequest {id: $id})
+       WHERE NOT EXISTS { MATCH (:Transaction {requestId: $id, kind: 'earning'}) }
+       CREATE (:Transaction {
+         id: $txnId, doctorId: $doctorId, kind: 'earning', requestId: $id,
+         patientName: $patientName, method: $method, gross: $gross,
+         commission: $commission, net: $net, createdAt: $now
+       })`,
+      {
+        id,
+        txnId: uid("txn"),
+        doctorId: r.doctorId,
+        patientName: r.patientName ?? null,
+        method: r.paymentMethod ?? "online",
+        gross,
+        commission,
+        net: gross - commission,
+        now,
+      },
+    );
+  }
 
   // Optional prescription → its own node, ready for AuraMed to fulfil.
   if (opts?.prescription && opts.prescription.length > 0) {
@@ -558,6 +608,33 @@ export async function completeRequest(
       { id, rxid: uid("rx"), items: JSON.stringify(opts.prescription), now },
     );
   }
+}
+
+// ── Wallet / payments ────────────────────────────────────────
+export async function getTransactions(): Promise<Transaction[]> {
+  const rows = await read<{ t: Row }>(
+    `MATCH (t:Transaction) RETURN properties(t) AS t ORDER BY t.createdAt DESC`,
+  );
+  return rows.map((x) => mapTransaction(x.t));
+}
+
+/** Doctor withdraws their full wallet balance to their bank (instant). */
+export async function requestPayout(doctorId: string): Promise<boolean> {
+  const bal = await read<{ bal: number }>(
+    `MATCH (t:Transaction {doctorId: $doctorId}) RETURN coalesce(sum(t.net), 0) AS bal`,
+    { doctorId },
+  );
+  const balance = Number(bal[0]?.bal ?? 0);
+  if (balance <= 0) return false;
+  await write(
+    `CREATE (t:Transaction {
+       id: $id, doctorId: $doctorId, kind: 'payout', requestId: null,
+       patientName: null, method: null, gross: 0, commission: 0,
+       net: $net, createdAt: $now
+     })`,
+    { id: uid("txn"), doctorId, net: -balance, now: new Date().toISOString() },
+  );
+  return true;
 }
 
 // ── Ops mutations ────────────────────────────────────────────

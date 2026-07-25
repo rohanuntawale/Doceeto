@@ -1,7 +1,7 @@
 import "server-only";
 import { data, persist, type StoredUser } from "@/lib/filedb/store";
 import { DomainError, type Near, type UserRecord } from "@/lib/db/shared";
-import { MAP_CENTER } from "@/lib/config";
+import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import { hashPassword } from "@/lib/auth/password";
 import { haversineKm } from "@/lib/utils/geo";
@@ -12,6 +12,7 @@ import type {
   Order,
   Review,
   SosEvent,
+  Transaction,
 } from "@/lib/types/domain";
 
 export { DomainError };
@@ -198,6 +199,7 @@ export async function createRequest(input: {
   patientName: string;
   type: string;
   symptoms: string;
+  paymentMethod?: string;
   fee: number;
   address: string;
   lat: number;
@@ -211,6 +213,7 @@ export async function createRequest(input: {
     type: input.type as ConsultRequest["type"],
     status: "pending",
     symptoms: input.symptoms,
+    paymentMethod: input.paymentMethod === "cash" ? "cash" : "online",
     fee: Number(input.fee) || 0,
     address: input.address,
     lat: input.lat,
@@ -426,7 +429,57 @@ export async function completeRequest(
       createdAt: now(),
     });
   }
+  // Credit the doctor's wallet once (platform commission + net).
+  if (
+    req.doctorId &&
+    !d.transactions.some((t) => t.kind === "earning" && t.requestId === req.id)
+  ) {
+    const commission = Math.round(req.fee * COMMISSION_RATE);
+    d.transactions.unshift({
+      id: uid("txn"),
+      doctorId: req.doctorId,
+      kind: "earning",
+      requestId: req.id,
+      patientName: req.patientName,
+      method: req.paymentMethod ?? "online",
+      gross: req.fee,
+      commission,
+      net: req.fee - commission,
+      createdAt: now(),
+    });
+  }
   persist();
+}
+
+// ── Wallet / payments ────────────────────────────────────────
+export async function getTransactions(): Promise<Transaction[]> {
+  return [...data().transactions].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export function walletBalanceOf(doctorId: string): number {
+  return data()
+    .transactions.filter((t) => t.doctorId === doctorId)
+    .reduce((a, t) => a + t.net, 0);
+}
+
+/** Doctor withdraws their full wallet balance to their bank (instant). */
+export async function requestPayout(doctorId: string): Promise<boolean> {
+  const balance = walletBalanceOf(doctorId);
+  if (balance <= 0) return false;
+  data().transactions.unshift({
+    id: uid("txn"),
+    doctorId,
+    kind: "payout",
+    requestId: null,
+    patientName: null,
+    method: null,
+    gross: 0,
+    commission: 0,
+    net: -balance,
+    createdAt: now(),
+  });
+  persist();
+  return true;
 }
 
 // ── Ops mutations ────────────────────────────────────────────

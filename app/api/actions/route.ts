@@ -155,7 +155,14 @@ export async function POST(req: Request) {
             ? payload.prescription
             : undefined,
         });
-        return done({ ok: true }, ["requests"]);
+        return done({ ok: true }, ["requests", "transactions"]);
+      case "requestPayout": {
+        if (role !== "doctor") return needs("doctors");
+        const ok = await repo.requestPayout(me);
+        if (!ok)
+          return NextResponse.json({ error: "Nothing to withdraw." }, { status: 400 });
+        return done({ ok: true }, ["transactions"]);
+      }
 
       // ── SOS lifecycle ──
       case "advanceSos": {

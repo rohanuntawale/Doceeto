@@ -46,6 +46,7 @@ export default function DoctorProfilePage() {
   const { patient } = useCurrentPatient();
   const { createRequest } = useActions();
   const [busy, setBusy] = useState<ConsultType | null>(null);
+  const [payMethod, setPayMethod] = useState<"online" | "cash">("online");
 
   const doctor = doctors.find((d) => d.id === id);
 
@@ -75,6 +76,7 @@ export default function DoctorProfilePage() {
         patientName: patient.name,
         type,
         symptoms: "General consultation.",
+        paymentMethod: payMethod,
         fee: feeFor(type),
         address: addressFor(type),
         lat: patient.lat,
@@ -182,8 +184,38 @@ export default function DoctorProfilePage() {
             </button>
           ))}
         </div>
+        {/* Payment method */}
+        <div className="mt-4">
+          <div className="label mb-2">Payment</div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { m: "online", label: "Pay online", help: "UPI / card, held safely" },
+              { m: "cash", label: "Cash on visit", help: "Pay the doctor directly" },
+            ] as const).map((p) => {
+              const active = payMethod === p.m;
+              return (
+                <button
+                  key={p.m}
+                  type="button"
+                  onClick={() => setPayMethod(p.m)}
+                  className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    active
+                      ? "border-terracotta bg-terracotta/10"
+                      : "border-[var(--border)] hover:border-terracotta/40"
+                  }`}
+                >
+                  <span className="block text-sm font-medium text-cream">{p.label}</span>
+                  <span className="block text-xs text-[var(--text-faint)]">{p.help}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <p className="mt-3 text-center text-[11px] text-[var(--text-faint)]">
-          You only pay after the doctor accepts. Transparent fees, no surprises.
+          {payMethod === "online"
+            ? "Paid online and held safely — released to the doctor after your visit."
+            : "You'll pay the doctor directly at the visit."}
         </p>
       </div>
 

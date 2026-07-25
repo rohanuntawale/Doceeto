@@ -98,6 +98,15 @@ export async function GET(req: Request) {
         return NextResponse.json([]); // doctors don't see orders
       }
 
+      case "transactions": {
+        // A doctor sees only their own wallet ledger; ops sees all.
+        const all = await repo.getTransactions();
+        if (role === "ops") return NextResponse.json(all);
+        if (role === "doctor")
+          return NextResponse.json(all.filter((t) => t.doctorId === me));
+        return NextResponse.json([]);
+      }
+
       default:
         return NextResponse.json({ error: "Unknown entity." }, { status: 400 });
     }
