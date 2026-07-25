@@ -1,0 +1,807 @@
+"use client";
+
+import { Suspense, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Sparkles,
+  Send,
+  Plus,
+  Menu,
+  X,
+  Stethoscope,
+  FileText,
+  CalendarClock,
+  ChevronRight,
+  AlertTriangle,
+  ArrowRight,
+  History,
+  Thermometer,
+  HeartPulse,
+  Bone,
+  Hand,
+  Brain,
+  Baby,
+  type LucideIcon,
+} from "lucide-react";
+import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
+import { useConsultRequests } from "@/lib/hooks/data";
+import { useMedicalHistory, type CheckSession } from "@/lib/hooks/use-medical-history";
+import { useT } from "@/lib/i18n";
+import {
+  initState,
+  applyAnswer,
+  applyText,
+  nextStep,
+  type DState,
+  type DStep,
+  type DConclusion,
+  type DOption,
+  type Urgency,
+} from "@/lib/diagnose/engine";
+import { SosTrigger } from "@/components/patient/sos-trigger";
+import { cn } from "@/lib/utils/cn";
+
+export default function CarePage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-sm text-[var(--text-muted)]">Loading…</div>}>
+      <CareInner />
+    </Suspense>
+  );
+}
+
+function urgencyTone(u: string) {
+  if (u === "emergency") return "bg-status-critical/15 text-status-critical";
+  if (u === "urgent") return "bg-tan/15 text-tan";
+  return "bg-status-ok/15 text-status-ok";
+}
+
+/** Normalise a raw AI step into our DStep shape. */
+function fromAiStep(s: Record<string, unknown>): DStep {
+  if (s.kind === "question") {
+    const opts = (s.options as Array<Record<string, unknown>>) ?? [];
+    return {
+      kind: "question",
+      question: {
+        id: String(s.id ?? "ai"),
+        prompt: String(s.prompt ?? ""),
+        hint: s.hint ? String(s.hint) : undefined,
+        options: opts.map((o, i) => ({
+          value: String(o.value ?? `opt-${i}`),
+          label: String(o.label ?? "Option"),
+          emoji: o.emoji ? String(o.emoji) : undefined,
+        })),
+      },
+    };
+  }
+  const conditions = Array.isArray(s.conditions) ? (s.conditions as string[]) : [];
+  const urgency = (s.urgency as Urgency) ?? "routine";
+  return {
+    kind: "conclusion",
+    urgency,
+    specialty: String(s.specialty ?? "General Physician") as DConclusion["specialty"],
+    alt: s.alt ? (String(s.alt) as DConclusion["specialty"]) : undefined,
+    conditions: conditions.length ? conditions : ["General consultation"],
+    advice: String(s.advice ?? "A doctor is a good fit for this. Book whenever you're ready."),
+    emergency: Boolean(s.emergency) || urgency === "emergency",
+    sosCategory: (s.sosCategory as DConclusion["sosCategory"]) ?? "other",
+  };
+}
+
+function CareInner() {
+  const { patient } = useCurrentPatient();
+  const { t } = useT();
+  const router = useRouter();
+  const params = useSearchParams();
+  const seed = params.get("q") ?? "";
+
+  const { sessions, saveSession, recentConditions } = useMedicalHistory();
+  const requests = useConsultRequests();
+
+  const [state, setState] = useState<DState>(() => initState(seed, recentConditions()));
+  const [step, setStep] = useState<DStep | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const [aiOn, setAiOn] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [viewed, setViewed] = useState<CheckSession | null>(null);
+  const sessionId = useRef(`care-${Date.now().toString(36)}`);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef2 = useRef<HTMLDivElement>(null);
+
+  const conclusion = step?.kind === "conclusion" ? step : null;
+  const firstName = patient.name.split(" ")[0] || "there";
+  const greetKey =
+    new Date().getHours() < 12
+      ? "greeting.morning"
+      : new Date().getHours() < 17
+        ? "greeting.afternoon"
+        : "greeting.evening";
+
+  // Prefer the AI checker, fall back to the offline rule engine. Red-flag
+  // emergencies short-circuit locally.
+  useEffect(() => {
+    if (viewed) return;
+    let cancelled = false;
+    const local = nextStep(state);
+    if (state.flags.length > 0) {
+      setStep(local);
+      setAiOn(false);
+      return;
+    }
+    setThinking(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/diagnose", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            seed: state.seed,
+            answers: state.answers.map((a) => ({ prompt: a.prompt, label: a.label })),
+            history: recentConditions(),
+          }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.step) {
+          setStep(fromAiStep(data.step));
+          setAiOn(true);
+        } else {
+          setStep(local);
+          setAiOn(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setStep(local);
+          setAiOn(false);
+        }
+      } finally {
+        if (!cancelled) setThinking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, viewed]);
+
+  // Persist the session as it grows / concludes.
+  useEffect(() => {
+    if (viewed) return;
+    if (state.answers.length === 0 && !state.seed) return;
+    const title =
+      state.seed?.slice(0, 40) ||
+      state.answers.find((a) => a.questionId === "area")?.label ||
+      conclusion?.specialty ||
+      "Symptom check";
+    saveSession({
+      id: sessionId.current,
+      startedAt: Number(sessionId.current.split("-")[1] ? parseInt(sessionId.current.split("-")[1], 36) : Date.now()),
+      title,
+      seed: state.seed,
+      answers: state.answers,
+      conclusion,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, conclusion, viewed]);
+
+  useEffect(() => {
+    [scrollRef, scrollRef2].forEach((r) =>
+      r.current?.scrollTo({ top: r.current.scrollHeight, behavior: "smooth" }),
+    );
+  }, [state.answers.length, step, thinking]);
+
+  function newCheck() {
+    sessionId.current = `care-${Date.now().toString(36)}`;
+    setState(initState("", recentConditions()));
+    setViewed(null);
+    setDraft("");
+    setDrawerOpen(false);
+  }
+
+  function pick(opt: { value: string; label: string }) {
+    if (!step || step.kind !== "question") return;
+    const q = step.question;
+    const found = q.options.find((o) => o.value === opt.value);
+    const dopt: DOption = found ?? { value: opt.value, label: opt.label };
+    setState((s) => applyAnswer(s, q, dopt));
+  }
+
+  function sendText() {
+    const text = draft.trim();
+    if (!text) return;
+    setState((s) => applyText(s, text));
+    setDraft("");
+  }
+
+  const view = viewed ?? { seed: state.seed, answers: state.answers, conclusion };
+  const myBookings = requests.filter((r) => r.patientId === patient.id);
+  const reports = myBookings.filter((r) => r.status === "completed");
+  const activeConclusion = viewed ? view.conclusion : conclusion;
+  const fresh = !view.seed && view.answers.length === 0 && !activeConclusion;
+
+  return (
+    <>
+      <ChatSidebar
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onNew={newCheck}
+        sessions={sessions}
+        activeId={viewed?.id ?? sessionId.current}
+        onOpenSession={(s) => {
+          setViewed(s);
+          setDrawerOpen(false);
+        }}
+        bookings={myBookings}
+        reports={reports}
+        t={t}
+      />
+
+      {/* ── Mobile / tablet — ChatGPT-style compose ── */}
+      <div className="flex h-[calc(100dvh-8.5rem)] min-h-[480px] flex-col lg:hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-3">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full fh-card text-cream lg:hidden"
+            aria-label="History"
+          >
+            <Menu className="h-[18px] w-[18px]" />
+          </button>
+          <div className="flex flex-1 items-center gap-2">
+            <h1 className="text-base font-semibold text-cream">{t("care.title")}</h1>
+            {aiOn && (
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                AI
+              </span>
+            )}
+          </div>
+          <button
+            onClick={newCheck}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full fh-card text-cream"
+            aria-label={t("chat.newChat")}
+          >
+            <Plus className="h-[18px] w-[18px]" />
+          </button>
+        </div>
+
+        {/* Transcript */}
+        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pb-4">
+          {fresh ? (
+            <div className="flex h-full flex-col items-center justify-center px-2 text-center">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
+                <Sparkles className="h-7 w-7" />
+              </span>
+              <h2 className="mt-4 text-lg font-semibold text-cream">{t("care.title")}</h2>
+              <p className="mt-1 max-w-xs text-sm text-[var(--text-muted)]">{t("care.subtitle")}</p>
+            </div>
+          ) : (
+            <>
+              <Bubble who="bot">{t("care.subtitle")}</Bubble>
+              {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
+              {view.answers.map((a, i) =>
+                a.questionId === "free" ? (
+                  <Bubble key={i} who="me">{a.label}</Bubble>
+                ) : (
+                  <div key={i} className="space-y-3">
+                    <Bubble who="bot">{a.prompt}</Bubble>
+                    <Bubble who="me">{a.label}</Bubble>
+                  </div>
+                ),
+              )}
+            </>
+          )}
+
+          {!viewed && thinking && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
+                <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
+              </div>
+            </div>
+          )}
+
+          {/* Current question + option rows (ChatGPT-style list) */}
+          {!viewed && !thinking && step?.kind === "question" && (
+            <div className="space-y-3">
+              {!fresh && (
+                <Bubble who="bot">
+                  {step.question.prompt}
+                  {step.question.hint ? (
+                    <span className="mt-1 block text-xs text-[var(--text-faint)]">
+                      {step.question.hint}
+                    </span>
+                  ) : null}
+                </Bubble>
+              )}
+              {fresh && (
+                <p className="px-1 pb-1 text-center text-[15px] font-medium text-cream">
+                  {step.question.prompt}
+                </p>
+              )}
+              <div className="space-y-2">
+                {step.question.options.map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() => pick(o)}
+                    className="group flex w-full items-center gap-3 rounded-2xl fh-tile px-3.5 py-3.5 text-left transition-colors hover:border-primary/40"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[rgb(var(--c-terracotta))]/12">
+                      <span className="h-2 w-2 rounded-full bg-[rgb(var(--c-terracotta))]" />
+                    </span>
+                    <span className="flex-1 text-[15px] font-medium text-cream">{o.label}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeConclusion && (
+            <ResultCard
+              conclusion={activeConclusion}
+              patient={patient}
+              onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
+              onRestart={newCheck}
+              readOnly={!!viewed}
+            />
+          )}
+        </div>
+
+        {/* Composer — pill input (ChatGPT-style) */}
+        {viewed ? (
+          <button
+            onClick={newCheck}
+            className="mb-1 flex items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
+          >
+            <Plus className="h-4 w-4" /> New check
+          </button>
+        ) : (
+          <div className="mb-1 flex items-center gap-2 rounded-full fh-card p-1.5">
+            <button
+              onClick={newCheck}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--text-muted)] transition-colors hover:text-cream"
+              aria-label={t("chat.newChat")}
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendText()}
+              placeholder={t("chat.placeholder")}
+              className="flex-1 bg-transparent px-1 py-2 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
+            />
+            <button
+              onClick={sendText}
+              disabled={!draft.trim()}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-on-accent transition-opacity disabled:opacity-40"
+              aria-label="Send"
+            >
+              <Send className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop — immersive symptom checker ── */}
+      <div className="relative left-1/2 hidden h-[calc(100dvh-10.5rem)] min-h-[560px] w-screen -translate-x-1/2 overflow-hidden lg:block">
+        {/* floating scene */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute left-[12%] top-[16%] h-56 w-56 animate-float rounded-full bg-[rgb(var(--c-terracotta))] opacity-10 blur-3xl" />
+          <div
+            className="absolute right-[14%] top-[28%] h-64 w-64 animate-float rounded-full bg-[rgb(var(--c-salmon))] opacity-[0.12] blur-3xl"
+            style={{ animationDelay: "-3s" }}
+          />
+          <div
+            className="absolute bottom-[8%] left-[42%] h-52 w-52 animate-float rounded-full bg-[rgb(var(--c-tan))] opacity-10 blur-3xl"
+            style={{ animationDelay: "-6s" }}
+          />
+        </div>
+
+        {/* top bar */}
+        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-10 pt-6">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-faint)]">
+              Symptom checker · Guided
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream">
+              {t(greetKey)}, <span className="text-[rgb(var(--c-terracotta))]">{firstName}</span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]">
+            <span className={cn("h-2 w-2 rounded-full", aiOn ? "bg-status-ok" : "bg-[rgb(var(--c-tan))]")} />
+            {aiOn ? "AI ready" : "Guided mode"}
+          </div>
+        </div>
+
+        {/* left rail — body areas */}
+        <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
+          {AREAS.map((a) => (
+            <ImmersiveRail
+              key={a.seed}
+              icon={a.icon}
+              title={a.title}
+              onClick={() => {
+                if (!thinking && !viewed) setState((s) => applyText(s, a.seed));
+              }}
+            />
+          ))}
+        </div>
+
+        {/* right rail — actions */}
+        <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
+          <ImmersiveRail icon={Plus} title="New check" onClick={newCheck} />
+          <ImmersiveRail icon={History} title="History" onClick={() => setDrawerOpen(true)} />
+          <ImmersiveRail icon={FileText} title="Reports" onClick={() => setDrawerOpen(true)} />
+          <ImmersiveRail icon={AlertTriangle} title="Emergency" onClick={() => router.push("/patient")} />
+        </div>
+
+        {/* center transcript */}
+        <div
+          ref={scrollRef2}
+          className="absolute inset-x-0 bottom-[8.5rem] top-28 z-10 mx-auto max-w-2xl overflow-y-auto px-6"
+        >
+          <div className="flex min-h-full flex-col justify-end gap-4 py-6">
+            {fresh ? (
+              <div className="flex flex-col items-center pb-6 text-center">
+                <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
+                  <Sparkles className="h-8 w-8" />
+                </span>
+                <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">{t("care.subtitle")}</p>
+              </div>
+            ) : (
+              <>
+                {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
+                {view.answers.map((a, i) =>
+                  a.questionId === "free" ? (
+                    <Bubble key={i} who="me">{a.label}</Bubble>
+                  ) : (
+                    <div key={i} className="space-y-3">
+                      <Bubble who="bot">{a.prompt}</Bubble>
+                      <Bubble who="me">{a.label}</Bubble>
+                    </div>
+                  ),
+                )}
+              </>
+            )}
+            {!viewed && thinking && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
+                  <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
+                </div>
+              </div>
+            )}
+            {!viewed && !thinking && step?.kind === "question" && !fresh && (
+              <Bubble who="bot">{step.question.prompt}</Bubble>
+            )}
+            {activeConclusion && (
+              <ResultCard
+                conclusion={activeConclusion}
+                patient={patient}
+                onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
+                onRestart={newCheck}
+                readOnly={!!viewed}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* bottom — option chips + pill input */}
+        <div className="absolute inset-x-0 bottom-6 z-10 mx-auto max-w-2xl px-6">
+          {fresh && step?.kind === "question" && (
+            <p className="mb-3 text-center text-[15px] font-medium text-cream">{step.question.prompt}</p>
+          )}
+          {!viewed && !thinking && step?.kind === "question" && (
+            <div className="mb-3 flex flex-wrap justify-center gap-2">
+              {step.question.options.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => pick(o)}
+                  className="flex items-center gap-2 rounded-full fh-card px-4 py-2.5 text-sm font-medium text-cream transition-colors hover:border-primary/50 hover:text-[rgb(var(--c-terracotta))]"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-terracotta))]" />
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {viewed ? (
+            <button
+              onClick={newCheck}
+              className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
+            >
+              <Plus className="h-4 w-4" /> New check
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-full fh-card p-2 shadow-soft-lg">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                <Sparkles className="h-[18px] w-[18px]" />
+              </span>
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendText()}
+                placeholder={t("chat.placeholder")}
+                className="flex-1 bg-transparent px-1 py-2 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
+              />
+              <button
+                onClick={sendText}
+                disabled={!draft.trim()}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-on-accent transition-opacity disabled:opacity-40"
+                aria-label="Send"
+              >
+                <Send className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+const AREAS: { icon: LucideIcon; title: string; seed: string }[] = [
+  { icon: Thermometer, title: "Fever / whole body", seed: "fever" },
+  { icon: HeartPulse, title: "Chest / breathing", seed: "chest pain" },
+  { icon: Brain, title: "Head / mind", seed: "headache" },
+  { icon: Hand, title: "Skin", seed: "skin rash" },
+  { icon: Bone, title: "Bones / joints", seed: "joint pain" },
+  { icon: Baby, title: "Child", seed: "my child is sick" },
+];
+
+function ImmersiveRail({
+  icon: Icon,
+  title,
+  onClick,
+}: {
+  icon: LucideIcon;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="grid h-11 w-11 place-items-center rounded-full fh-card text-[var(--text-muted)] transition-all hover:scale-105 hover:text-[rgb(var(--c-terracotta))]"
+    >
+      <Icon className="h-5 w-5" />
+    </button>
+  );
+}
+
+function Dot({ delay = "0s" }: { delay?: string }) {
+  return (
+    <span
+      className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--text-faint)]"
+      style={{ animationDelay: delay }}
+    />
+  );
+}
+
+function Bubble({ who, children }: { who: "bot" | "me"; children: React.ReactNode }) {
+  return (
+    <div className={cn("flex", who === "me" ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[15px]",
+          who === "me"
+            ? "rounded-br-md bg-primary text-on-accent"
+            : "fh-tile rounded-bl-md text-cream",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({
+  conclusion,
+  patient,
+  onBook,
+  onRestart,
+  readOnly,
+}: {
+  conclusion: DConclusion;
+  patient: ReturnType<typeof useCurrentPatient>["patient"];
+  onBook: (specialty: string) => void;
+  onRestart: () => void;
+  readOnly?: boolean;
+}) {
+  const { specialty, alt, conditions, advice, urgency, emergency } = conclusion;
+  return (
+    <div
+      className={cn(
+        "glass-card animate-fade-up rounded-3xl p-4",
+        emergency && "!border-status-critical/40",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide", urgencyTone(urgency))}>
+          {urgency}
+        </span>
+        {emergency && <AlertTriangle className="h-4 w-4 text-status-critical" />}
+      </div>
+
+      <p className="mt-3 text-sm text-cream">{advice}</p>
+
+      <div className="mt-3">
+        <p className="text-xs font-medium text-[var(--text-muted)]">Best fit</p>
+        <p className="text-base font-semibold text-cream">
+          {specialty}
+          {alt ? <span className="text-[var(--text-faint)]"> · or {alt}</span> : null}
+        </p>
+      </div>
+
+      {conditions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {conditions.map((c) => (
+            <span key={c} className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]">
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {emergency ? (
+        <div className="mt-4">
+          <SosTrigger patient={patient} />
+        </div>
+      ) : !readOnly ? (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={() => onBook(specialty)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
+          >
+            Find a {specialty} <ArrowRight className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onRestart}
+            className="rounded-2xl fh-tile px-4 py-3 text-sm font-medium text-[var(--text-muted)]"
+          >
+            Start over
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => onBook(specialty)}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
+        >
+          Find a {specialty} <ArrowRight className="h-4 w-4" />
+        </button>
+      )}
+
+      <p className="mt-2 text-[10px] text-[var(--text-faint)]">
+        A guide to the right doctor, not a medical diagnosis.
+      </p>
+    </div>
+  );
+}
+
+function ChatSidebar({
+  open,
+  onClose,
+  onNew,
+  sessions,
+  activeId,
+  onOpenSession,
+  bookings,
+  reports,
+  t,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onNew: () => void;
+  sessions: CheckSession[];
+  activeId: string;
+  onOpenSession: (s: CheckSession) => void;
+  bookings: { id: string; type: string; status: string }[];
+  reports: { id: string; type: string; status: string }[];
+  t: (k: string) => string;
+}) {
+  const body = (
+    <div className="flex h-full flex-col gap-5">
+      <button
+        onClick={onNew}
+        className="flex items-center justify-center gap-2 rounded-full bg-primary py-2.5 text-sm font-semibold text-on-accent"
+      >
+        <Plus className="h-4 w-4" /> {t("chat.newChat")}
+      </button>
+
+      <SideSection icon={<Sparkles className="h-3.5 w-3.5" />} label={t("chat.history")}>
+        {sessions.length === 0 ? (
+          <Empty>No checks yet</Empty>
+        ) : (
+          sessions.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => onOpenSession(s)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
+                s.id === activeId
+                  ? "bg-primary/12 text-primary"
+                  : "text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-cream",
+              )}
+            >
+              <span className="flex-1 truncate">{s.title}</span>
+              {s.conclusion ? <ChevronRight className="h-3.5 w-3.5 shrink-0" /> : null}
+            </button>
+          ))
+        )}
+      </SideSection>
+
+      <SideSection icon={<CalendarClock className="h-3.5 w-3.5" />} label={t("chat.bookings")}>
+        {bookings.length === 0 ? (
+          <Empty>No bookings yet</Empty>
+        ) : (
+          bookings.slice(0, 5).map((b) => (
+            <div key={b.id} className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)]">
+              <Stethoscope className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="flex-1 truncate capitalize">{b.type.replace("_", " ")}</span>
+              <span className="text-[10px] capitalize text-[var(--text-faint)]">{b.status}</span>
+            </div>
+          ))
+        )}
+      </SideSection>
+
+      <SideSection icon={<FileText className="h-3.5 w-3.5" />} label={t("chat.reports")}>
+        {reports.length === 0 ? (
+          <Empty>Prescriptions from visits appear here</Empty>
+        ) : (
+          reports.slice(0, 5).map((r) => (
+            <Link
+              key={r.id}
+              href="/patient"
+              className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)] hover:text-cream"
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="flex-1 truncate capitalize">{r.type.replace("_", " ")} report</span>
+            </Link>
+          ))
+        )}
+      </SideSection>
+    </div>
+  );
+
+  // Drawer usable on all sizes (mobile compose + desktop immersive both open it).
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60]">
+      <button aria-hidden onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-y-0 left-0 w-[82%] max-w-sm animate-fade-up overflow-y-auto border-r border-[var(--border)] bg-[var(--glass-bg-strong)] p-4 shadow-soft-lg backdrop-blur-2xl">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-cream">{t("care.title")}</span>
+          <button onClick={onClose} className="text-[var(--text-muted)]" aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {body}
+      </div>
+    </div>
+  );
+}
+
+function SideSection({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
+        <span className="text-primary">{icon}</span>
+        {label}
+      </p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <p className="px-2.5 py-1.5 text-xs text-[var(--text-faint)]">{children}</p>;
+}

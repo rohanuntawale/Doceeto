@@ -15,7 +15,7 @@
  * In LIVE mode (Neo4j backend) this is never started; hooks read the
  * /api routes instead.
  */
-import { MAP_CENTER } from "@/lib/config";
+import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS } from "@/lib/demo/seed";
 import { seedDoctors } from "@/lib/seed-doctors";
 import type {
@@ -26,7 +26,13 @@ import type {
   OrderStatus,
   Review,
   SosEvent,
+  Transaction,
 } from "@/lib/types/domain";
+
+/** Wallet balance for a doctor = sum of every ledger entry's net. */
+export function walletBalance(txns: Transaction[], doctorId: string): number {
+  return txns.filter((t) => t.doctorId === doctorId).reduce((a, t) => a + t.net, 0);
+}
 
 export interface DemoState {
   doctors: Doctor[];
@@ -35,6 +41,7 @@ export interface DemoState {
   requests: ConsultRequest[];
   orders: Order[];
   reviews: Review[];
+  transactions: Transaction[];
 }
 
 type Listener = () => void;
@@ -73,6 +80,7 @@ function fresh(): DemoState {
     requests: [],
     orders: [],
     reviews: [],
+    transactions: [],
   };
 }
 
@@ -169,6 +177,7 @@ export const demoStore = {
     patientName: string;
     type: ConsultRequest["type"];
     symptoms: string;
+    paymentMethod?: ConsultRequest["paymentMethod"];
     fee: number;
     address: string;
     lat: number;
@@ -182,6 +191,7 @@ export const demoStore = {
       type: input.type,
       status: "pending",
       symptoms: input.symptoms,
+      paymentMethod: input.paymentMethod ?? "online",
       fee: input.fee,
       address: input.address,
       lat: input.lat,
@@ -366,9 +376,57 @@ export const demoStore = {
 
   completeRequest(id: string) {
     const s = getState();
+    const req = s.requests.find((r) => r.id === id);
     s.requests = s.requests.map((r) =>
       r.id === id ? { ...r, status: "completed" } : r,
     );
+    // Credit the doctor's wallet once: platform takes a commission, the
+    // doctor's net lands in their wallet.
+    if (
+      req &&
+      req.doctorId &&
+      !s.transactions.some((t) => t.kind === "earning" && t.requestId === req.id)
+    ) {
+      const commission = Math.round(req.fee * COMMISSION_RATE);
+      s.transactions = [
+        {
+          id: nextId("txn"),
+          doctorId: req.doctorId,
+          kind: "earning",
+          requestId: req.id,
+          patientName: req.patientName,
+          method: req.paymentMethod ?? "online",
+          gross: req.fee,
+          commission,
+          net: req.fee - commission,
+          createdAt: new Date().toISOString(),
+        },
+        ...s.transactions,
+      ];
+    }
+    commit();
+  },
+
+  /** Doctor withdraws their full wallet balance to their bank (instant). */
+  requestPayout(doctorId: string) {
+    const s = getState();
+    const balance = walletBalance(s.transactions, doctorId);
+    if (balance <= 0) return;
+    s.transactions = [
+      {
+        id: nextId("txn"),
+        doctorId,
+        kind: "payout",
+        requestId: null,
+        patientName: null,
+        method: null,
+        gross: 0,
+        commission: 0,
+        net: -balance,
+        createdAt: new Date().toISOString(),
+      },
+      ...s.transactions,
+    ];
     commit();
   },
 

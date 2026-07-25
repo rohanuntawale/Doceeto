@@ -23,6 +23,7 @@ import type {
   Review,
   SosEvent,
   SosStatus,
+  Transaction,
 } from "@/lib/types/domain";
 
 const SOS_ORDER: SosStatus[] = ["open", "assigned", "enroute", "resolved"];
@@ -35,7 +36,7 @@ const ORDER_ORDER: OrderStatus[] = [
 
 const POLL_MS = 4000;
 const POLL_MS_SSE = 30_000; // slow safety-net poll while SSE is connected
-const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews"];
+const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews", "transactions"];
 
 // Flipped by the RealtimeBridge when /api/stream is connected — polling
 // then backs off to a slow safety net and SSE events drive refreshes.
@@ -109,6 +110,14 @@ export const useReviews = isDemoMode
   : (doctorId?: string) =>
       useApiEntity<Review>(doctorId ? `reviews&doctorId=${encodeURIComponent(doctorId)}` : "reviews");
 
+function useTransactionsDemo(): Transaction[] {
+  return useDemoState().transactions;
+}
+/** A doctor's wallet ledger (server scopes to the signed-in doctor). */
+export const useTransactions = isDemoMode
+  ? useTransactionsDemo
+  : () => useApiEntity<Transaction>("transactions");
+
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
   const sos = useSosEvents();
@@ -158,6 +167,7 @@ export interface CreateRequestInput {
   patientName: string;
   type: ConsultRequest["type"];
   symptoms: string;
+  paymentMethod?: ConsultRequest["paymentMethod"];
   fee: number;
   address: string;
   lat: number;
@@ -209,6 +219,7 @@ export interface Actions {
   acceptRequest: (id: string, doctorId: string) => void;
   declineRequest: (id: string) => void;
   completeRequest: (id: string) => void;
+  requestPayout: (doctorId: string) => void;
   assignAmbulance: (sosId: string, ambulanceId: string) => void;
   assignDoctorToSos: (sosId: string, doctorId: string) => void;
   advanceSos: (sosId: string, current: SosStatus) => void;
@@ -277,6 +288,7 @@ export function useActions(): Actions {
         acceptRequest: demoStore.acceptRequest,
         declineRequest: demoStore.declineRequest,
         completeRequest: demoStore.completeRequest,
+        requestPayout: demoStore.requestPayout,
         assignAmbulance: demoStore.assignAmbulance,
         assignDoctorToSos: demoStore.assignDoctorToSos,
         advanceSos: (id) => demoStore.advanceSos(id),
@@ -300,6 +312,7 @@ export function useActions(): Actions {
       acceptRequest: (id) => callAction(qc, "acceptRequest", { id }),
       declineRequest: (id) => callAction(qc, "declineRequest", { id }),
       completeRequest: (id) => callAction(qc, "completeRequest", { id }),
+      requestPayout: () => callAction(qc, "requestPayout", {}),
       assignAmbulance: (sosId, ambulanceId) =>
         callAction(qc, "assignAmbulance", { sosId, ambulanceId }),
       assignDoctorToSos: (sosId, doctorId) =>

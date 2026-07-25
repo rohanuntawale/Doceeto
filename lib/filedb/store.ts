@@ -10,6 +10,7 @@ import type {
   Order,
   Review,
   SosEvent,
+  Transaction,
 } from "@/lib/types/domain";
 
 /**
@@ -58,6 +59,7 @@ export interface FileData {
   orders: Order[];
   reviews: StoredReview[];
   patientReviews: StoredPatientReview[];
+  transactions: Transaction[];
   consults: Record<string, unknown>[];
   prescriptions: Record<string, unknown>[];
   audits: Record<string, unknown>[];
@@ -75,6 +77,7 @@ function empty(): FileData {
     orders: [],
     reviews: [],
     patientReviews: [],
+    transactions: [],
     consults: [],
     prescriptions: [],
     audits: [],
@@ -89,6 +92,7 @@ export function data(): FileData {
     // Backfill arrays added in later versions onto a long-lived in-memory
     // object (survives dev hot-reloads) so new fields are never undefined.
     if (!g.__iyashiFileDb.patientReviews) g.__iyashiFileDb.patientReviews = [];
+    if (!g.__iyashiFileDb.transactions) g.__iyashiFileDb.transactions = [];
     return g.__iyashiFileDb;
   }
   let d = empty();

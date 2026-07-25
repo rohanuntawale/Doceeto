@@ -27,3 +27,6 @@ export const isDemoMode = !isLiveMode;
 /** Map fallback center - Nagpur, India (used until real geolocation arrives). */
 export const MAP_CENTER = { lat: 21.1458, lng: 79.0882 };
 export const MAP_ZOOM = 12;
+
+/** Transparent commission on each completed visit (the doctor keeps the rest). */
+export const COMMISSION_RATE = 0.15;

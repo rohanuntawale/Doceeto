@@ -1,5 +1,6 @@
 import { PatientShell } from "@/components/patient/patient-shell";
 import { PatientLocationSync } from "@/components/patient/location-sync";
+import { LoadingSplash } from "@/components/brand/loading-splash";
 
 export default function PatientLayout({
   children,
@@ -7,9 +8,12 @@ export default function PatientLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PatientShell>
-      <PatientLocationSync />
-      {children}
-    </PatientShell>
+    <>
+      <LoadingSplash src="/loading/web-load.mp4" />
+      <PatientShell>
+        <PatientLocationSync />
+        {children}
+      </PatientShell>
+    </>
   );
 }

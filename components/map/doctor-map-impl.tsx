@@ -11,6 +11,8 @@ export interface DoctorMapProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   height?: number;
+  /** Fill the parent (height 100%) instead of a fixed px height. */
+  fill?: boolean;
 }
 
 /** Read a themed color from the CSS variables so markers match the theme. */
@@ -37,6 +39,7 @@ export default function DoctorMapImpl({
   selectedId,
   onSelect,
   height = 340,
+  fill = false,
 }: DoctorMapProps) {
   // Recompute themed colors whenever the selection changes (cheap) so a
   // theme switch is reflected the next time the map re-renders.
@@ -62,7 +65,7 @@ export default function DoctorMapImpl({
       center={center}
       zoom={13}
       scrollWheelZoom={false}
-      style={{ height, width: "100%", borderRadius: 14 }}
+      style={{ height: fill ? "100%" : height, width: "100%", borderRadius: fill ? 0 : 14 }}
       preferCanvas
     >
       <Recenter center={center} />

@@ -36,6 +36,15 @@ const config: Config = {
         },
         salmon: v("--c-salmon"),
         ink: v("--c-ink"),
+        // Friendly aliases for the Fresh Health redesign (same tokens).
+        primary: {
+          DEFAULT: v("--c-terracotta"),
+          700: v("--c-terracotta-700"),
+          300: v("--c-terracotta-300"),
+        },
+        coral: v("--c-salmon"),
+        surface: v("--c-espresso-800"),
+        canvas: v("--c-espresso"),
         // Text/icon color that sits ON the accent (buttons, SOS, chips).
         // Cream in the dark-accent themes; deep green in Mori's white accent.
         "on-accent": v("--c-on-accent"),
@@ -56,12 +65,17 @@ const config: Config = {
       letterSpacing: {
         label: "0.15em",
       },
-      borderRadius: {
-        card: "14px",
-      },
       boxShadow: {
         card: "0 1px 0 rgba(255,255,255,0.05) inset, 0 8px 30px rgba(0,0,0,0.28)",
         glow: "0 0 0 1px rgb(var(--c-terracotta) / 0.5), 0 0 28px rgb(var(--c-terracotta) / 0.35)",
+        // Theme-aware elevation (soft in light, deep in dark) — see globals.css.
+        soft: "var(--elev-shadow)",
+        "soft-lg": "var(--elev-shadow-strong)",
+      },
+      borderRadius: {
+        card: "14px",
+        "2xl": "1.125rem",
+        "3xl": "1.5rem",
       },
       keyframes: {
         "pulse-ring": {
