@@ -64,7 +64,11 @@ export default function DoctorProfilePage() {
   const st = doctorStatus[doctor.status];
   const feeFor = (t: ConsultType) => (t === "home_visit" ? doctor.homeVisitFee : doctor.consultFee);
   const addressFor = (t: ConsultType) =>
-    t === "home_visit" ? patient.address || "Your address" : t === "clinic" ? "At the doctor's clinic" : "Video call";
+    t === "home_visit"
+      ? patient.address || "Your address"
+      : t === "clinic"
+        ? doctor.clinicAddress || "At the doctor's clinic"
+        : "Video call";
 
   async function book(type: ConsultType) {
     if (!doctor) return;
@@ -137,6 +141,16 @@ export default function DoctorProfilePage() {
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-[var(--text-muted)]">{doctorAbout(doctor)}</p>
+
+        {doctor.clinicAddress && (
+          <p className="mt-3 flex items-start gap-1.5 border-t border-[var(--border)] pt-3 text-sm text-[var(--text-muted)]">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-salmon" />
+            <span>
+              <span className="text-[var(--text-faint)]">Clinic · </span>
+              {doctor.clinicAddress}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* ── Quick facts ─────────────────────────────────── */}

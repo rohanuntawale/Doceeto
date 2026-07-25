@@ -57,6 +57,7 @@ function OnboardingPanel() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [clinicAddress, setClinicAddress] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,6 +79,7 @@ function OnboardingPanel() {
           experienceYears: 0,
           consultFee: 400,
           homeVisitFee: 900,
+          clinicAddress: clinicAddress.trim(),
         });
         setCurrentDoctorId(doc.id);
         toast.push({ tone: "success", title: "Welcome to Doceeto", desc: "Set up your practice to go online." });
@@ -88,7 +90,7 @@ function OnboardingPanel() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ role: "doctor", fullName: name, email, password }),
+        body: JSON.stringify({ role: "doctor", fullName: name, email, password, clinicAddress: clinicAddress.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       setLoading(false);
@@ -249,6 +251,20 @@ function OnboardingPanel() {
               {showPw ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
             </button>
           </label>
+
+          {role === "doctor" && (
+            <label className="block">
+              <span className="sr-only">Clinic address (optional)</span>
+              <input
+                className={inputCls}
+                value={clinicAddress}
+                onChange={(e) => setClinicAddress(e.target.value)}
+                placeholder="Clinic address (optional)"
+                autoComplete="off"
+                maxLength={160}
+              />
+            </label>
+          )}
 
           {error && <p className="text-sm text-terracotta-300">{error}</p>}
 

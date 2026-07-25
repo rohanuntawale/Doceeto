@@ -34,6 +34,7 @@ function sanitizeDoctorPatch(raw: unknown): Record<string, unknown> {
   if (p.education !== undefined) out.education = str(p.education, 200);
   if (p.about !== undefined) out.about = str(p.about, 600);
   if (p.registrationNo !== undefined) out.registrationNo = str(p.registrationNo, 60);
+  if (p.clinicAddress !== undefined) out.clinicAddress = str(p.clinicAddress, 160);
   if (Array.isArray(p.languages)) {
     out.languages = p.languages
       .map((x) => String(x).trim())

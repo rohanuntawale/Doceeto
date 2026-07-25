@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         experienceYears: Number(body.experienceYears ?? 0),
         consultFee: Number(body.consultFee ?? 400),
         homeVisitFee: Number(body.homeVisitFee ?? 900),
+        clinicAddress: String(body.clinicAddress ?? "").slice(0, 160),
         lat,
         lng,
       });

@@ -294,6 +294,7 @@ export const demoStore = {
     experienceYears: number;
     consultFee: number;
     homeVisitFee: number;
+    clinicAddress?: string;
     /** Real device location, when the browser granted it. */
     lat?: number;
     lng?: number;
@@ -315,6 +316,7 @@ export const demoStore = {
       rating: 0,
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
+      clinicAddress: input.clinicAddress?.trim() || "",
       avatarColor: palette[s.doctors.length % palette.length],
       // Real location when granted; otherwise near the fallback center
       // until the doctor goes online and their device reports position.

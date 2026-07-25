@@ -69,6 +69,7 @@ export async function createDoctorUser(input: {
   experienceYears: number;
   consultFee: number;
   homeVisitFee: number;
+  clinicAddress?: string;
   lat?: number | null;
   lng?: number | null;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
@@ -95,6 +96,7 @@ export async function createDoctorUser(input: {
     rating: 0,
     consultFee: Number(input.consultFee) || 0,
     homeVisitFee: Number(input.homeVisitFee) || 0,
+    clinicAddress: input.clinicAddress?.trim() || "",
     avatarColor: AVATAR_COLORS[d.doctors.length % AVATAR_COLORS.length],
     lat: input.lat ?? MAP_CENTER.lat + (Math.random() - 0.5) * 0.02,
     lng: input.lng ?? MAP_CENTER.lng + (Math.random() - 0.5) * 0.02,
@@ -352,6 +354,7 @@ export async function updateDoctor(
     education?: string;
     about?: string;
     registrationNo?: string;
+    clinicAddress?: string;
     lat?: number;
     lng?: number;
   },
@@ -369,6 +372,7 @@ export async function updateDoctor(
   if (patch.education !== undefined) doc.education = patch.education;
   if (patch.about !== undefined) doc.about = patch.about;
   if (patch.registrationNo !== undefined) doc.registrationNo = patch.registrationNo;
+  if (patch.clinicAddress !== undefined) doc.clinicAddress = patch.clinicAddress;
   if (typeof patch.lat === "number") doc.lat = patch.lat;
   if (typeof patch.lng === "number") doc.lng = patch.lng;
   doc.lastSeen = now();

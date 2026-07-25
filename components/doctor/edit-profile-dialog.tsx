@@ -40,6 +40,7 @@ export function EditProfileDialog({
     education: doctor.education ?? "",
     about: doctor.about ?? "",
     registrationNo: doctor.registrationNo ?? "",
+    clinicAddress: doctor.clinicAddress ?? "",
   });
   const [form, setForm] = useState(snapshot);
 
@@ -70,6 +71,7 @@ export function EditProfileDialog({
       education: form.education.trim(),
       about: form.about.trim(),
       registrationNo: form.registrationNo.trim(),
+      clinicAddress: form.clinicAddress.trim(),
     });
     toast.push({ tone: "success", title: "Profile updated" });
     onClose();
@@ -150,6 +152,16 @@ export function EditProfileDialog({
 
           {/* Credentials patients see on your public profile */}
           <div className="label pt-1 text-salmon">What patients see</div>
+
+          <Field label="Clinic address (optional)">
+            <input
+              value={form.clinicAddress}
+              onChange={(e) => setForm({ ...form, clinicAddress: e.target.value })}
+              className={inputCls}
+              maxLength={160}
+              placeholder="Shivaji Nagar, Pune — near City Hospital"
+            />
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Experience (years)">

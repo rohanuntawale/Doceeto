@@ -47,6 +47,7 @@ const mapDoctor = (n: Row): Doctor => ({
   education: n.education ?? undefined,
   about: n.about ?? undefined,
   registrationNo: n.registrationNo ?? undefined,
+  clinicAddress: n.clinicAddress ?? undefined,
 });
 
 const mapAmbulance = (n: Row): Ambulance => ({
@@ -157,6 +158,7 @@ export async function createDoctorUser(input: {
   experienceYears: number;
   consultFee: number;
   homeVisitFee: number;
+  clinicAddress?: string;
   /** Real device location at signup (nullable → falls back near center). */
   lat?: number | null;
   lng?: number | null;
@@ -175,6 +177,7 @@ export async function createDoctorUser(input: {
        gender: $gender, experienceYears: $experienceYears,
        languages: $languages, status: 'online', verified: false, rating: 0.0,
        consultFee: $consultFee, homeVisitFee: $homeVisitFee,
+       clinicAddress: $clinicAddress,
        avatarColor: $avatarColor, lat: $lat, lng: $lng,
        location: point({latitude: $lat, longitude: $lng}), lastSeen: $now
      })
@@ -192,6 +195,7 @@ export async function createDoctorUser(input: {
       languages: ["English", "Hindi"],
       consultFee: input.consultFee,
       homeVisitFee: input.homeVisitFee,
+      clinicAddress: input.clinicAddress?.trim() || "",
       avatarColor: AVATAR[Math.floor(Math.random() * AVATAR.length)],
       // Real GPS when granted; otherwise near the fallback center until
       // the cockpit's location publisher reports the true position.
@@ -454,6 +458,7 @@ export async function updateDoctor(
     education?: string;
     about?: string;
     registrationNo?: string;
+    clinicAddress?: string;
     /** Live device position from the cockpit's location publisher. */
     lat?: number;
     lng?: number;
@@ -475,6 +480,7 @@ export async function updateDoctor(
        education: coalesce($education, d.education),
        about: coalesce($about, d.about),
        registrationNo: coalesce($registrationNo, d.registrationNo),
+       clinicAddress: coalesce($clinicAddress, d.clinicAddress),
        lat: coalesce($lat, d.lat),
        lng: coalesce($lng, d.lng)
      }
@@ -493,6 +499,7 @@ export async function updateDoctor(
       education: patch.education ?? null,
       about: patch.about ?? null,
       registrationNo: patch.registrationNo ?? null,
+      clinicAddress: patch.clinicAddress ?? null,
       lat: hasGeo ? patch.lat : null,
       lng: hasGeo ? patch.lng : null,
       hasGeo,

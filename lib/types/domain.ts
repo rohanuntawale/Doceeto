@@ -80,6 +80,7 @@ export interface Doctor {
   education?: string; // academic background, e.g. "Seth GS Medical College, Mumbai"
   about?: string; // short bio
   registrationNo?: string; // medical council registration
+  clinicAddress?: string; // where the doctor practises — shown to patients, used for clinic visits
 }
 
 export interface Ambulance {

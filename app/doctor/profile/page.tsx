@@ -103,6 +103,7 @@ export default function ProfilePage() {
             <p className="text-sm leading-relaxed text-[var(--text-muted)]">
               {doctorAbout(me)}
             </p>
+            <CredLine icon={<MapPin className="h-4 w-4 text-salmon" />} label="Clinic address" value={me.clinicAddress || "Not added yet"} />
             <CredLine icon={<Award className="h-4 w-4 text-salmon" />} label="Qualifications" value={doctorQualification(me)} />
             <CredLine icon={<GraduationCap className="h-4 w-4 text-salmon" />} label="Academic background" value={doctorEducation(me)} />
             <CredLine icon={<Briefcase className="h-4 w-4 text-salmon" />} label="Experience" value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`} />
