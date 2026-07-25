@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils/cn";
 
-/** Doceeto wordmark — serif name with the signature gold "ee", beside a
- *  ring-and-dot mark that echoes the mascot's head-mirror (per the deck).
- *  `compact` renders a single-line lockup for app bars. */
+/** Doceeto wordmark — the door-and-plus brand mark beside the lowercase name
+ *  ("doc·ee·to" with the middle pair in terracotta). `compact` drops the
+ *  tagline for app bars. */
 export function Wordmark({
   className,
-  subtle = false,
   compact = false,
 }: {
   className?: string;
@@ -14,13 +13,13 @@ export function Wordmark({
 }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <BrandMark subtle={subtle} />
+      <BrandMark />
       {compact ? (
-        <Name className="text-lg" />
+        <Name className="text-xl" />
       ) : (
         <div className="leading-none">
-          <Name className="text-lg" />
-          <div className="mt-1 text-[10px] tracking-[0.14em] text-[var(--text-faint)]">
+          <Name className="text-xl" />
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--c-salmon))]">
             Care that reaches you
           </div>
         </div>
@@ -29,30 +28,50 @@ export function Wordmark({
   );
 }
 
-/** The "Doc·ee·to" serif lockup with the middle pair in gold. */
+/** The "doc·ee·to" lockup with the middle pair in terracotta. */
 export function Name({ className }: { className?: string }) {
   return (
-    <span className={cn("font-serif tracking-tight text-[var(--text)]", className)}>
-      Doc<span className="text-salmon">ee</span>to
+    <span className={cn("font-serif font-bold lowercase tracking-tight text-[var(--text)]", className)}>
+      doc<span className="text-[rgb(var(--c-terracotta))]">ee</span>to
     </span>
   );
 }
 
-/** Small circular emblem: a soft green disc with a gold reflector ring +
- *  dot — a quiet nod to the doctor mascot's head-mirror. */
-export function BrandMark({ subtle = false, className }: { subtle?: boolean; className?: string }) {
+/** The new mark — a location pin with a medical plus on an olive squircle:
+ *  "care that reaches you", right where you are. Inline SVG so it stays crisp
+ *  at any size and carries the brand colours without an image file. */
+export function BrandMark({ className }: { subtle?: boolean; className?: string }) {
   return (
-    <span
-      className={cn(
-        "grid h-8 w-8 shrink-0 place-items-center rounded-full ring-1 ring-inset",
-        subtle ? "bg-white/5 ring-white/10" : "bg-white/8 ring-white/12",
-        className,
-      )}
-      aria-hidden
+    <svg
+      viewBox="0 0 100 100"
+      className={cn("h-[34px] w-[34px] shrink-0", className)}
+      role="img"
+      aria-label="Doceeto"
     >
-      <span className="grid h-4 w-4 place-items-center rounded-full ring-[1.5px] ring-inset ring-salmon">
-        <span className="h-1 w-1 rounded-full bg-salmon" />
-      </span>
-    </span>
+      <defs>
+        <linearGradient id="dc-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8C9B6C" />
+          <stop offset="1" stopColor="#717E54" />
+        </linearGradient>
+      </defs>
+      {/* olive squircle */}
+      <rect x="1" y="1" width="98" height="98" rx="26" fill="url(#dc-bg)" />
+      <rect x="1" y="1" width="98" height="49" rx="26" fill="#ffffff" opacity="0.06" />
+      {/* soft shadow under the pin */}
+      <path
+        d="M50 23 C36.7 23 26.5 33.2 26.5 45.5 C26.5 61 50 79 50 79 C50 79 73.5 61 73.5 45.5 C73.5 33.2 63.3 23 50 23 Z"
+        fill="#000000"
+        opacity="0.12"
+        transform="translate(0,2.5)"
+      />
+      {/* cream location pin */}
+      <path
+        d="M50 20 C36.7 20 26.5 30.2 26.5 42.5 C26.5 58 50 76 50 76 C50 76 73.5 58 73.5 42.5 C73.5 30.2 63.3 20 50 20 Z"
+        fill="#F7F0E4"
+      />
+      {/* terracotta medical plus in the pin head */}
+      <rect x="38.8" y="39" width="22.4" height="7.2" rx="3.6" fill="#C0692F" />
+      <rect x="46.4" y="31.4" width="7.2" height="22.4" rx="3.6" fill="#C0692F" />
+    </svg>
   );
 }
