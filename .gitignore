@@ -33,3 +33,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# windows reserved name / accidental files
+nul
+
+# large context / doc files
+context1.txt
+*.pdf
