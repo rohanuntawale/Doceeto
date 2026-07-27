@@ -23,6 +23,18 @@ export interface TriageResult {
   redFlags: string[];
   /** Best SOS category when this is an emergency. */
   sosCategory?: SosCategory;
+  /**
+   * True when a rule or red flag actually fired. False means this is only
+   * the General Physician fallback — callers that accumulate scores across
+   * several messages must not let that outweigh a real match.
+   */
+  matched: boolean;
+  /**
+   * Specialty → how strongly the text points at it. Callers should score
+   * from this rather than the `specialties` order, so a focused match
+   * ("hair fall") outranks a catch-all one that happened to fire too.
+   */
+  specialtyScores: Record<string, number>;
 }
 
 interface Rule {
@@ -30,69 +42,102 @@ interface Rule {
   specialty: string;
   conditions: string[];
   urgency: Urgency;
+  /**
+   * Confidence this rule's hit gives. Body-system rules outrank the broad
+   * General Physician catch-alls, and age beats body system — a toddler
+   * with a rash is a paediatric visit first, a skin one second.
+   */
+  weight: number;
 }
 
-// Ordered most-specific → least. First matches rank first.
+/**
+ * Patients describe symptoms in their own words, so each pattern covers the
+ * everyday phrasings — not just the clinical term. Anything these miss falls
+ * through to the General Physician default, which is safe but vague, so gaps
+ * here are what make a recommendation feel wrong.
+ */
 const RULES: Rule[] = [
   {
-    test: /chest pain|palpitation|heart racing|cardiac|tightness in (the )?chest|angina/,
-    specialty: "Cardiologist",
-    conditions: ["Possible heart-related problem"],
-    urgency: "urgent",
-  },
-  {
-    test: /pregnan|in labour|labor pain|period|menstru|vaginal|gynae|pcos|pcod|miscarriage/,
-    specialty: "Gynecologist",
-    conditions: ["Gynaecological / pregnancy-related concern"],
-    urgency: "routine",
-  },
-  {
-    test: /\b(child|baby|infant|toddler|kid|my son|my daughter|newborn)\b/,
+    // Age trumps body system: route the child first, the organ second.
+    test: /\b(child|children|baby|babies|infant|toddler|kid|kids|son|daughter|newborn)\b|vaccinat|immunis|immuniz/,
     specialty: "Pediatrician",
     conditions: ["Child health concern"],
     urgency: "routine",
+    weight: 5,
   },
   {
-    test: /fracture|broken bone|dislocat|sprain|joint pain|knee|back pain|shoulder|swollen (ankle|wrist)|bone/,
+    // Proximity rather than exact phrases — "chest feels tight when I climb
+    // stairs" is how people actually describe it.
+    test: /chest\b.{0,20}\b(pain|tight|heavy|heaviness|pressure|discomfort)|\b(pain|tight|tightness|pressure|heaviness).{0,20}\bchest\b|palpitat|angina|cardiac|heart attack|heart\b.{0,15}\b(racing|races|pounding|pounds|fluttering|flutters|skipping|skips|fast)|racing heart|rapid heart|heart ?beat|blood pressure|\bbp\b|hypertens|cholesterol/,
+    specialty: "Cardiologist",
+    conditions: ["Possible heart-related problem"],
+    urgency: "urgent",
+    weight: 4,
+  },
+  {
+    test: /pregnan|in labour|labor pain|period|menstru|vaginal|gynae|pcos|pcod|miscarriage|menopaus|white discharge|infertil|uterus|ovar(y|ian|ies)|breast/,
+    specialty: "Gynecologist",
+    conditions: ["Gynaecological / pregnancy-related concern"],
+    urgency: "routine",
+    weight: 4,
+  },
+  {
+    test: /fractur|broken bone|dislocat|sprain|ligament|arthrit|joint|knee|back pain|neck pain|stiff|shoulder|spine|spondyl|slip(ped)? disc|cervical|bone|muscle (pain|ache)|swollen (ankle|wrist|knee|foot|leg)|limp/,
     specialty: "Orthopedic",
     conditions: ["Bone / joint / muscle problem"],
     urgency: "routine",
+    weight: 4,
   },
   {
-    test: /rash|itch|acne|pimple|eczema|hives|mole|skin|psorias|fungal/,
+    test: /rash|itch|acne|pimple|eczema|hives|\bmole\b|skin|psorias|fungal|hair ?(fall|loss|thin)|losing hair|bald|dandruff|\bnails?\b|\bboils?\b|wart|pigment|(dark|white|red|black) (spots?|patch(es)?)|patches on|blackhead|whitehead/,
     specialty: "Dermatologist",
     conditions: ["Skin condition"],
     urgency: "routine",
+    weight: 4,
   },
   {
-    test: /\b(ear|hearing|sinus|tonsil|nosebleed|nose bleed)\b|sore throat|throat pain/,
+    test: /\b(ears?|hearing|sinus|tonsils?|nosebleed|adenoid)\b|nose bleed|ear ?ache|sore throat|throat pain|throat infection|tonsillit|sneez|nose\b.{0,15}\b(block|blocked|stuff|stuffed|congest)|\b(block|blocked|stuff|stuffy|congest)\w*\s+nose|hearing loss|snor(e|ing)|hoarse|voice/,
     specialty: "ENT",
     conditions: ["Ear / nose / throat issue"],
     urgency: "routine",
+    weight: 4,
   },
   {
-    test: /anxiety|depress|panic attack|stress|can'?t sleep|insomnia|mental|feeling low|hopeless/,
+    test: /anxiety|anxious|depress|panic|stress|can'?t sleep|cannot sleep|sleepless|insomnia|mental|feeling low|low mood|hopeless|mood swing|overthink|addict/,
     specialty: "Psychiatrist",
     conditions: ["Mental-health / stress concern"],
     urgency: "routine",
+    weight: 4,
   },
   {
-    test: /breath|breathless|short of breath|asthma|wheez|suffocat/,
+    // Brain and nerves. "fits"/"stroke" are also red flags below, which
+    // overrides the urgency — this only settles WHO they should see.
+    test: /migraine|seizure|convuls|epilep|\bfits\b|tremor|shaking hands|parkinson|numbness|numb\b|tingl|pins and needles|paralys|weak(ness)? (on )?one side|vertigo|giddi(ness)?|giddy|blackout|memory loss|forgetful|dementia|\bnerve|neuro|slurred speech|face droop|stroke/,
+    specialty: "Neurologist",
+    conditions: ["Nerve / brain-related symptom"],
+    urgency: "urgent",
+    weight: 4,
+  },
+  {
+    test: /breath|breathless|short of breath|asthma|wheez|suffocat|inhaler/,
     specialty: "General Physician",
     conditions: ["Breathing difficulty"],
     urgency: "urgent",
+    weight: 3,
   },
   {
-    test: /stomach|abdomen|belly|vomit|nausea|diarr|loose motion|constipat|acidity|indigest|gas\b/,
+    test: /stomach|abdomen|belly|tummy|vomit|nausea|diarr|loose motion|constipat|acidity|indigest|\bgas\b|bloat|piles|ulcer|appetite|jaundice/,
     specialty: "General Physician",
     conditions: ["Digestive / stomach problem"],
     urgency: "routine",
+    weight: 3,
   },
   {
-    test: /fever|cough|cold\b|flu|running nose|body ache|chills|weak|fatigue|headache|migraine|dizzy|dizziness/,
+    test: /fever|cough|cold\b|flu\b|running nose|runny nose|body ache|chills|weak|fatigue|tired|headache|migraine|dizzy|dizziness|diabet|sugar|thyroid|infection/,
     specialty: "General Physician",
     conditions: ["Likely a viral infection or general illness"],
     urgency: "routine",
+    weight: 2,
   },
 ];
 
@@ -133,17 +178,25 @@ export function analyzeSymptoms(input: string): TriageResult | null {
     }
   }
 
-  const specialties: string[] = [];
+  // Rank by the strongest rule that fired for each specialty, not by the
+  // order the rules happen to sit in.
+  const hits = new Map<string, number>();
   const conditions: string[] = [];
   let urgency: Urgency = "routine";
   for (const r of RULES) {
     if (r.test.test(text)) {
-      if (!specialties.includes(r.specialty)) specialties.push(r.specialty);
+      hits.set(r.specialty, Math.max(hits.get(r.specialty) ?? 0, r.weight));
       for (const c of r.conditions) if (!conditions.includes(c)) conditions.push(c);
       if (RANK[r.urgency] > RANK[urgency]) urgency = r.urgency;
     }
   }
 
+  const specialties = [...hits.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([specialty]) => specialty);
+  const specialtyScores = Object.fromEntries(hits);
+
+  const matched = specialties.length > 0 || redFlags.length > 0;
   if (specialties.length === 0) {
     specialties.push("General Physician");
     conditions.push("General consultation");
@@ -156,9 +209,11 @@ export function analyzeSymptoms(input: string): TriageResult | null {
       specialties,
       conditions,
       redFlags,
+      matched,
+      specialtyScores,
       sosCategory: sosCategory ?? "other",
       advice:
-        "This looks like it could be a medical emergency. Press SOS now — an ambulance and the nearest doctor will be alerted with your location.",
+        "This looks like it could be a medical emergency. Get help immediately — call your local emergency number or go to the nearest hospital.",
     };
   }
 
@@ -167,9 +222,11 @@ export function analyzeSymptoms(input: string): TriageResult | null {
     specialties,
     conditions,
     redFlags,
+    matched,
+    specialtyScores,
     advice:
       urgency === "urgent"
-        ? `Best seen soon by a ${specialties[0]}. If it gets worse, press SOS.`
+        ? `Best seen soon by a ${specialties[0]}. If it gets worse, seek emergency care.`
         : `A ${specialties[0]} is a good fit. Book a visit below.`,
   };
 }

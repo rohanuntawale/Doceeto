@@ -22,7 +22,7 @@ import { OnlineToggle } from "@/components/doctor/online-toggle";
 import { EditProfileDialog } from "@/components/doctor/edit-profile-dialog";
 import { useReviews } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
-import { doctorStatus } from "@/lib/labels";
+import { doctorStatusOf } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
 import { useMounted } from "@/lib/hooks/use-mounted";
@@ -35,7 +35,7 @@ export default function ProfilePage() {
   if (!me) return null;
 
   const mine = reviews; // scoped to this doctor via useReviews(me.id)
-  const st = doctorStatus[me.status];
+  const st = doctorStatusOf(me.status);
 
   return (
     <>
@@ -116,7 +116,8 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        <Card>
+        {/* Anchor target for the dashboard's Rating tile. */}
+        <Card id="reviews" className="scroll-mt-24">
           <CardHeader label="ZUMI · REVIEWS" title={`Patient reviews (${mine.length})`} />
           {mine.length === 0 ? (
             <div className="p-4">

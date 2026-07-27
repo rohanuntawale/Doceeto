@@ -3,10 +3,26 @@ import { read, write } from "@/lib/neo4j/driver";
 import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import { DomainError, type Near, type UserRecord } from "@/lib/db/shared";
+import { bookingModeOf, coerceBookingMode } from "@/lib/scheduling/slots";
+import {
+  assertCanAccept,
+  assertCanCancel,
+  assertCanHire,
+  CANCEL_REASON_MAX,
+  reopensOnDoctorCancel,
+  resolveScheduledSlot,
+  type ResolvedHire,
+  type ResolvedSlot,
+} from "@/lib/scheduling/booking";
+import { nextTripStage } from "@/lib/scheduling/trip";
+import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
 import type {
   Ambulance,
   ConsultRequest,
   Doctor,
+  DoctorAvailability,
+  Gig,
+  GigStatus,
   Order,
   Review,
   SosEvent,
@@ -24,6 +40,16 @@ const DIST = (v: string) =>
   `point.distance(point({latitude: ${v}.lat, longitude: ${v}.lng}), point({latitude: $nlat, longitude: $nlng}))`;
 
 type Row = Record<string, any>;
+
+/** Neo4j properties are flat, so nested objects travel as JSON strings. */
+function parseJson<T>(raw: unknown): T | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return undefined;
+  }
+}
 
 // ── Mappers: Neo4j node props -> domain types ────────────────
 const mapDoctor = (n: Row): Doctor => ({
@@ -49,6 +75,7 @@ const mapDoctor = (n: Row): Doctor => ({
   about: n.about ?? undefined,
   registrationNo: n.registrationNo ?? undefined,
   clinicAddress: n.clinicAddress ?? undefined,
+  availability: parseJson<DoctorAvailability>(n.availability),
 });
 
 const mapAmbulance = (n: Row): Ambulance => ({
@@ -89,7 +116,37 @@ const mapRequest = (n: Row): ConsultRequest => ({
   lat: Number(n.lat ?? 0),
   lng: Number(n.lng ?? 0),
   createdAt: n.createdAt,
+  // Settle the mode here so nothing downstream has to infer it from rows
+  // written before scheduling existed.
+  mode: bookingModeOf({ mode: n.mode, scheduledAt: n.scheduledAt ?? null }),
+  scheduledAt: n.scheduledAt ?? null,
+  scheduledEnd: n.scheduledEnd ?? null,
+  slotMinutes: n.slotMinutes != null ? Number(n.slotMinutes) : null,
+  gigId: n.gigId ?? null,
+  gigTitle: n.gigTitle ?? null,
+  broadcast: !!n.broadcast,
+  tripStage: n.tripStage ?? null,
+  tripStageAt: n.tripStageAt ?? null,
+  acceptedAt: n.acceptedAt ?? null,
+  completedAt: n.completedAt ?? null,
+  cancelledAt: n.cancelledAt ?? null,
+  cancelledBy: n.cancelledBy ?? null,
+  cancelReason: n.cancelReason ?? null,
+  passedBy: Array.isArray(n.passedBy) ? n.passedBy : [],
   doctorId: n.doctorId ?? null,
+});
+
+const mapGig = (n: Row): Gig => ({
+  id: n.id,
+  doctorId: n.doctorId,
+  title: n.title ?? "",
+  description: n.description ?? "",
+  type: n.type ?? "home_visit",
+  price: Number(n.price ?? 0),
+  durationMinutes: Number(n.durationMinutes ?? 60),
+  status: n.status ?? "active",
+  createdAt: n.createdAt,
+  updatedAt: n.updatedAt ?? null,
 });
 
 const mapTransaction = (n: Row): Transaction => ({
@@ -388,6 +445,15 @@ export async function createSos(input: {
   return mapSos(rows[0].s);
 }
 
+/** Every request already sitting on one doctor's calendar. */
+async function requestsForDoctor(doctorId: string): Promise<ConsultRequest[]> {
+  const rows = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {doctorId: $doctorId}) RETURN properties(r) AS r`,
+    { doctorId },
+  );
+  return rows.map((x) => mapRequest(x.r));
+}
+
 export async function createRequest(input: {
   patientId: string;
   patientName: string;
@@ -399,23 +465,82 @@ export async function createRequest(input: {
   lat: number;
   lng: number;
   doctorId?: string | null;
+  mode?: string;
+  scheduledAt?: string | null;
+  gigId?: string | null;
 }): Promise<ConsultRequest> {
+  const doctorId = input.doctorId ?? null;
+  const mode = coerceBookingMode(input.mode);
+
+  let slot: ResolvedSlot | null = null;
+  let hire: ResolvedHire | null = null;
+  if (mode === "scheduled") {
+    if (!doctorId) throw new DomainError("Pick a doctor before choosing a time.");
+    slot = resolveScheduledSlot({
+      doctor: await getDoctorById(doctorId),
+      startIso: String(input.scheduledAt ?? ""),
+      existing: await requestsForDoctor(doctorId),
+    });
+  } else if (mode === "gig") {
+    if (!doctorId) throw new DomainError("Pick a doctor before hiring a gig.");
+    hire = assertCanHire({
+      gig: await getGigById(String(input.gigId ?? "")),
+      doctor: await getDoctorById(doctorId),
+      existing: await requestsForDoctor(doctorId),
+    });
+  }
+
+  // The check above can go stale between the read and the write on a
+  // multi-instance deployment, so the CREATE itself refuses to run when the
+  // slot has been taken in the meantime. Nothing gets written twice.
+  //
+  // A gig needs no equivalent guard here: several patients queueing a request
+  // for the same gig is fine and wanted. The one-at-a-time invariant is
+  // enforced on ACCEPT, where only one doctor's claim can win.
   const rows = await write<{ r: Row }>(
-    `CREATE (r:ConsultRequest {
+    `WITH $scheduledAt AS slot
+     WHERE slot IS NULL OR NOT EXISTS {
+       MATCH (x:ConsultRequest)
+       WHERE x.doctorId = $doctorId AND x.scheduledAt = slot
+         AND x.status IN ['pending', 'accepted']
+     }
+     CREATE (r:ConsultRequest {
        id: $id, patientId: $patientId, patientName: $patientName, type: $type,
        status: 'pending', symptoms: $symptoms, paymentMethod: $paymentMethod,
        fee: $fee, address: $address,
        lat: $lat, lng: $lng, location: point({latitude: $lat, longitude: $lng}),
-       doctorId: $doctorId, createdAt: $now
+       doctorId: $doctorId, mode: $mode, scheduledAt: $scheduledAt,
+       scheduledEnd: $scheduledEnd, slotMinutes: $slotMinutes,
+       gigId: $gigId, gigTitle: $gigTitle, broadcast: $broadcast,
+       tripStage: null, tripStageAt: null, passedBy: [],
+       createdAt: $now
      }) RETURN properties(r) AS r`,
     {
       id: uid("req"),
-      ...input,
+      patientId: input.patientId,
+      patientName: input.patientName,
+      // A gig's visit type and price come off the listing, never the body.
+      type: hire?.type ?? input.type,
+      symptoms: input.symptoms,
+      fee: hire ? hire.fee : input.fee,
+      address: input.address,
+      lat: input.lat,
+      lng: input.lng,
       paymentMethod: input.paymentMethod === "cash" ? "cash" : "online",
-      doctorId: input.doctorId ?? null,
+      doctorId,
+      mode,
+      scheduledAt: slot?.scheduledAt ?? null,
+      scheduledEnd: slot?.scheduledEnd ?? null,
+      slotMinutes: slot?.slotMinutes ?? hire?.durationMinutes ?? null,
+      gigId: hire?.gigId ?? null,
+      gigTitle: hire?.gigTitle ?? null,
+      broadcast: mode === "emergency" && doctorId === null,
       now: new Date().toISOString(),
     },
   );
+  if (!rows[0]) {
+    throw new DomainError("That slot has just been booked. Please pick another time.", 409);
+  }
   return mapRequest(rows[0].r);
 }
 
@@ -531,41 +656,317 @@ export async function updateDoctor(
   );
 }
 
-/** Atomic claim: only succeeds if the request is still pending AND the
- *  doctor has no other accepted consult in progress. */
+/**
+ * Atomic claim: only succeeds while the request is still pending. An
+ * emergency also needs the doctor to be free; an appointment only needs its
+ * slot to be clear of what they have already accepted.
+ *
+ * This is where the "one active gig per doctor" invariant is really enforced.
+ * `assertCanAccept` below can go stale between the read and the write on a
+ * multi-instance deployment, so the SET refuses to run when the doctor has
+ * picked up a gig in the meantime — the second claim finds no row and reports
+ * a 409 rather than quietly double-booking them.
+ */
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
-  const active = await read<{ r: Row }>(
-    `MATCH (r:ConsultRequest {doctorId: $doctorId, status: 'accepted'})
-     RETURN properties(r) AS r LIMIT 1`,
-    { doctorId },
+  const found = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+    { id },
   );
-  if (active.length > 0) {
-    throw new DomainError("You already have an active consult — complete it first.", 409);
-  }
+  const req = found[0]?.r ? mapRequest(found[0].r) : null;
+  if (!req || req.status !== "pending") return false;
+  assertCanAccept(req, await requestsForDoctor(doctorId), doctorId);
+
+  const now = new Date().toISOString();
   const rows = await write<{ r: Row }>(
     `MATCH (r:ConsultRequest {id: $id})
      WHERE r.status = 'pending'
-     SET r.status = 'accepted', r.doctorId = $doctorId
+       AND NOT EXISTS {
+         MATCH (x:ConsultRequest)
+         WHERE x.doctorId = $doctorId AND x.mode = 'gig' AND x.status = 'accepted'
+       }
+     SET r.status = 'accepted', r.doctorId = $doctorId, r.acceptedAt = $now,
+         r.tripStage = 'accepted', r.tripStageAt = $now
      RETURN properties(r) AS r`,
-    { id, doctorId },
+    { id, doctorId, now },
   );
-  return rows.length > 0;
+  if (rows.length === 0) {
+    // Distinguish "lost the race" (caller turns a false into a 409 about
+    // another doctor) from "you're already on a gig", which is about you.
+    const mine = await requestsForDoctor(doctorId);
+    if (mine.some((r) => r.status === "accepted" && r.mode === "gig")) {
+      throw new DomainError("Finish your current gig before taking another.", 409);
+    }
+    return false;
+  }
+  return true;
 }
 
-export async function declineRequest(id: string) {
-  await write(`MATCH (r:ConsultRequest {id: $id}) SET r.status = 'declined'`, { id });
+/** A request this doctor may act on: theirs, unassigned, or a seed row. */
+function claimableBy(req: ConsultRequest, doctorId: string): boolean {
+  return (
+    req.doctorId === doctorId ||
+    (req.status === "pending" &&
+      (req.doctorId === null || Boolean(req.doctorId?.startsWith("doc-seed-"))))
+  );
+}
+
+export async function declineRequest(id: string, doctorId?: string, reason?: string) {
+  // Declining frees a booked slot and can unblock a doctor's urgent feed, so
+  // it has to be theirs to decline.
+  if (doctorId) {
+    const found = await read<{ r: Row }>(
+      `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+      { id },
+    );
+    const req = found[0]?.r ? mapRequest(found[0].r) : null;
+    if (!req) return;
+    if (!claimableBy(req, doctorId)) {
+      throw new DomainError("That request isn't yours to decline.", 403);
+    }
+    // Passing on a broadcast must not kill it for everyone else — record the
+    // pass and leave it pending for another doctor.
+    if (req.broadcast && req.status === "pending" && req.doctorId === null) {
+      await write(
+        `MATCH (r:ConsultRequest {id: $id})
+         SET r.passedBy = [x IN coalesce(r.passedBy, []) WHERE x <> $doctorId] + $doctorId`,
+        { id, doctorId },
+      );
+      return;
+    }
+  }
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     SET r.status = 'declined', r.cancelReason = $reason`,
+    { id, reason: reason ?? null },
+  );
+}
+
+/** Patient or doctor calls off a booking — this is what frees the slot. */
+export async function cancelRequest(
+  id: string,
+  actor: { id: string; role: string },
+  opts?: { reason?: string },
+) {
+  const found = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+    { id },
+  );
+  const req = found[0]?.r ? mapRequest(found[0].r) : undefined;
+  assertCanCancel(req, actor, opts);
+  const reason = opts?.reason?.trim().slice(0, CANCEL_REASON_MAX) || null;
+
+  // A doctor standing down from a BROADCAST puts it back out to the pool.
+  if (actor.role === "doctor" && reopensOnDoctorCancel(req)) {
+    await write(
+      `MATCH (r:ConsultRequest {id: $id})
+       WHERE r.status = 'accepted'
+       SET r.status = 'pending', r.doctorId = null, r.acceptedAt = null,
+           r.tripStage = null, r.tripStageAt = null, r.cancelReason = $reason,
+           r.passedBy = [x IN coalesce(r.passedBy, []) WHERE x <> $doctorId] + $doctorId`,
+      { id, reason, doctorId: actor.id },
+    );
+    return;
+  }
+
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.status IN ['pending', 'accepted']
+     SET r.status = 'cancelled', r.cancelledAt = $now,
+         r.cancelledBy = $by, r.cancelReason = $reason`,
+    {
+      id,
+      now: new Date().toISOString(),
+      by: actor.role === "doctor" ? "doctor" : "patient",
+      reason,
+    },
+  );
+}
+
+/** Move a visit one step along its rail. Null when there is nowhere left. */
+export async function advanceTrip(id: string, doctorId: string): Promise<string | null> {
+  const found = await read<{ r: Row }>(
+    `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+    { id },
+  );
+  const req = found[0]?.r ? mapRequest(found[0].r) : null;
+  if (!req) throw new DomainError("That visit no longer exists.", 404);
+  if (req.doctorId !== doctorId) throw new DomainError("That isn't your visit.", 403);
+  if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+
+  const next = nextTripStage(req);
+  if (!next) return null;
+  await write(
+    `MATCH (r:ConsultRequest {id: $id})
+     WHERE r.status = 'accepted'
+     SET r.tripStage = $next, r.tripStageAt = $now`,
+    { id, next, now: new Date().toISOString() },
+  );
+  return next;
+}
+
+// ── Gigs ─────────────────────────────────────────────────────
+
+export async function getGigs(doctorId?: string): Promise<Gig[]> {
+  const rows = doctorId
+    ? await read<{ g: Row }>(
+        `MATCH (g:Gig {doctorId: $doctorId}) RETURN properties(g) AS g
+         ORDER BY g.createdAt DESC LIMIT 100`,
+        { doctorId },
+      )
+    : await read<{ g: Row }>(
+        `MATCH (g:Gig) RETURN properties(g) AS g ORDER BY g.createdAt DESC LIMIT 200`,
+      );
+  return rows.map((x) => mapGig(x.g));
+}
+
+export async function getGigById(id: string): Promise<Gig | null> {
+  const rows = await read<{ g: Row }>(
+    `MATCH (g:Gig {id: $id}) RETURN properties(g) AS g`,
+    { id },
+  );
+  return rows[0]?.g ? mapGig(rows[0].g) : null;
+}
+
+const liveGigCount = async (doctorId: string, exceptId?: string) => {
+  const rows = await read<{ n: number }>(
+    `MATCH (g:Gig {doctorId: $doctorId, status: 'active'})
+     WHERE g.id <> coalesce($exceptId, '')
+     RETURN count(g) AS n`,
+    { doctorId, exceptId: exceptId ?? null },
+  );
+  return Number(rows[0]?.n ?? 0);
+};
+
+export async function createGig(input: {
+  doctorId: string;
+  title: string;
+  description: string;
+  type: string;
+  price: number;
+  durationMinutes: number;
+}): Promise<Gig> {
+  if (!(await getDoctorById(input.doctorId))) {
+    throw new DomainError("That doctor no longer exists.", 404);
+  }
+  if ((await liveGigCount(input.doctorId)) >= MAX_ACTIVE_GIGS) {
+    throw new DomainError(
+      `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+      409,
+    );
+  }
+  const gig = normalizeGig(input, {
+    id: uid("gig"),
+    doctorId: input.doctorId,
+    createdAt: new Date().toISOString(),
+  });
+  if (!gig.title) throw new DomainError("Give the gig a title.", 400);
+  if (gig.price <= 0) throw new DomainError("Set a price for the gig.", 400);
+
+  // OFFERS makes the doctor's shelf traversable; the flat doctorId keeps the
+  // simple lookups above index-friendly.
+  const rows = await write<{ g: Row }>(
+    `MATCH (d:Doctor {id: $doctorId})
+     CREATE (g:Gig {
+       id: $id, doctorId: $doctorId, title: $title, description: $description,
+       type: $type, price: $price, durationMinutes: $durationMinutes,
+       status: $status, createdAt: $createdAt, updatedAt: null
+     })
+     MERGE (d)-[:OFFERS]->(g)
+     RETURN properties(g) AS g`,
+    { ...gig },
+  );
+  if (!rows[0]) throw new DomainError("Could not publish that gig.", 500);
+  return mapGig(rows[0].g);
+}
+
+/** A gig this doctor owns, or a 403/404 explaining why not. */
+async function ownGig(id: string, doctorId: string): Promise<Gig> {
+  const gig = await getGigById(id);
+  if (!gig) throw new DomainError("That gig no longer exists.", 404);
+  if (gig.doctorId !== doctorId) throw new DomainError("That isn't your gig.", 403);
+  return gig;
+}
+
+export async function updateGig(id: string, doctorId: string, patch: unknown) {
+  const gig = await ownGig(id, doctorId);
+  const clean = sanitizeGigPatch(patch);
+  if (Object.keys(clean).length === 0) return;
+  if (
+    clean.status === "active" &&
+    gig.status !== "active" &&
+    (await liveGigCount(doctorId, id)) >= MAX_ACTIVE_GIGS
+  ) {
+    throw new DomainError(
+      `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+      409,
+    );
+  }
+  // Only the keys the allowlist passed are written, so a partial edit never
+  // blanks a field the form didn't send.
+  const sets = Object.keys(clean)
+    .map((k) => `g.${k} = $${k}`)
+    .join(", ");
+  await write(
+    `MATCH (g:Gig {id: $id}) SET ${sets}, g.updatedAt = $now`,
+    { ...clean, id, now: new Date().toISOString() },
+  );
+}
+
+/**
+ * Publish, pause or retire a listing. Deliberately does NOT touch hires
+ * already made against it — the request carries its own gigTitle snapshot.
+ */
+export async function setGigStatus(id: string, doctorId: string, status: GigStatus) {
+  const gig = await ownGig(id, doctorId);
+  if (
+    status === "active" &&
+    gig.status !== "active" &&
+    (await liveGigCount(doctorId, id)) >= MAX_ACTIVE_GIGS
+  ) {
+    throw new DomainError(
+      `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+      409,
+    );
+  }
+  await write(
+    `MATCH (g:Gig {id: $id}) SET g.status = $status, g.updatedAt = $now`,
+    { id, status, now: new Date().toISOString() },
+  );
+}
+
+export async function setDoctorAvailability(id: string, availability: DoctorAvailability) {
+  const rows = await write<{ id: string }>(
+    `MATCH (d:Doctor {id: $id})
+     SET d.availability = $availability, d.lastSeen = $now
+     RETURN d.id AS id`,
+    { id, availability: JSON.stringify(availability), now: new Date().toISOString() },
+  );
+  if (!rows[0]) throw new DomainError("That doctor no longer exists.", 404);
 }
 
 export async function completeRequest(
   id: string,
-  opts?: { notes?: string; prescription?: { name: string; qty: number }[] },
+  opts?: { notes?: string; prescription?: { name: string; qty: number }[]; doctorId?: string },
 ) {
   const now = new Date().toISOString();
+  // Completing releases the doctor's "in a consult" state (which gates their
+  // urgent feed) and credits a wallet — only the doctor on it may close it.
+  if (opts?.doctorId) {
+    const found = await read<{ r: Row }>(
+      `MATCH (r:ConsultRequest {id: $id}) RETURN properties(r) AS r`,
+      { id },
+    );
+    const req = found[0]?.r ? mapRequest(found[0].r) : null;
+    if (!req) return;
+    if (!claimableBy(req, opts.doctorId)) {
+      throw new DomainError("That consult isn't yours to complete.", 403);
+    }
+  }
   // Flip the request and persist a Consult record of what happened.
   const rows = await write<{ r: Row }>(
     `MATCH (r:ConsultRequest {id: $id})
      WHERE r.status IN ['accepted', 'pending']
-     SET r.status = 'completed'
+     SET r.status = 'completed', r.completedAt = $now
      CREATE (c:Consult {
        id: $cid, requestId: r.id, doctorId: r.doctorId, patientId: r.patientId,
        startedAt: r.createdAt, endedAt: $now, notes: $notes

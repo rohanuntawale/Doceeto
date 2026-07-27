@@ -16,7 +16,7 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
   const nearby = doctors.filter((d) => d.status !== "offline");
 
   return (
-    <section className="fh-card relative overflow-hidden rounded-3xl">
+    <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
       <div className="h-[260px] w-full">
         <DoctorMap
           patient={patient}
@@ -27,8 +27,9 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
         />
       </div>
 
-      {/* Glass overlays */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3">
+      {/* Glass overlays. The deeper bottom padding leaves Leaflet's
+          attribution strip its own lane under the action row. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-8">
         <div className="flex items-start justify-between gap-2">
           <Chip>
             <MapPin className="h-3.5 w-3.5 text-[rgb(var(--c-terracotta))]" />

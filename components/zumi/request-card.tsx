@@ -1,13 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MapPin, Video, Home, Building2, Clock } from "lucide-react";
+import { MapPin, Video, Home, Building2, Clock, CalendarDays, Zap, Briefcase } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { StarDisplay } from "@/components/ui/star-rating";
 import { Button } from "@/components/ui/button";
 import { formatINR, timeAgo } from "@/lib/utils/format";
-import { consultStatus, consultType } from "@/lib/labels";
+import { consultStatusOf, consultTypeOf } from "@/lib/labels";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { isGig, isScheduled } from "@/lib/scheduling/slots";
+import { formatSlotRange } from "@/lib/scheduling/time";
+import { formatGigDuration } from "@/lib/gigs/rules";
 import type { ConsultRequest } from "@/lib/types/domain";
 
 const typeIcon = {
@@ -23,6 +26,7 @@ export function RequestCard({
   onDecline,
   onComplete,
   canAccept = true,
+  blockedReason,
   footer,
 }: {
   request: ConsultRequest;
@@ -33,14 +37,18 @@ export function RequestCard({
   onComplete?: () => void;
   /** When false, Accept is disabled (doctor already has an active consult). */
   canAccept?: boolean;
+  /** Shown in place of the generic line when Accept is blocked. */
+  blockedReason?: string;
   /** Extra content below the card body, e.g. a rating input. */
   footer?: ReactNode;
 }) {
   const mounted = useMounted();
-  const st = consultStatus[request.status];
+  const st = consultStatusOf(request.status);
   const isPending = request.status === "pending";
   const isAccepted = request.status === "accepted";
   const patientRating = request.patientRating ?? 0;
+  const booked = isScheduled(request);
+  const gig = isGig(request);
 
   return (
     <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-4 shadow-card transition-colors hover:border-white/15">
@@ -57,7 +65,7 @@ export function RequestCard({
               )}
             </div>
             <p className="text-xs text-[var(--text-muted)]">
-              {consultType[request.type].label}
+              {consultTypeOf(request.type).label}
             </p>
             {note && (
               <span className="mt-1 inline-block rounded-full bg-terracotta/12 px-2 py-0.5 text-[10px] font-medium text-salmon ring-1 ring-inset ring-terracotta/20">
@@ -72,6 +80,41 @@ export function RequestCard({
             {st.label}
           </StatusPill>
         </div>
+      </div>
+
+      {/* How they reached you, and when — the first thing a doctor triages on. */}
+      <div
+        className={`mt-3 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+          gig
+            ? "bg-status-warn/12 text-tan"
+            : booked
+              ? "bg-terracotta/10 text-salmon"
+              : "bg-tan/12 text-tan"
+        }`}
+      >
+        {gig ? (
+          <>
+            <Briefcase className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              Gig · {request.gigTitle || "hired package"}
+              {request.slotMinutes
+                ? ` · ${formatGigDuration(request.slotMinutes)}`
+                : ""}
+            </span>
+          </>
+        ) : booked ? (
+          <>
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+            {mounted && request.scheduledAt
+              ? formatSlotRange(request.scheduledAt, request.scheduledEnd)
+              : "Booked appointment"}
+          </>
+        ) : (
+          <>
+            <Zap className="h-3.5 w-3.5 shrink-0" />
+            Urgent · wants to be seen now
+          </>
+        )}
       </div>
 
       <p className="mt-3 text-sm text-[var(--text-muted)]">{request.symptoms}</p>
@@ -95,9 +138,9 @@ export function RequestCard({
                 className="flex-1"
                 onClick={onAccept}
                 disabled={!canAccept}
-                title={canAccept ? undefined : "Finish your current consult first"}
+                title={canAccept ? undefined : blockedReason}
               >
-                Accept
+                {gig ? "Take this gig" : booked ? "Confirm" : "Accept"}
               </Button>
               <Button size="sm" variant="ghost" onClick={onDecline}>
                 Pass
@@ -113,7 +156,9 @@ export function RequestCard({
       )}
 
       {isPending && !canAccept && (
-        <p className="mt-2 text-xs text-tan">Finish your current consult to accept another.</p>
+        <p className="mt-2 text-xs text-tan">
+          {blockedReason ?? "Finish your current consult to accept another."}
+        </p>
       )}
 
       {footer && <div className="mt-3 border-t border-[var(--border)] pt-3">{footer}</div>}

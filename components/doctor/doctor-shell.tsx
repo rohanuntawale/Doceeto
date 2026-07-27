@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  Briefcase,
   Inbox,
+  CalendarDays,
   Stethoscope,
   Wallet,
   UserRound,
@@ -21,9 +23,17 @@ import { isDemoMode } from "@/lib/config";
  * Doctor shell — mobile iOS tab pill, desktop macOS dock (no sidebar).
  * Switch-to-patient + sign-out live in the top bar.
  */
+/**
+ * The two ways a doctor earns sit side by side: "Gigs" is the shelf of service
+ * packages they publish, "Schedule" is their bookable calendar. "Requests" is
+ * the inbox both feed into — it used to be labelled "Gigs", which is why the
+ * ids and labels no longer line up with the older hrefs.
+ */
 const NAV = [
   { id: "home", href: "/doctor", label: "Home", icon: LayoutDashboard, color: "#0A84FF", exact: true },
-  { id: "gigs", href: "/doctor/requests", label: "Gigs", icon: Inbox, color: "#FF9F0A" },
+  { id: "gigs", href: "/doctor/gigs", label: "Gigs", icon: Briefcase, color: "#FF9F0A" },
+  { id: "requests", href: "/doctor/requests", label: "Requests", icon: Inbox, color: "#FFD60A" },
+  { id: "schedule", href: "/doctor/schedule", label: "Schedule", icon: CalendarDays, color: "#FF375F" },
   { id: "consults", href: "/doctor/consults", label: "Consults", icon: Stethoscope, color: "#30D158" },
   { id: "wallet", href: "/doctor/earnings", label: "Wallet", icon: Wallet, color: "#BF5AF2" },
   { id: "profile", href: "/doctor/profile", label: "Profile", icon: UserRound, color: "#8E8E93" },

@@ -5,7 +5,19 @@ import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import type { Doctor } from "@/lib/types/domain";
 
-export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
+export function OnlineToggle({
+  doctor,
+  variant = "card",
+}: {
+  doctor?: Doctor;
+  /**
+   * "card"   — standalone panel with its own status text (profile page).
+   * "inline" — just the switch, for a card that already states the status.
+   *            Nesting the full panel inside one was overflowing its parent
+   *            and repeating the same sentence twice.
+   */
+  variant?: "card" | "inline";
+}) {
   const { setDoctorStatus } = useActions();
   const toast = useToast();
   const online = doctor?.status === "online";
@@ -19,30 +31,37 @@ export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
       title: next === "online" ? "You're online" : "You're offline",
       desc:
         next === "online"
-          ? "Requests and nearby SOS alerts will reach you."
+          ? "Consult requests from nearby patients will reach you."
           : "You won't receive new requests.",
     });
   }
 
+  const swtch = (
+    <button
+      onClick={toggle}
+      role="switch"
+      aria-checked={online}
+      aria-label={online ? "Go offline" : "Go online"}
+      className={cn(
+        "flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--c-terracotta))]",
+        online ? "bg-terracotta" : "bg-white/10",
+      )}
+    >
+      <span
+        className={cn(
+          "h-5 w-5 rounded-full bg-on-accent shadow transition-transform duration-200",
+          online ? "translate-x-5" : "translate-x-0",
+        )}
+      />
+    </button>
+  );
+
+  if (variant === "inline") return swtch;
+
   return (
     <div className="flex items-center gap-3.5 rounded-card border border-[var(--border)] bg-espresso-800 px-4 py-3 shadow-card">
-      <button
-        onClick={toggle}
-        role="switch"
-        aria-checked={online}
-        aria-label={online ? "Go offline" : "Go online"}
-        className={cn(
-          "flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors",
-          online ? "bg-terracotta" : "bg-white/10",
-        )}
-      >
-        <span
-          className={cn(
-            "h-5 w-5 rounded-full bg-on-accent shadow transition-transform duration-200",
-            online ? "translate-x-5" : "translate-x-0",
-          )}
-        />
-      </button>
+      {swtch}
       <div className="min-w-0 leading-tight">
         <div className="flex items-center gap-2">
           <span
@@ -58,7 +77,7 @@ export function OnlineToggle({ doctor }: { doctor?: Doctor }) {
         <p className="mt-0.5 truncate text-xs text-[var(--text-muted)]">
           {online
             ? "Tap to go offline"
-            : "Go online to receive consults & SOS"}
+            : "Go online to receive consults"}
         </p>
       </div>
     </div>

@@ -5,10 +5,26 @@ import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import { hashPassword } from "@/lib/auth/password";
 import { haversineKm } from "@/lib/utils/geo";
+import { bookingModeOf, coerceBookingMode } from "@/lib/scheduling/slots";
+import {
+  assertCanAccept,
+  assertCanCancel,
+  assertCanHire,
+  CANCEL_REASON_MAX,
+  reopensOnDoctorCancel,
+  resolveScheduledSlot,
+  type ResolvedHire,
+  type ResolvedSlot,
+} from "@/lib/scheduling/booking";
+import { nextTripStage } from "@/lib/scheduling/trip";
+import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
 import type {
   Ambulance,
   ConsultRequest,
   Doctor,
+  DoctorAvailability,
+  Gig,
+  GigStatus,
   Order,
   Review,
   SosEvent,
@@ -140,6 +156,18 @@ export async function getRequests(near?: Near): Promise<ConsultRequest[]> {
     const patient = r.patientId ? d.users.find((u) => u.id === r.patientId) : undefined;
     return {
       ...r,
+      // Rows written before scheduling existed carry no mode — settle it
+      // here so nothing downstream has to guess.
+      mode: bookingModeOf(r),
+      scheduledAt: r.scheduledAt ?? null,
+      scheduledEnd: r.scheduledEnd ?? null,
+      // Same for the gig and dispatch fields: rows predating them must read as
+      // "not a gig, not a broadcast, nobody has passed" rather than undefined.
+      gigId: r.gigId ?? null,
+      gigTitle: r.gigTitle ?? null,
+      broadcast: r.broadcast ?? false,
+      tripStage: r.tripStage ?? null,
+      passedBy: r.passedBy ?? [],
       patientRating: patient?.rating ?? null,
       patientRatingCount: patient?.ratingCount ?? 0,
       patientRated: d.patientReviews.some((v) => v.requestId === r.id),
@@ -207,23 +235,65 @@ export async function createRequest(input: {
   lat: number;
   lng: number;
   doctorId?: string | null;
+  mode?: string;
+  scheduledAt?: string | null;
+  gigId?: string | null;
 }): Promise<ConsultRequest> {
+  const d = data();
+  const doctorId = input.doctorId ?? null;
+  const mode = coerceBookingMode(input.mode);
+
+  // Resolve the slot or the gig terms and insert with no `await` in between:
+  // on the single Node process behind the file store that makes
+  // check-then-write atomic, so two patients racing cannot both win.
+  let slot: ResolvedSlot | null = null;
+  let hire: ResolvedHire | null = null;
+  if (mode === "scheduled") {
+    if (!doctorId) throw new DomainError("Pick a doctor before choosing a time.");
+    slot = resolveScheduledSlot({
+      doctor: d.doctors.find((x) => x.id === doctorId),
+      startIso: String(input.scheduledAt ?? ""),
+      existing: d.requests,
+    });
+  } else if (mode === "gig") {
+    if (!doctorId) throw new DomainError("Pick a doctor before hiring a gig.");
+    hire = assertCanHire({
+      gig: d.gigs.find((g) => g.id === input.gigId),
+      doctor: d.doctors.find((x) => x.id === doctorId),
+      existing: d.requests,
+    });
+  }
+
   const req: ConsultRequest = {
     id: uid("req"),
     patientId: input.patientId,
     patientName: input.patientName,
-    type: input.type as ConsultRequest["type"],
+    // A gig's visit type comes off the listing, not the request body.
+    type: (hire?.type ?? input.type) as ConsultRequest["type"],
     status: "pending",
     symptoms: input.symptoms,
     paymentMethod: input.paymentMethod === "cash" ? "cash" : "online",
-    fee: Number(input.fee) || 0,
+    // Same for the price — the client's fee is ignored for a gig hire.
+    fee: hire ? hire.fee : Number(input.fee) || 0,
     address: input.address,
     lat: input.lat,
     lng: input.lng,
     createdAt: now(),
-    doctorId: input.doctorId ?? null,
+    mode,
+    gigId: hire?.gigId ?? null,
+    gigTitle: hire?.gigTitle ?? null,
+    // An urgent request with no named doctor went to the whole pool. Recorded
+    // now because it decides whether a later cancellation re-offers it.
+    broadcast: mode === "emergency" && doctorId === null,
+    scheduledAt: slot?.scheduledAt ?? null,
+    scheduledEnd: slot?.scheduledEnd ?? null,
+    slotMinutes: slot?.slotMinutes ?? hire?.durationMinutes ?? null,
+    tripStage: null,
+    tripStageAt: null,
+    passedBy: [],
+    doctorId,
   };
-  data().requests.unshift(req);
+  d.requests.unshift(req);
   persist();
   return req;
 }
@@ -384,35 +454,223 @@ export async function updateDoctor(
 
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
   const d = data();
-  // One active consult at a time: a doctor who already holds an accepted
-  // request must complete it before taking another.
-  if (d.requests.some((r) => r.status === "accepted" && r.doctorId === doctorId)) {
-    throw new DomainError("You already have an active consult — complete it first.", 409);
-  }
   const req = d.requests.find((r) => r.id === id);
   if (!req || req.status !== "pending") return false;
+  // Emergencies stay one-at-a-time; an appointment may be confirmed during a
+  // live consult but never on top of another appointment. Throws a 409 with
+  // the reason, so the doctor sees why rather than a silent no-op.
+  assertCanAccept(req, d.requests, doctorId);
   req.status = "accepted";
   req.doctorId = doctorId;
+  req.acceptedAt = now();
+  // The trip rail starts the moment someone claims it.
+  req.tripStage = "accepted";
+  req.tripStageAt = req.acceptedAt;
   persist();
   return true;
 }
 
-export async function declineRequest(id: string) {
+export async function declineRequest(id: string, doctorId?: string, reason?: string) {
   const req = data().requests.find((r) => r.id === id);
-  if (req) {
-    req.status = "declined";
-    persist();
+  if (!req) return;
+  // Declining frees a booked slot and can unblock a doctor's urgent feed, so
+  // it has to be theirs to decline: a claimed request, or one still open to
+  // them. `doctorId` is optional only for ops/legacy callers.
+  if (doctorId && !claimableBy(req, doctorId)) {
+    throw new DomainError("That request isn't yours to decline.", 403);
   }
+  // Passing on a broadcast must not kill it for everyone else — the patient
+  // asked the network, not this doctor. Record the pass and leave it pending.
+  if (doctorId && req.broadcast && req.status === "pending" && req.doctorId === null) {
+    req.passedBy = [...new Set([...(req.passedBy ?? []), doctorId])];
+    persist();
+    return;
+  }
+  req.status = "declined";
+  if (reason) req.cancelReason = reason;
+  persist();
+}
+
+/** A request this doctor may act on: theirs, unassigned, or a seed row. */
+function claimableBy(req: ConsultRequest, doctorId: string): boolean {
+  return (
+    req.doctorId === doctorId ||
+    (req.status === "pending" &&
+      (req.doctorId === null || Boolean(req.doctorId?.startsWith("doc-seed-"))))
+  );
+}
+
+/** Patient or doctor calls off a booking — this is what frees the slot. */
+export async function cancelRequest(
+  id: string,
+  actor: { id: string; role: string },
+  opts?: { reason?: string },
+) {
+  const d = data();
+  const req = d.requests.find((r) => r.id === id);
+  assertCanCancel(req, actor, opts);
+  const reason = opts?.reason?.trim().slice(0, CANCEL_REASON_MAX) || null;
+
+  // A doctor standing down from a BROADCAST puts it back out to the pool: the
+  // patient asked the network, so someone else can still take it. They're
+  // recorded as having passed so it doesn't bounce straight back to them.
+  if (actor.role === "doctor" && reopensOnDoctorCancel(req)) {
+    req.passedBy = [...new Set([...(req.passedBy ?? []), actor.id])];
+    req.status = "pending";
+    req.doctorId = null;
+    req.acceptedAt = null;
+    req.tripStage = null;
+    req.tripStageAt = null;
+    req.cancelReason = reason;
+    persist();
+    return;
+  }
+
+  req.status = "cancelled";
+  req.cancelledAt = now();
+  req.cancelledBy = actor.role === "doctor" ? "doctor" : "patient";
+  req.cancelReason = reason;
+  persist();
+}
+
+export async function setDoctorAvailability(id: string, availability: DoctorAvailability) {
+  const doc = data().doctors.find((x) => x.id === id);
+  if (!doc) throw new DomainError("That doctor no longer exists.", 404);
+  doc.availability = availability;
+  doc.lastSeen = now();
+  persist();
+}
+
+// ── Gigs ─────────────────────────────────────────────────────
+
+/**
+ * Gig listings, newest first. `doctorId` narrows to one doctor's shelf; the
+ * caller (/api/data) decides which statuses that role may see — the repo
+ * returns everything so a doctor can manage their own paused rows.
+ */
+export async function getGigs(doctorId?: string): Promise<Gig[]> {
+  const rows = doctorId
+    ? data().gigs.filter((g) => g.doctorId === doctorId)
+    : [...data().gigs];
+  return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export async function getGigById(id: string): Promise<Gig | null> {
+  return data().gigs.find((g) => g.id === id) ?? null;
+}
+
+/** A gig this doctor owns, or a 403/404 explaining why not. */
+function ownGig(id: string, doctorId: string): Gig {
+  const gig = data().gigs.find((g) => g.id === id);
+  if (!gig) throw new DomainError("That gig no longer exists.", 404);
+  if (gig.doctorId !== doctorId) throw new DomainError("That isn't your gig.", 403);
+  return gig;
+}
+
+const liveGigCount = (doctorId: string, exceptId?: string) =>
+  data().gigs.filter(
+    (g) => g.doctorId === doctorId && g.status === "active" && g.id !== exceptId,
+  ).length;
+
+export async function createGig(input: {
+  doctorId: string;
+  title: string;
+  description: string;
+  type: string;
+  price: number;
+  durationMinutes: number;
+}): Promise<Gig> {
+  const d = data();
+  if (!d.doctors.some((x) => x.id === input.doctorId)) {
+    throw new DomainError("That doctor no longer exists.", 404);
+  }
+  if (liveGigCount(input.doctorId) >= MAX_ACTIVE_GIGS) {
+    throw new DomainError(
+      `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+      409,
+    );
+  }
+  const gig = normalizeGig(input, {
+    id: uid("gig"),
+    doctorId: input.doctorId,
+    createdAt: now(),
+  });
+  if (!gig.title) throw new DomainError("Give the gig a title.", 400);
+  if (gig.price <= 0) throw new DomainError("Set a price for the gig.", 400);
+  d.gigs.unshift(gig);
+  persist();
+  return gig;
+}
+
+export async function updateGig(id: string, doctorId: string, patch: unknown) {
+  const gig = ownGig(id, doctorId);
+  const clean = sanitizeGigPatch(patch);
+  // Re-publishing counts against the cap the same as creating.
+  if (clean.status === "active" && gig.status !== "active") {
+    if (liveGigCount(doctorId, id) >= MAX_ACTIVE_GIGS) {
+      throw new DomainError(
+        `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+        409,
+      );
+    }
+  }
+  Object.assign(gig, clean, { updatedAt: now() });
+  persist();
+}
+
+/**
+ * Publish, pause or retire a listing.
+ *
+ * Deliberately does NOT touch hires already made against it: a patient who
+ * asked yesterday still gets their answer, and the request carries its own
+ * `gigTitle` snapshot so it stays readable once the listing is gone.
+ */
+export async function setGigStatus(id: string, doctorId: string, status: GigStatus) {
+  const gig = ownGig(id, doctorId);
+  if (status === "active" && gig.status !== "active" && liveGigCount(doctorId, id) >= MAX_ACTIVE_GIGS) {
+    throw new DomainError(
+      `You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`,
+      409,
+    );
+  }
+  gig.status = status;
+  gig.updatedAt = now();
+  persist();
+}
+
+/**
+ * Move a visit one step along its rail. Returns the new stage, or null when
+ * there is nowhere left to go (the doctor should complete it instead).
+ */
+export async function advanceTrip(id: string, doctorId: string): Promise<string | null> {
+  const req = data().requests.find((r) => r.id === id);
+  if (!req) throw new DomainError("That visit no longer exists.", 404);
+  if (req.doctorId !== doctorId) throw new DomainError("That isn't your visit.", 403);
+  if (req.status !== "accepted") {
+    throw new DomainError("That visit isn't in progress.", 409);
+  }
+  const next = nextTripStage(req);
+  if (!next) return null;
+  req.tripStage = next;
+  req.tripStageAt = now();
+  persist();
+  return next;
 }
 
 export async function completeRequest(
   id: string,
-  opts?: { notes?: string; prescription?: { name: string; qty: number }[] },
+  opts?: { notes?: string; prescription?: { name: string; qty: number }[]; doctorId?: string },
 ) {
   const d = data();
   const req = d.requests.find((r) => r.id === id);
   if (!req || (req.status !== "accepted" && req.status !== "pending")) return;
+  // Completing releases the doctor's "in a consult" state (which gates their
+  // urgent feed) and credits a wallet — only the doctor on it may close it.
+  if (opts?.doctorId && !claimableBy(req, opts.doctorId)) {
+    throw new DomainError("That consult isn't yours to complete.", 403);
+  }
   req.status = "completed";
+  req.completedAt = now();
   const consultId = uid("con");
   d.consults.push({
     id: consultId,

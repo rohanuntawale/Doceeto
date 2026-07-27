@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Video, Home, Building2, ChevronRight } from "lucide-react";
+import { Video, Home, Building2, ChevronRight, CalendarDays, Zap } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { RateDoctor } from "@/components/patient/rate-doctor";
-import { consultStatus, consultType } from "@/lib/labels";
+import { useToast } from "@/components/ui/toast";
+import { consultStatusOf, consultTypeOf } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
-import { useConsultRequests, useDoctors } from "@/lib/hooks/data";
+import { useConsultRequests, useDoctors, useActions } from "@/lib/hooks/data";
+import { isScheduled } from "@/lib/scheduling/slots";
+import { formatSlotRange } from "@/lib/scheduling/time";
 import type { ConsultRequest, Doctor } from "@/lib/types/domain";
 
 const typeIcon = {
@@ -28,6 +32,12 @@ export function PatientBookings({ patientId }: { patientId: string }) {
   const previous = mine.filter(
     (r) => r.status === "completed" || r.status === "declined" || r.status === "cancelled",
   );
+  // Soonest appointment first; urgent requests (no slot) stay on top.
+  current.sort((a, b) => {
+    const at = a.scheduledAt ? Date.parse(a.scheduledAt) : 0;
+    const bt = b.scheduledAt ? Date.parse(b.scheduledAt) : 0;
+    return at - bt;
+  });
 
   if (mine.length === 0) return null;
 
@@ -78,10 +88,35 @@ function BookingRow({
   mounted: boolean;
   past?: boolean;
 }) {
-  const st = consultStatus[req.status];
+  const toast = useToast();
+  const { cancelRequest } = useActions();
+  const [cancelling, setCancelling] = useState(false);
+  const st = consultStatusOf(req.status);
   const name = doctor?.fullName ?? "Doceeto doctor";
   const waiting = req.status === "pending";
   const canRate = req.status === "completed" && !!req.doctorId && !req.reviewed;
+  const booked = isScheduled(req);
+  const canCancel = !past && (req.status === "pending" || req.status === "accepted");
+
+  async function cancel() {
+    setCancelling(true);
+    try {
+      await cancelRequest(req.id);
+      toast.push({
+        tone: "success",
+        title: "Booking cancelled",
+        desc: booked ? "The slot is free again." : undefined,
+      });
+    } catch (e) {
+      toast.push({
+        tone: "error",
+        title: "Couldn't cancel",
+        desc: e instanceof Error ? e.message : "Please try again.",
+      });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   const head = (
     <>
@@ -100,11 +135,30 @@ function BookingRow({
         </p>
         <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
           {typeIcon[req.type]}
-          {consultType[req.type].label}
+          {consultTypeOf(req.type).label}
           {doctor?.specialty ? ` · ${doctor.specialty}` : ""}
         </p>
+        {/* When it is — the detail the patient actually came back for. */}
+        <p
+          className={`mt-0.5 flex items-center gap-1 text-xs ${booked ? "text-salmon" : "text-tan"}`}
+        >
+          {booked ? (
+            <>
+              <CalendarDays className="h-3 w-3 shrink-0" />
+              {mounted && req.scheduledAt
+                ? formatSlotRange(req.scheduledAt, req.scheduledEnd)
+                : "Booked slot"}
+            </>
+          ) : (
+            <>
+              <Zap className="h-3 w-3 shrink-0" /> Urgent · as soon as possible
+            </>
+          )}
+        </p>
         {waiting && (
-          <p className="mt-0.5 text-xs text-tan">Awaiting confirmation…</p>
+          <p className="mt-0.5 text-xs text-[var(--text-faint)]">
+            {booked ? "Waiting for the doctor to confirm…" : "Awaiting confirmation…"}
+          </p>
         )}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
@@ -130,6 +184,19 @@ function BookingRow({
         </Link>
       ) : (
         <div className="flex items-center gap-3">{head}</div>
+      )}
+
+      {canCancel && (
+        <div className="mt-2.5 flex justify-end border-t border-[var(--border)] pt-2.5">
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={cancelling}
+            className="text-xs font-medium text-[var(--text-muted)] transition-colors hover:text-status-critical disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling…" : "Cancel booking"}
+          </button>
+        </div>
       )}
 
       {canRate && <RateDoctor req={req} doctorName={doctor?.fullName} />}

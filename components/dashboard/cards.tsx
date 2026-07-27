@@ -195,11 +195,15 @@ export interface Goal {
 }
 
 export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
-  const [done, setDone] = useState<Set<string>>(
-    () => new Set(goals.filter((g) => g.done).map((g) => g.id)),
-  );
+  // Only the hand-ticked ids live in state. Goals the app can answer for
+  // itself (you're online, your profile is filled in) are read straight off
+  // the props every render — seeding state from them once meant the list
+  // froze at "nothing done", because the doctor record arrives on a later
+  // poll than the first paint.
+  const [ticked, setTicked] = useState<Set<string>>(new Set());
+  const isDone = (g: Goal) => Boolean(g.done) || ticked.has(g.id);
   const total = goals.length;
-  const complete = goals.filter((g) => done.has(g.id)).length;
+  const complete = goals.filter(isDone).length;
 
   return (
     <section className="fh-card overflow-hidden rounded-3xl">
@@ -213,24 +217,28 @@ export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
       </div>
       <div className="mt-2 divide-y divide-[var(--border)]">
         {goals.map((g) => {
-          const isDone = done.has(g.id);
+          const checked = isDone(g);
+          // A goal the app already knows is complete isn't yours to untick.
+          const owned = Boolean(g.done);
           return (
             <button
               key={g.id}
+              disabled={owned}
+              aria-pressed={checked}
               onClick={() =>
-                setDone((prev) => {
+                setTicked((prev) => {
                   const next = new Set(prev);
                   if (next.has(g.id)) next.delete(g.id);
                   else next.add(g.id);
                   return next;
                 })
               }
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-default disabled:hover:bg-transparent"
             >
               <span
                 className={cn(
                   "grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-colors",
-                  isDone
+                  checked
                     ? "border-transparent bg-[rgb(var(--c-status-ok))] text-white"
                     : "border-[var(--border)] text-transparent",
                 )}
@@ -238,7 +246,7 @@ export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
                 <Check className="h-4 w-4" strokeWidth={3} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className={cn("block text-[13px] font-medium", isDone ? "text-[var(--text-faint)] line-through" : "text-cream")}>
+                <span className={cn("block text-[13px] font-medium", checked ? "text-[var(--text-faint)] line-through" : "text-cream")}>
                   {g.label}
                 </span>
                 {g.sub && <span className="block truncate text-[11px] text-[var(--text-muted)]">{g.sub}</span>}

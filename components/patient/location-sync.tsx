@@ -7,7 +7,7 @@ import { updatePatient } from "@/lib/hooks/use-current-patient";
 /**
  * Mounted once in the patient layout. Streams the device's real
  * position into the shared patient identity, so the doctor map centers
- * on the true location and every SOS / request / order carries real
+ * on the true location and every request / order carries real
  * coordinates. Renders nothing.
  */
 export function PatientLocationSync() {

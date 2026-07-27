@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "About · Doceeto Health",
-  description: "One place for care in India: emergencies, doctors, diagnostics and medicine.",
+  description: "One place for care in India: doctors, diagnostics and medicine.",
 };
 
 const PILLARS = [
-  { kanji: "助", name: "Tasuke", role: "the button", desc: "One SOS press sends your location and profile to the nearest ambulance and a doctor, so help reaches you in the first few minutes." },
+  { kanji: "察", name: "Satori", role: "the check", desc: "Describe what you're feeling and a guided symptom check points you to the right kind of doctor before you book." },
   { kanji: "医", name: "Zumi", role: "the doctor", desc: "Freelance doctors on demand, the way Uber did for cabs. See who is nearby, book a home visit, a clinic visit, or a video call." },
   { kanji: "検", name: "Kenshin", role: "the network", desc: "Diagnostic kiosks around the city, like metro machines. Walk up, get screened, and walk away with a plan." },
   { kanji: "薬", name: "AuraMed", role: "the medicine", desc: "When a doctor writes a prescription, the medicine is delivered to your door in about ten minutes." },

@@ -4,7 +4,7 @@ import { MapPin, Store, Clock, ArrowRight } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Button } from "@/components/ui/button";
 import { formatINR, timeAgo } from "@/lib/utils/format";
-import { orderStatus } from "@/lib/labels";
+import { orderStatusOf } from "@/lib/labels";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { cn } from "@/lib/utils/cn";
 import type { Order } from "@/lib/types/domain";
@@ -19,7 +19,7 @@ export function OrderCard({
   onAdvance?: () => void;
 }) {
   const mounted = useMounted();
-  const st = orderStatus[order.status];
+  const st = orderStatusOf(order.status);
   const active = order.status !== "delivered" && order.status !== "cancelled";
 
   return (

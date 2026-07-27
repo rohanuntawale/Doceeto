@@ -7,6 +7,7 @@ import type {
   Ambulance,
   ConsultRequest,
   Doctor,
+  Gig,
   Order,
   Review,
   SosEvent,
@@ -53,6 +54,8 @@ export interface FileData {
   seeded?: boolean;
   users: StoredUser[];
   doctors: Doctor[];
+  /** Service packages doctors publish for patients to hire. */
+  gigs: Gig[];
   ambulances: Ambulance[];
   sos: SosEvent[];
   requests: ConsultRequest[];
@@ -71,6 +74,7 @@ function empty(): FileData {
   return {
     users: [],
     doctors: [],
+    gigs: [],
     ambulances: [],
     sos: [],
     requests: [],
@@ -93,6 +97,7 @@ export function data(): FileData {
     // object (survives dev hot-reloads) so new fields are never undefined.
     if (!g.__iyashiFileDb.patientReviews) g.__iyashiFileDb.patientReviews = [];
     if (!g.__iyashiFileDb.transactions) g.__iyashiFileDb.transactions = [];
+    if (!g.__iyashiFileDb.gigs) g.__iyashiFileDb.gigs = [];
     return g.__iyashiFileDb;
   }
   let d = empty();
@@ -114,6 +119,25 @@ export function data(): FileData {
     g.__iyashiFileDb = d;
     persist();
     return d;
+  }
+  // Top up the roster: a doctor added to the seed list in a later version is
+  // appended to an install that was seeded before they existed. Gated on the
+  // seed rows still being present, so a deliberate reset stays empty.
+  if (d.doctors.some((x) => x.id.startsWith("doc-seed-"))) {
+    const have = new Set(d.doctors.map((x) => x.id));
+    const added = seedDoctors().filter((s) => !have.has(s.id));
+    if (added.length > 0) {
+      d.doctors.push(...added);
+      const seenReviews = new Set(d.reviews.map((v) => v.id));
+      d.reviews.push(
+        ...seedReviews().filter(
+          (v) => !seenReviews.has(v.id) && added.some((a) => a.id === v.doctorId),
+        ),
+      );
+      g.__iyashiFileDb = d;
+      persist();
+      return d;
+    }
   }
   // Backfill sample reviews for an install seeded before reviews existed.
   if (d.reviews.length === 0 && d.doctors.some((x) => x.id.startsWith("doc-seed-"))) {

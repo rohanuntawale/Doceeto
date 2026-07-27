@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal, modalPanelCls } from "@/components/ui/modal";
 import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import type { Doctor } from "@/lib/types/domain";
@@ -16,6 +17,7 @@ const SPECIALTIES = [
   "Gynecologist",
   "ENT",
   "Psychiatrist",
+  "Neurologist",
 ];
 
 export function EditProfileDialog({
@@ -78,14 +80,11 @@ export function EditProfileDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
-      onClick={onClose}
-    >
+    <Modal open={open} onClose={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={save}
-        className="max-h-[90vh] w-full max-w-lg animate-fade-up overflow-y-auto rounded-t-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card sm:rounded-card"
+        className={modalPanelCls}
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -234,7 +233,7 @@ export function EditProfileDialog({
           </Button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 

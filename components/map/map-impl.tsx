@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { MAP_CENTER, MAP_ZOOM } from "@/lib/config";
-import { sosCategory, consultType } from "@/lib/labels";
-import type { Ambulance, ConsultRequest, Doctor, LatLng, SosEvent } from "@/lib/types/domain";
+import { consultTypeOf } from "@/lib/labels";
+import type { ConsultRequest, Doctor, LatLng } from "@/lib/types/domain";
 
 export interface MapProps {
-  events?: SosEvent[];
-  ambulances?: Ambulance[];
   doctors?: Doctor[];
   /** Patient consult requests — shown to doctors/ops as patient pins. */
   requests?: ConsultRequest[];
@@ -39,8 +37,6 @@ function Recenter({ center }: { center: [number, number] }) {
 }
 
 export default function MapImpl({
-  events = [],
-  ambulances = [],
   doctors = [],
   requests = [],
   self = null,
@@ -48,19 +44,11 @@ export default function MapImpl({
   height = 420,
 }: MapProps) {
   const [colors, setColors] = useState({
-    critical: "#BB4A2A",
-    criticalSoft: "#E39B80",
-    ok: "#5D8A6E",
     gold: "#C6A64C",
     cream: "#E8E9E1",
   });
   useEffect(() => {
     setColors({
-      // SOS pins stay warning-colored (status token) even when the UI
-      // accent is white, so emergencies remain unmistakable on the map.
-      critical: themeColor("--c-status-critical", "#BB4A2A"),
-      criticalSoft: themeColor("--c-status-critical", "#BB4A2A"),
-      ok: themeColor("--c-status-ok", "#5D8A6E"),
       gold: themeColor("--c-tan", "#C6A64C"),
       cream: themeColor("--c-cream", "#E8E9E1"),
     });
@@ -102,22 +90,6 @@ export default function MapImpl({
           </CircleMarker>
         ))}
 
-      {/* Ambulances */}
-      {ambulances
-        .filter((a) => a.lat && a.lng)
-        .map((a) => (
-          <CircleMarker
-            key={`amb-${a.id}`}
-            center={[a.lat, a.lng]}
-            radius={6}
-            pathOptions={{ color: colors.ok, fillColor: colors.ok, fillOpacity: 0.9, weight: 1 }}
-          >
-            <Tooltip>
-              {a.vehicleNo} · {a.status}
-            </Tooltip>
-          </CircleMarker>
-        ))}
-
       {/* Patient consult requests (pending = hollow, accepted = filled) */}
       {requests
         .filter((r) => (r.status === "pending" || r.status === "accepted") && r.lat && r.lng)
@@ -137,32 +109,8 @@ export default function MapImpl({
               }}
             >
               <Tooltip>
-                {r.patientName} · {consultType[r.type].label}
+                {r.patientName} · {consultTypeOf(r.type).label}
                 {pending ? " (waiting)" : " (accepted)"}
-              </Tooltip>
-            </CircleMarker>
-          );
-        })}
-
-      {/* Active SOS */}
-      {events
-        .filter((e) => e.status !== "resolved" && e.status !== "cancelled")
-        .map((e) => {
-          const open = e.status === "open";
-          return (
-            <CircleMarker
-              key={`sos-${e.id}`}
-              center={[e.lat, e.lng]}
-              radius={open ? 11 : 9}
-              pathOptions={{
-                color: open ? colors.critical : colors.criticalSoft,
-                fillColor: open ? colors.critical : colors.criticalSoft,
-                fillOpacity: open ? 0.55 : 0.35,
-                weight: 2,
-              }}
-            >
-              <Tooltip>
-                {sosCategory[e.category].label} · {e.patientName} ({e.status})
               </Tooltip>
             </CircleMarker>
           );

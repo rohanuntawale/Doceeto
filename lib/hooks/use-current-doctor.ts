@@ -4,26 +4,11 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
 import { useDoctors } from "@/lib/hooks/data";
+import { readStoredDoctorId, setCurrentDoctorId } from "@/lib/demo/current-doctor";
 import type { Doctor } from "@/lib/types/domain";
 
-const DOCTOR_ID_KEY = "iyashi:doctor-id:v1";
-
-/** Remember which demo doctor is "me" (set after registration). */
-export function setCurrentDoctorId(id: string) {
-  try {
-    window.localStorage.setItem(DOCTOR_ID_KEY, id);
-  } catch {
-    /* ignore */
-  }
-}
-
-function readStoredDoctorId(): string | null {
-  try {
-    return window.localStorage.getItem(DOCTOR_ID_KEY);
-  } catch {
-    return null;
-  }
-}
+// Re-exported so existing callers keep importing it from here.
+export { setCurrentDoctorId };
 
 /** The doctor row representing the signed-in user ("me").
  *  Demo -> the doctor registered in this browser (none until you register).

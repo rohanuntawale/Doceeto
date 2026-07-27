@@ -1,4 +1,4 @@
-import { doctorKind } from "@/lib/labels";
+import { doctorKindOf } from "@/lib/labels";
 import type { Doctor } from "@/lib/types/domain";
 
 /** Typical qualification per specialty, used as a fallback for doctors who
@@ -12,6 +12,7 @@ const SPECIALTY_QUALS: Record<string, string> = {
   Gynecologist: "MBBS, MS (Obstetrics & Gynecology)",
   ENT: "MBBS, MS (ENT)",
   Psychiatrist: "MBBS, MD (Psychiatry)",
+  Neurologist: "MBBS, MD, DM (Neurology)",
 };
 
 /** Qualification line, with a sensible specialty-derived fallback. */
@@ -39,5 +40,5 @@ export function doctorBlurb(d: Doctor): string {
     d.languages.length > 1
       ? `Speaks ${d.languages.slice(0, 2).join(" and ")}`
       : `Speaks ${d.languages[0] ?? "English"}`;
-  return `${d.specialty} with ${years}. ${doctorKind[d.kind].label}. ${langs}.`;
+  return `${d.specialty} with ${years}. ${doctorKindOf(d.kind).label}. ${langs}.`;
 }

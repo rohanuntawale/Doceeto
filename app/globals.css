@@ -402,3 +402,51 @@ body::after {
   color: rgb(var(--c-cream)) !important;
   border-color: var(--border) !important;
 }
+
+/* ── Map sheet materials ──────────────────────────────────────
+   The find-care surface floats over a live map, so its panels need a
+   heavier frost than a normal card — enough that the map's colour reads
+   through and the sheet feels like it is resting ON the map rather than
+   covering it. Blur is declared here rather than inherited from
+   --card-blur so the material survives a skin that flattens card blur. */
+.glass-sheet {
+  /* Thinner at the top edge, where it meets the map, so the frost is legible
+     as frost; solid enough lower down to keep the list readable. */
+  background: linear-gradient(
+    180deg,
+    rgb(var(--c-espresso-800) / 0.72),
+    rgb(var(--c-espresso-800) / 0.9)
+  );
+  -webkit-backdrop-filter: blur(30px) saturate(1.9);
+  backdrop-filter: blur(30px) saturate(1.9);
+  border-color: var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.75),
+    0 -8px 40px rgb(15 23 42 / 0.12);
+}
+
+/* A recessed field inside a glass sheet — search, segmented rows. Reads as
+   carved into the glass rather than stacked on top of it. */
+.glass-inset {
+  background: rgb(var(--c-espresso-700) / 0.7);
+  border: 1px solid rgb(var(--c-cream) / 0.06);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.05);
+}
+
+/* Free-floating control over the map (the layers/locate stack). */
+.glass-control {
+  background: rgb(var(--c-espresso-800) / 0.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), var(--elev-shadow);
+}
+
+/* Map surfaces float glass chips over the map's own corners. Leaflet anchors
+   the zoom stack top-left, right where those chips sit, so drop the top
+   control gutter below that row. Sized for the tallest chip that uses this
+   class so one value clears every map. The attribution keeps its bottom-right
+   corner (OSM requires it visible); overlays reserve a bottom gutter for it. */
+.map-chip-overlay .leaflet-top {
+  top: 3.5rem;
+}

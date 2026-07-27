@@ -1,29 +1,59 @@
 "use client";
 
 import { useState } from "react";
-import { Inbox, Star, Timer, TrendingUp, Radio } from "lucide-react";
+import Link from "next/link";
+import {
+  Inbox,
+  Star,
+  Timer,
+  TrendingUp,
+  Radio,
+  Briefcase,
+  Plus,
+} from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OnlineToggle } from "@/components/doctor/online-toggle";
+import { OnGigBanner } from "@/components/doctor/on-gig-banner";
 import { RequestCard } from "@/components/zumi/request-card";
 import { LiveMap } from "@/components/map/live-map";
 import { DoctorConsultTracker } from "@/components/consult/consult-tracker";
 import { useToast } from "@/components/ui/toast";
-import { useConsultRequests, useActions } from "@/lib/hooks/data";
+import {
+  useConsultRequests,
+  useActions,
+  useGigs,
+  useTransactions,
+  useReviews,
+} from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { useT } from "@/lib/i18n";
 import { GlassCard } from "@/components/ui/glass-card";
 import { FaqCard, HistoryCard } from "@/components/dashboard/extras";
 import { NewsCarousel } from "@/components/dashboard/news-carousel";
-import { ProgressRow, GaugeCard, ActivityCard, GoalsCard } from "@/components/dashboard/cards";
+import { GaugeCard, ActivityCard, GoalsCard } from "@/components/dashboard/cards";
 import { formatINRCompact } from "@/lib/utils/format";
+import {
+  activeGigHireOf,
+  isScheduled,
+  ongoingConsultOf,
+  pendingGigHires,
+  visibleToDoctor,
+} from "@/lib/scheduling/slots";
+import { activeGigs } from "@/lib/gigs/rules";
 import { cn } from "@/lib/utils/cn";
+
+/** Requests shown on the dashboard before it defers to the full list. */
+const INBOX_PREVIEW = 3;
 
 export default function DoctorHome() {
   const me = useCurrentDoctor();
   const { t } = useT();
   const requests = useConsultRequests();
+  const txns = useTransactions();
+  const gigs = useGigs();
+  const reviews = useReviews(me?.id);
   const actions = useActions();
   const toast = useToast();
   const [passed, setPassed] = useState<Set<string>>(new Set());
@@ -35,33 +65,97 @@ export default function DoctorHome() {
         ? "greeting.afternoon"
         : "greeting.evening";
 
+  const doctorId = me?.id ?? "";
+  // The consult occupying this doctor right now, if any. A confirmed slot
+  // for later today doesn't count — only what's actually running.
+  const ongoing = doctorId ? ongoingConsultOf(requests, doctorId) : undefined;
+  // A gig is the one kind of occupancy that pauses them outright, so it gets
+  // its own banner with the action that releases it.
+  const liveGig = doctorId ? activeGigHireOf(requests, doctorId) : undefined;
+  const pendingGigs = doctorId ? pendingGigHires(requests, doctorId) : [];
+  const liveGigCount = activeGigs(gigs).length;
+
+  // Same rule the server applies: while a consult is in progress, urgent
+  // requests are routed elsewhere. Appointments still come through.
   const pending = requests.filter(
     (r) =>
+      doctorId &&
       r.status === "pending" &&
       !passed.has(r.id) &&
-      (r.doctorId === null || r.doctorId === me?.id),
+      visibleToDoctor(r, { doctorId, busy: Boolean(ongoing) }),
   );
-  const myCompletedToday = requests.filter(
+  const myCompleted = requests.filter(
     (r) => r.status === "completed" && r.doctorId === me?.id,
   );
   const acceptedByMe = requests.filter(
     (r) => r.status === "accepted" && r.doctorId === me?.id,
   );
-  // One active consult at a time: gate new accepts while one is in progress.
-  const hasActive = acceptedByMe.length > 0;
-  const earningsToday = myCompletedToday.reduce((a, r) => a + r.fee, 0);
+  // ── Live metrics, all derived from persisted data ──────────
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const isToday = (iso?: string | null) =>
+    Boolean(iso) && new Date(iso!).getTime() >= startOfToday.getTime();
 
-  const doctorProgress = [
-    { label: "Setup", value: me?.about ? 100 : 60 },
-    { label: "Verified", value: me?.verified ? 100 : 40, display: me?.verified ? "Done" : "Pending" },
-    { label: "Rating", value: me ? Math.round((me.rating || 0) * 20) : 0, display: me?.rating ? me.rating.toFixed(1) : "New" },
-    { label: "Response", value: 90, display: "4m" },
-  ];
-  const earningsWeek = [400, 650, 300, 800, 550, 1200, 700];
+  const myEarnings = txns.filter((t) => t.doctorId === me?.id && t.kind === "earning");
+  // Net, not the gross fee — this is what actually lands in the wallet, so
+  // the tile matches the balance on the wallet screen.
+  const earningsToday = myEarnings
+    .filter((t) => isToday(t.createdAt))
+    .reduce((a, t) => a + t.net, 0);
+  const completedToday = myCompleted.filter((r) => isToday(r.completedAt));
+  const consultsToday = completedToday.length + acceptedByMe.length;
+
+  // createdAt → acceptedAt across every consult this doctor has claimed.
+  const responseMins = myCompleted
+    .concat(acceptedByMe)
+    .filter((r) => r.acceptedAt)
+    .map((r) => (new Date(r.acceptedAt!).getTime() - new Date(r.createdAt).getTime()) / 60000)
+    .filter((m) => m >= 0);
+  const avgResponse =
+    responseMins.length > 0
+      ? Math.max(1, Math.round(responseMins.reduce((a, m) => a + m, 0) / responseMins.length))
+      : null;
+
+  // Net earnings per day for the last 7 days (oldest → today).
+  const earningsWeek = Array.from({ length: 7 }, (_, i) => {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - (6 - i));
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    return myEarnings
+      .filter((t) => {
+        const at = new Date(t.createdAt).getTime();
+        return at >= from.getTime() && at < to.getTime();
+      })
+      .reduce((a, t) => a + t.net, 0);
+  });
+  // Today against the daily average of the six days before it — comparing it
+  // to their *sum* would read as a swing of hundreds of percent.
+  const priorAvg = earningsWeek.slice(0, 6).reduce((a, n) => a + n, 0) / 6;
+  const weekTrend =
+    priorAvg > 0 ? Math.round(((earningsWeek[6] - priorAvg) / priorAvg) * 100) : 0;
+  // Acceptance: of the requests this doctor actually answered, how many they
+  // took. Was hard-coded to 92% with an invented sparkline — a made-up figure
+  // on a real dashboard is worse than no figure.
+  const answered = requests.filter(
+    (r) => r.doctorId === me?.id && r.status !== "pending" && r.status !== "cancelled",
+  );
+  const acceptance =
+    answered.length > 0
+      ? Math.round(
+          (answered.filter((r) => r.status !== "declined").length / answered.length) * 100,
+        )
+      : 0;
+
   const doctorGoals = [
     { id: "profile", label: "Complete your profile", sub: "Add qualifications & about", done: Boolean(me?.about) },
     { id: "license", label: "Upload your medical license", sub: "Required for verification", done: Boolean(me?.verified) },
-    { id: "avail", label: "Set your availability", sub: "Clinic hours & home-visit zone" },
+    {
+      id: "avail",
+      label: "Set your availability",
+      sub: "Weekly hours patients can book",
+      done: Boolean(me?.availability),
+    },
     { id: "bank", label: "Add bank for instant payouts", sub: "Withdraw earnings anytime" },
     { id: "online", label: "Go online to receive gigs", done: online },
   ];
@@ -86,16 +180,21 @@ export default function DoctorHome() {
         </div>
       </header>
 
-      {/* Put up a gig — go online */}
+      {/* A live gig outranks everything: completing it is what unpauses them. */}
+      {liveGig && <OnGigBanner request={liveGig} className="lg:col-span-12" />}
+
+      {/* Your shift — go online. The card states the status, so the toggle
+          is just the switch: nesting its full panel here overflowed the
+          card and said "you're online" twice. */}
       <GlassCard className="p-5 lg:col-span-5">
         <div className="flex h-full items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)]">
-              <Radio className={cn("h-4 w-4", online ? "text-status-ok" : "text-cream")} />
+              <Radio className={cn("h-4 w-4 shrink-0", online ? "text-status-ok" : "text-cream")} />
               Your shift
             </p>
             <p className="mt-0.5 text-xl font-semibold text-cream">
-              {online ? "You're online" : "Put up a gig"}
+              {online ? "You're online" : "You're offline"}
             </p>
             <p className="mt-0.5 text-xs text-[var(--text-faint)]">
               {online
@@ -103,33 +202,101 @@ export default function DoctorHome() {
                 : "Flip on to appear on the patient map."}
             </p>
           </div>
-          <OnlineToggle doctor={me} />
+          <OnlineToggle doctor={me} variant="inline" />
         </div>
       </GlassCard>
 
-      <div className="grid grid-cols-2 gap-3 lg:col-span-7">
+      {/* The gig shelf — the other half of how a doctor earns. */}
+      <GlassCard className="p-5 lg:col-span-7">
+        <div className="flex h-full flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)]">
+              <Briefcase className="h-4 w-4 text-cream" />
+              Your gigs
+            </p>
+            <p className="mt-0.5 text-xl font-semibold text-cream">
+              {liveGigCount === 0
+                ? "Put up a gig"
+                : `${liveGigCount} package${liveGigCount === 1 ? "" : "s"} live`}
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--text-faint)]">
+              {liveGigCount === 0
+                ? "Name what you do, set your price, and patients hire you directly."
+                : pendingGigs.length > 0
+                  ? `${pendingGigs.length} patient${pendingGigs.length === 1 ? "" : "s"} waiting to hire you.`
+                  : "Live on your profile for patients to hire."}
+            </p>
+          </div>
+          <Link
+            href="/doctor/gigs"
+            className="flex shrink-0 items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-accent transition-transform active:scale-[0.98]"
+          >
+            {liveGigCount === 0 ? (
+              <>
+                <Plus className="h-4 w-4" /> Create one
+              </>
+            ) : (
+              <>
+                Manage
+                {pendingGigs.length > 0 && (
+                  <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[11px]">
+                    {pendingGigs.length}
+                  </span>
+                )}
+              </>
+            )}
+          </Link>
+        </div>
+      </GlassCard>
+
+      {/* KPI strip. Four across the full width rather than a 2×2 block that
+          left half a row empty beside it and stood twice as tall. */}
+      <div className="grid grid-cols-2 gap-3 lg:col-span-12 lg:grid-cols-4">
         <StatCard
+          dense
           value={formatINRCompact(earningsToday)}
           label="Earnings today"
+          sub="Net, after platform fee"
           accent
-          icon={<TrendingUp className="h-4 w-4" />}
+          icon={<TrendingUp className="h-3.5 w-3.5" />}
+          href="/doctor/earnings"
         />
         <StatCard
-          value={myCompletedToday.length + acceptedByMe.length}
+          dense
+          value={consultsToday}
           label="Consults today"
-          icon={<Inbox className="h-4 w-4" />}
+          sub={
+            acceptedByMe.length > 0
+              ? `${completedToday.length} done · ${acceptedByMe.length} in progress`
+              : `${completedToday.length} completed`
+          }
+          icon={<Inbox className="h-3.5 w-3.5" />}
+          href="/doctor/consults"
         />
         <StatCard
+          dense
           value={me ? (me.rating > 0 ? me.rating.toFixed(1) : "New") : "New"}
           label="Rating"
-          icon={<Star className="h-4 w-4" />}
+          sub={
+            reviews.length > 0
+              ? `From ${reviews.length} review${reviews.length > 1 ? "s" : ""}`
+              : "No reviews yet"
+          }
+          icon={<Star className="h-3.5 w-3.5" />}
+          href="/doctor/profile#reviews"
         />
-        <StatCard value="4m" label="Avg response" icon={<Timer className="h-4 w-4" />} />
-      </div>
-
-      {/* Progress pills */}
-      <div className="lg:col-span-12">
-        <ProgressRow items={doctorProgress} />
+        <StatCard
+          dense
+          value={avgResponse === null ? "—" : `${avgResponse}m`}
+          label="Avg response"
+          sub={
+            responseMins.length > 0
+              ? `Across ${responseMins.length} consult${responseMins.length > 1 ? "s" : ""}`
+              : "No consults accepted yet"
+          }
+          icon={<Timer className="h-3.5 w-3.5" />}
+          href="/doctor/consults"
+        />
       </div>
 
       {/* Live tracking of patients you've accepted (appears when active) */}
@@ -146,22 +313,20 @@ export default function DoctorHome() {
           <LiveMap
             self={me ? { lat: me.lat, lng: me.lng, label: "You (visible to patients)" } : null}
             center={me ? { lat: me.lat, lng: me.lng } : undefined}
-            requests={requests.filter(
-              (r) =>
-                (r.status === "pending" &&
-                  (r.doctorId === null || r.doctorId === me?.id)) ||
-                (r.status === "accepted" && r.doctorId === me?.id),
-            )}
-            events={[]}
+            // The map mirrors the inbox — a request hidden from the list
+            // must not still be a pin on the map.
+            requests={[...pending, ...acceptedByMe]}
             height={320}
           />
         </div>
       </Card>
 
-      {/* Incoming requests */}
-      <Card className="lg:col-span-5">
+      {/* Incoming requests — a preview, not the whole queue. The full list
+          lives on Gigs; letting it run long here pushed everything below it
+          off the screen on a busy day. */}
+      <Card className="flex flex-col lg:col-span-5">
         <CardHeader label="ZUMI · INCOMING" title={`Requests (${pending.length})`} />
-        <div className="space-y-3 p-4">
+        <div className="max-h-[24rem] flex-1 space-y-3 overflow-y-auto p-4">
           {pending.length === 0 ? (
             <EmptyState
               kanji="頼"
@@ -169,11 +334,10 @@ export default function DoctorHome() {
               desc="New consults will appear here the moment they come in."
             />
           ) : (
-            pending.map((r) => (
+            pending.slice(0, INBOX_PREVIEW).map((r) => (
               <RequestCard
                 key={r.id}
                 request={r}
-                canAccept={!hasActive}
                 note={r.doctorId === me?.id ? "Chose you" : "Open to nearby doctors"}
                 onAccept={async () => {
                   if (!me) return;
@@ -181,7 +345,7 @@ export default function DoctorHome() {
                     await actions.acceptRequest(r.id, me.id);
                     toast.push({
                       tone: "success",
-                      title: "Consult accepted",
+                      title: isScheduled(r) ? "Appointment confirmed" : "Consult accepted",
                       desc: `${r.patientName} · ${r.address}`,
                     });
                   } catch (e) {
@@ -200,14 +364,26 @@ export default function DoctorHome() {
             ))
           )}
         </div>
+        {pending.length > INBOX_PREVIEW && (
+          <Link
+            href="/doctor/requests"
+            className="border-t border-[var(--border)] px-4 py-3 text-center text-xs font-medium text-[var(--text-muted)] transition-colors hover:text-cream"
+          >
+            View all {pending.length} requests
+          </Link>
+        )}
       </Card>
 
       {/* Earnings + acceptance + setup goals */}
       <div className="lg:col-span-4">
-        <ActivityCard title="Earnings this week" caption="Daily net (₹)" data={earningsWeek} trend={22} />
+        <ActivityCard title="Earnings this week" caption="Daily net (₹)" data={earningsWeek} trend={weekTrend} />
       </div>
       <div className="lg:col-span-4">
-        <GaugeCard title="Acceptance" value={92} caption="of requests" trend={3} spark={[85, 88, 86, 90, 89, 91, 92]} />
+        <GaugeCard
+          title="Acceptance"
+          value={acceptance}
+          caption={answered.length > 0 ? `of ${answered.length} answered` : "nothing answered yet"}
+        />
       </div>
       <div className="lg:col-span-4">
         <GoalsCard title="Get set up" goals={doctorGoals} />
@@ -217,7 +393,7 @@ export default function DoctorHome() {
       <div className="lg:col-span-12">
         <HistoryCard
           title="Recent consults"
-          items={myCompletedToday.slice(0, 4).map((r) => ({
+          items={myCompleted.slice(0, 4).map((r) => ({
             id: r.id,
             title: r.patientName,
             sub: `${formatINRCompact(r.fee)} · completed`,

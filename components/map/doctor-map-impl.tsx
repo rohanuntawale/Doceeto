@@ -33,6 +33,21 @@ function Recenter({ center }: { center: [number, number] }) {
   return null;
 }
 
+/**
+ * Leaflet caches its container size, so a box that changes width after mount
+ * — the detail panel collapsing, a sidebar opening — leaves the new area
+ * blank until it is told. Watching the element covers every such case.
+ */
+function ResizeSync() {
+  const map = useMap();
+  useEffect(() => {
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(map.getContainer());
+    return () => ro.disconnect();
+  }, [map]);
+  return null;
+}
+
 export default function DoctorMapImpl({
   patient,
   doctors,
@@ -69,6 +84,7 @@ export default function DoctorMapImpl({
       preferCanvas
     >
       <Recenter center={center} />
+      <ResizeSync />
       <TileLayer
         attribution="&copy; OpenStreetMap"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

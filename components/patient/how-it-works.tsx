@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Stethoscope, Siren, Pill, X } from "lucide-react";
+import { Stethoscope, Sparkles, Pill, X } from "lucide-react";
 
 const KEY = "iyashi:guide-dismissed:v1";
 
 const STEPS = [
   {
-    icon: <Siren className="h-4 w-4" />,
-    title: "In an emergency, press SOS",
-    desc: "It shares your location so an ambulance and a nearby doctor are alerted.",
+    icon: <Sparkles className="h-4 w-4" />,
+    title: "Not sure what's wrong? Check your symptoms",
+    desc: "Answer a few quick questions and we'll point you to the right kind of doctor.",
   },
   {
     icon: <Stethoscope className="h-4 w-4" />,

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { db as repo, type Near } from "@/lib/db";
+import { hasOngoingConsult, isOnGig, visibleToDoctor } from "@/lib/scheduling/slots";
+import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,11 +38,25 @@ export async function GET(req: Request) {
     switch (entity) {
       case "doctors": {
         const all = await repo.getDoctors(near);
-        if (role === "ops") return NextResponse.json(all);
+        // Availability that a patient cannot derive themselves (they only ever
+        // receive their own requests) is attached here: whether each doctor is
+        // on a gig, and what they're offering. Read-only — none of it is stored.
+        const [requests, gigs] = await Promise.all([repo.getRequests(), repo.getGigs()]);
+        const decorated = all.map((d) => {
+          const live = activeGigs(gigs.filter((g) => g.doctorId === d.id));
+          return {
+            ...d,
+            onGig: isOnGig(requests, d.id),
+            onConsult: hasOngoingConsult(requests, d.id),
+            gigCount: live.length,
+            gigFromPrice: gigFromPrice(live),
+          };
+        });
+        if (role === "ops") return NextResponse.json(decorated);
         // A doctor's live position is public ONLY while they're not
         // offline; hide stale coordinates from patients/doctors.
         return NextResponse.json(
-          all.map((d) =>
+          decorated.map((d) =>
             d.status === "offline" ? { ...d, lat: 0, lng: 0 } : d,
           ),
         );
@@ -57,6 +73,18 @@ export async function GET(req: Request) {
           await repo.getReviews(params.get("doctorId") ?? undefined),
         );
 
+      case "gigs": {
+        const forDoctor = params.get("doctorId");
+        const gigs = await repo.getGigs(forDoctor ?? undefined);
+        if (role === "ops") return NextResponse.json(gigs);
+        // A doctor managing their own shelf needs the paused and archived rows
+        // too. Everyone else — including that doctor browsing someone else —
+        // only ever sees what is actually hireable.
+        if (role === "doctor" && !forDoctor)
+          return NextResponse.json(gigs.filter((g) => g.doctorId === me));
+        return NextResponse.json(gigs.filter((g) => g.status === "active"));
+      }
+
       case "requests": {
         const all = await repo.getRequests(near);
         if (role === "ops") return NextResponse.json(all);
@@ -64,16 +92,16 @@ export async function GET(req: Request) {
           return NextResponse.json(all.filter((r) => r.patientId === me));
         // doctor: open broadcasts, directed-to-me, requests aimed at a
         // display-only seed doctor (claimable by any online doctor since
-        // seed rows have no account), and my own accepted/history.
+        // seed rows have no account), and my own accepted/history. While a
+        // consult is in progress, pending emergencies are withheld —
+        // visibleToDoctor() owns that rule for every surface.
+        //
+        // `all` is already narrowed by ?near=, which would make "am I busy?"
+        // depend on the map radius, so the live consult is looked up over
+        // the unfiltered set.
+        const busy = hasOngoingConsult(near ? await repo.getRequests() : all, me);
         return NextResponse.json(
-          all.filter(
-            (r) =>
-              (r.status === "pending" &&
-                (r.doctorId === null ||
-                  r.doctorId === me ||
-                  r.doctorId?.startsWith("doc-seed-"))) ||
-              r.doctorId === me,
-          ),
+          all.filter((r) => visibleToDoctor(r, { doctorId: me, busy })),
         );
       }
 
@@ -82,10 +110,15 @@ export async function GET(req: Request) {
         if (role === "ops") return NextResponse.json(all);
         if (role === "patient")
           return NextResponse.json(all.filter((s) => s.patientId === me));
-        // doctor: active emergencies they can respond to + their own.
+        // doctor: active emergencies they can respond to + their own. Same
+        // rule as consults — a doctor mid-visit isn't shown alerts they
+        // can't leave for; the ones they already own stay visible.
+        const busy = hasOngoingConsult(await repo.getRequests(), me);
         return NextResponse.json(
-          all.filter(
-            (s) => s.status === "open" || s.status === "assigned" || s.doctorId === me,
+          all.filter((s) =>
+            s.doctorId === me
+              ? true
+              : !busy && (s.status === "open" || s.status === "assigned"),
           ),
         );
       }

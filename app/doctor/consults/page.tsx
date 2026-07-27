@@ -9,9 +9,11 @@ import { StarInput } from "@/components/ui/star-rating";
 import { useToast } from "@/components/ui/toast";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
-import { consultStatus, consultType } from "@/lib/labels";
+import { consultStatusOf, consultTypeOf } from "@/lib/labels";
 import { formatINR, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { isScheduled } from "@/lib/scheduling/slots";
+import { formatSlotRange } from "@/lib/scheduling/time";
 
 export default function ConsultsPage() {
   const requests = useConsultRequests();
@@ -42,7 +44,7 @@ export default function ConsultsPage() {
         <Card>
           <div className="divide-y divide-[var(--border)]">
             {mine.map((r) => {
-              const st = consultStatus[r.status];
+              const st = consultStatusOf(r.status);
               return (
                 <div
                   key={r.id}
@@ -51,11 +53,17 @@ export default function ConsultsPage() {
                   <div className="min-w-[140px] flex-1">
                     <p className="font-medium text-cream">{r.patientName}</p>
                     <p className="text-xs text-[var(--text-muted)]">
-                      {consultType[r.type].label} · {r.symptoms}
+                      {consultTypeOf(r.type).label} · {r.symptoms}
                     </p>
                   </div>
-                  <span className="font-mono text-xs text-[var(--text-faint)]">
-                    {mounted ? timeAgo(r.createdAt) : ""}
+                  {/* A booked visit is dated by its slot — "2h ago" would be
+                      the moment it was requested, not when it happens. */}
+                  <span className="text-xs text-[var(--text-faint)]">
+                    {!mounted
+                      ? ""
+                      : isScheduled(r) && r.scheduledAt
+                        ? formatSlotRange(r.scheduledAt, r.scheduledEnd)
+                        : timeAgo(r.createdAt)}
                   </span>
                   <div className="metric text-lg text-cream">
                     {formatINR(r.fee)}

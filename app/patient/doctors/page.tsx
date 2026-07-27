@@ -7,15 +7,28 @@ import {
   BadgeCheck,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   X,
   LocateFixed,
   ArrowRight,
   Stethoscope,
+  Search,
+  Ear,
+  Bone,
+  Brain,
+  BrainCircuit,
+  Baby,
+  Flower2,
+  HeartPulse,
+  Hand,
+  LayoutGrid,
+  Briefcase,
+  type LucideIcon,
 } from "lucide-react";
 import { DoctorMap } from "@/components/map/doctor-map";
 import { useDoctors } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { doctorStatus, doctorKind } from "@/lib/labels";
+import { doctorStatusOf, doctorKindOf } from "@/lib/labels";
 import { formatINR, initials } from "@/lib/utils/format";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorAbout } from "@/lib/utils/doctor";
@@ -29,6 +42,8 @@ type Filters = {
   kind: DoctorKind | "any";
   gender: Gender | "any";
   verifiedOnly: boolean;
+  /** Only doctors publishing gigs you can hire outright. */
+  gigsOnly: boolean;
   sort: "nearest" | "rating" | "price";
 };
 
@@ -39,11 +54,44 @@ const EMPTY_FILTERS: Filters = {
   kind: "any",
   gender: "any",
   verifiedOnly: false,
+  gigsOnly: false,
   sort: "nearest",
 };
 
 // Bottom-sheet snap heights (share of the map container).
 const SNAPS = ["24%", "54%", "88%"] as const;
+
+/** One glyph per bookable speciality, for the quick-pick row. */
+const SPECIALTY_ICON: Record<string, LucideIcon> = {
+  "General Physician": Stethoscope,
+  Cardiologist: HeartPulse,
+  Gynecologist: Flower2,
+  Pediatrician: Baby,
+  Orthopedic: Bone,
+  Dermatologist: Hand,
+  ENT: Ear,
+  // Two brain-adjacent specialities, so they get distinct glyphs: the organ
+  // for the mind doctor, the wiring for the nerve doctor.
+  Psychiatrist: Brain,
+  Neurologist: BrainCircuit,
+};
+
+/**
+ * Plain-language tile labels. A quick-pick has room for one short word, and
+ * "Skin" is what a patient is actually looking for — the clinical name still
+ * shows on every doctor row and in the filter sheet.
+ */
+const SPECIALTY_SHORT: Record<string, string> = {
+  "General Physician": "General",
+  Cardiologist: "Heart",
+  Gynecologist: "Women's",
+  Pediatrician: "Child",
+  Orthopedic: "Bones",
+  Dermatologist: "Skin",
+  ENT: "Ear/Nose",
+  Psychiatrist: "Mind",
+  Neurologist: "Brain",
+};
 
 export default function PatientDoctors() {
   return (
@@ -64,8 +112,11 @@ function DoctorsBrowser() {
     initialSpecialty ? { ...EMPTY_FILTERS, specialty: initialSpecialty } : EMPTY_FILTERS,
   );
   const [showFilters, setShowFilters] = useState(false);
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snap, setSnap] = useState<0 | 1 | 2>(1);
+  /** Desktop only — collapse the side panel for a full-width map. */
+  const [panelOpen, setPanelOpen] = useState(true);
 
   const specialties = useMemo(
     () => Array.from(new Set(doctors.map((d) => d.specialty))).sort(),
@@ -73,13 +124,16 @@ function DoctorsBrowser() {
   );
 
   const matched = useMemo(() => {
+    const q = query.trim().toLowerCase();
     const out = doctors.filter((d) => {
+      if (q && !`${d.fullName} ${d.specialty}`.toLowerCase().includes(q)) return false;
       if (filters.specialty !== "any" && d.specialty !== filters.specialty) return false;
       if (filters.maxPrice !== null && d.consultFee > filters.maxPrice) return false;
       if (d.rating < filters.minRating) return false;
       if (filters.kind !== "any" && d.kind !== filters.kind) return false;
       if (filters.gender !== "any" && d.gender !== filters.gender) return false;
       if (filters.verifiedOnly && !d.verified) return false;
+      if (filters.gigsOnly && !d.gigCount) return false;
       return true;
     });
     out.sort((a, b) => {
@@ -90,7 +144,14 @@ function DoctorsBrowser() {
       return haversineKm(patient, a) - haversineKm(patient, b);
     });
     return out;
-  }, [doctors, filters, patient]);
+  }, [doctors, filters, patient, query]);
+
+  /** How many doctors sit behind each speciality chip (ignores the chip itself). */
+  const specialtyCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const d of doctors) m[d.specialty] = (m[d.specialty] ?? 0) + 1;
+    return m;
+  }, [doctors]);
 
   const onMap = useMemo(() => matched.filter((d) => d.status !== "offline"), [matched]);
   const selected = matched.find((d) => d.id === selectedId) ?? null;
@@ -103,6 +164,7 @@ function DoctorsBrowser() {
     if (filters.kind !== "any") n++;
     if (filters.gender !== "any") n++;
     if (filters.verifiedOnly) n++;
+    if (filters.gigsOnly) n++;
     if (filters.sort !== "nearest") n++;
     return n;
   }, [filters]);
@@ -110,9 +172,75 @@ function DoctorsBrowser() {
   function selectDoctor(id: string) {
     setSelectedId(id);
     setSnap((s) => (s === 0 ? 1 : s)); // make sure the card is visible
+    setPanelOpen(true); // picking a pin while collapsed should reveal the card
   }
 
   const openProfile = (id: string) => router.push(`/patient/doctors/${id}`);
+
+  // Search stays pinned at the top of the sheet; everything under it scrolls.
+  const searchBar = (
+    <div className="flex items-center gap-2">
+      <div className="glass-inset flex flex-1 items-center gap-2.5 rounded-full px-3.5 py-2.5">
+        <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelectedId(null);
+          }}
+          placeholder="Search doctors or specialities"
+          aria-label="Search doctors or specialities"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--text-faint)]/25 text-cream"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => setShowFilters(true)}
+        aria-label="Filters"
+        className="glass-control relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-primary"
+      >
+        <SlidersHorizontal className="h-[18px] w-[18px]" />
+        {activeFilterCount > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-on-accent">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+
+  // One body, rendered by the mobile sheet and the desktop side panel.
+  const panelBody = selected ? (
+    <DoctorDetail
+      d={selected}
+      patient={patient}
+      onClose={() => setSelectedId(null)}
+      onBook={() => openProfile(selected.id)}
+    />
+  ) : (
+    <>
+      <SpecialityPicks
+        specialties={specialties}
+        counts={specialtyCounts}
+        active={filters.specialty}
+        onPick={(s) => setFilters((f) => ({ ...f, specialty: s }))}
+      />
+      <DoctorList
+        doctors={matched}
+        patient={patient}
+        onSelect={selectDoctor}
+        onOpen={openProfile}
+      />
+    </>
+  );
 
   // Draggable handle → snap up/down.
   const dragStart = useRef<number | null>(null);
@@ -129,9 +257,15 @@ function DoctorsBrowser() {
   }
 
   return (
-    <div className="relative -mx-4 -mt-4 h-[calc(100dvh-8.5rem)] min-h-[460px] overflow-hidden sm:-mx-6 lg:rounded-3xl lg:border lg:border-[var(--border)]">
-      {/* Map layer */}
-      <div className="absolute inset-0">
+    <div className="map-chip-overlay relative -mx-4 -mt-4 h-[calc(100dvh-8.5rem)] min-h-[460px] overflow-hidden sm:-mx-6 lg:rounded-3xl lg:border lg:border-[var(--border)]">
+      {/* Map layer. On desktop it stops where the side panel starts, so the
+          panel sits beside the map rather than covering it. */}
+      <div
+        className={cn(
+          "absolute inset-0 transition-[right] duration-300 ease-out",
+          panelOpen && "lg:right-96",
+        )}
+      >
         <DoctorMap
           fill
           patient={patient}
@@ -141,9 +275,14 @@ function DoctorsBrowser() {
         />
       </div>
 
-      {/* Top overlay — specialty context + filters */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-        <div className="fh-card pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm">
+      {/* Context chip — what the pins on the map currently represent. */}
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 transition-[right] duration-300 ease-out",
+          panelOpen && "lg:right-96",
+        )}
+      >
+        <div className="glass-control pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm">
           <Stethoscope className="h-4 w-4 text-primary" />
           <span className="font-medium text-cream">
             {filters.specialty !== "any" ? filters.specialty : "All doctors"}
@@ -151,33 +290,72 @@ function DoctorsBrowser() {
           <span className="text-[var(--text-faint)]">·</span>
           <span className="text-[var(--text-muted)]">{onMap.length} near you</span>
         </div>
+      </div>
+
+      {/* Floating control stack, Apple-Maps style: one pill, divided rows.
+          Rides above the sheet on mobile; on desktop it tucks inside the
+          map's right edge, clear of the panel. */}
+      <div
+        className={cn(
+          "glass-control absolute bottom-[calc(var(--sheet-h)+0.75rem)] right-3 flex flex-col overflow-hidden rounded-2xl transition-[bottom,right] duration-300 lg:bottom-3",
+          panelOpen ? "lg:right-[calc(24rem+0.75rem)]" : "lg:right-3",
+        )}
+        style={{ "--sheet-h": SNAPS[snap] } as React.CSSProperties}
+      >
         <button
-          onClick={() => setShowFilters(true)}
-          className="fh-card pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-cream"
+          onClick={() => setFilters(EMPTY_FILTERS)}
+          aria-label="Show every speciality"
+          title="Show every speciality"
+          className="grid h-11 w-11 place-items-center text-primary transition-colors hover:bg-[rgb(var(--c-terracotta))]/10"
         >
-          <SlidersHorizontal className="h-4 w-4 text-primary" />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-on-accent">
-              {activeFilterCount}
-            </span>
-          )}
+          <LayoutGrid className="h-[18px] w-[18px]" />
+        </button>
+        <span className="h-px bg-[var(--glass-border)]" />
+        <button
+          onClick={() => setSelectedId(null)}
+          aria-label="Recenter on you"
+          title="Recenter on you"
+          className="grid h-11 w-11 place-items-center text-primary transition-colors hover:bg-[rgb(var(--c-terracotta))]/10"
+        >
+          <LocateFixed className="h-[18px] w-[18px]" />
         </button>
       </div>
 
-      {/* Recenter (visual affordance) */}
+      {/* Collapse handle — a tab on the panel's edge, so the map can be
+          opened out to full width without losing the way back. */}
       <button
-        onClick={() => setSelectedId(null)}
-        aria-label="Recenter"
-        className="fh-card absolute right-3 grid h-11 w-11 place-items-center rounded-full text-primary transition-[bottom]"
-        style={{ bottom: `calc(${SNAPS[snap]} + 0.75rem)` }}
+        onClick={() => setPanelOpen((v) => !v)}
+        aria-expanded={panelOpen}
+        aria-label={panelOpen ? "Hide the doctor list" : "Show the doctor list"}
+        title={panelOpen ? "Hide list" : "Show list"}
+        className={cn(
+          "fh-card absolute top-1/2 hidden h-16 w-7 -translate-y-1/2 place-items-center rounded-l-xl rounded-r-none border-r-0 text-primary transition-[right] duration-300 ease-out hover:text-[rgb(var(--c-terracotta))] lg:grid",
+          panelOpen ? "right-96" : "right-0",
+        )}
       >
-        <LocateFixed className="h-5 w-5" />
+        {panelOpen ? (
+          <ChevronRight className="h-4 w-4" />
+        ) : (
+          <ChevronLeft className="h-4 w-4" />
+        )}
       </button>
 
-      {/* Bottom sheet */}
+      {/* Side panel (desktop) — same content as the sheet, docked right. */}
+      <aside
+        className={cn(
+          "glass-sheet absolute inset-y-0 right-0 hidden w-96 flex-col border-l transition-transform duration-300 ease-out lg:flex lg:rounded-r-3xl",
+          !panelOpen && "lg:translate-x-full",
+        )}
+        aria-hidden={!panelOpen}
+      >
+        <div className="shrink-0 px-4 pb-3 pt-4">{searchBar}</div>
+        <div className="flex-1 overflow-y-auto px-4 pb-4">{panelBody}</div>
+      </aside>
+
+      {/* Bottom sheet (mobile) — a right-hand panel on a phone would cover
+          the map entirely, so the drag-to-snap sheet stays there. */}
       <div
-        className="absolute inset-x-0 bottom-0 flex flex-col rounded-t-3xl border-t border-[var(--border)] bg-[var(--glass-bg-strong)] shadow-soft-lg backdrop-blur-xl transition-[height] duration-300 ease-out"
+        className="glass-sheet absolute inset-x-0 bottom-0 flex flex-col rounded-t-[1.75rem] border-t transition-[height] duration-300 ease-out lg:hidden"
         style={{ height: SNAPS[snap] }}
       >
         {/* Drag handle */}
@@ -187,26 +365,12 @@ function DoctorsBrowser() {
           onClick={() => setSnap((s) => ((s + 1) % 3) as 0 | 1 | 2)}
           className="flex shrink-0 cursor-grab touch-none justify-center pb-1 pt-3 active:cursor-grabbing"
         >
-          <span className="h-1.5 w-10 rounded-full bg-[var(--text-faint)]" />
+          <span className="h-1.5 w-10 rounded-full bg-[var(--text-faint)]/50" />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {selected ? (
-            <DoctorDetail
-              d={selected}
-              patient={patient}
-              onClose={() => setSelectedId(null)}
-              onBook={() => openProfile(selected.id)}
-            />
-          ) : (
-            <DoctorList
-              doctors={matched}
-              patient={patient}
-              onSelect={selectDoctor}
-              onOpen={openProfile}
-            />
-          )}
-        </div>
+        <div className="shrink-0 px-4 pb-3 pt-1">{searchBar}</div>
+        {/* Extra bottom room so the last row clears the floating nav bar. */}
+        <div className="flex-1 overflow-y-auto px-4 pb-24">{panelBody}</div>
       </div>
 
       {/* Filters overlay */}
@@ -223,6 +387,95 @@ function DoctorsBrowser() {
   );
 }
 
+/**
+ * Speciality quick-picks — the row that answers "who do I even need?" in one
+ * tap, before the list is worth scrolling. Each tile carries how many doctors
+ * sit behind it, so the choice is informed rather than a guess.
+ */
+function SpecialityPicks({
+  specialties,
+  counts,
+  active,
+  onPick,
+}: {
+  specialties: string[];
+  counts: Record<string, number>;
+  active: string;
+  onPick: (specialty: string) => void;
+}) {
+  if (specialties.length === 0) return null;
+  return (
+    <section className="mb-4">
+      <h2 className="mb-2.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
+        Specialities
+      </h2>
+      {/* Bleeds to the sheet's edge so a half-visible tile reads as "keep
+          scrolling" rather than a clipped layout. */}
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <PickTile
+          icon={LayoutGrid}
+          label="All"
+          active={active === "any"}
+          onClick={() => onPick("any")}
+        />
+        {specialties.map((s) => (
+          <PickTile
+            key={s}
+            icon={SPECIALTY_ICON[s] ?? Stethoscope}
+            label={SPECIALTY_SHORT[s] ?? s}
+            hint={counts[s] ?? 0}
+            active={active === s}
+            onClick={() => onPick(active === s ? "any" : s)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PickTile({
+  icon: Icon,
+  label,
+  hint,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  /** How many doctors sit behind this speciality; announced, not drawn. */
+  hint?: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={hint === undefined ? label : `${label}, ${hint} available`}
+      className="flex w-[4.25rem] shrink-0 flex-col items-center gap-1.5 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--c-terracotta))]"
+    >
+      <span
+        className={cn(
+          "grid h-14 w-14 place-items-center rounded-full transition-all",
+          active
+            ? "bg-primary text-on-accent shadow-[0_6px_18px_rgb(190_100_45/0.35)]"
+            : "glass-inset text-primary hover:scale-[1.04]",
+        )}
+      >
+        <Icon className="h-[22px] w-[22px]" strokeWidth={1.9} />
+      </span>
+      <span
+        className={cn(
+          "w-full truncate text-center text-[11px] leading-tight",
+          active ? "font-semibold text-primary" : "text-[var(--text-muted)]",
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
 function DoctorList({
   doctors,
   patient,
@@ -235,14 +488,16 @@ function DoctorList({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-cream">Doctors near you</h2>
+    <section>
+      <div className="mb-2.5 flex items-center justify-between">
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
+          Doctors near you
+        </h2>
         <span className="text-xs text-[var(--text-faint)]">{doctors.length} available</span>
       </div>
       {doctors.length === 0 ? (
         <p className="py-10 text-center text-sm text-[var(--text-muted)]">
-          No doctors match your filters.
+          No doctors match this search. Try a different name or speciality.
         </p>
       ) : (
         <div className="space-y-2">
@@ -251,7 +506,7 @@ function DoctorList({
               key={d.id}
               onClick={() => onSelect(d.id)}
               onDoubleClick={() => onOpen(d.id)}
-              className="fh-tile flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:border-primary/40"
+              className="glass-inset flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:border-primary/40"
             >
               <span
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-semibold text-white"
@@ -265,9 +520,9 @@ function DoctorList({
                   {d.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-status-ok" />}
                 </div>
                 <p className="truncate text-xs text-[var(--text-muted)]">
-                  {d.specialty} · {doctorKind[d.kind].label}
+                  {d.specialty} · {doctorKindOf(d.kind).label}
                 </p>
-                <div className="mt-1 flex items-center gap-2.5 text-xs">
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                   <span className="flex items-center gap-1 text-tan">
                     <Star className="h-3 w-3 fill-tan" />
                     {d.rating > 0 ? d.rating.toFixed(1) : "New"}
@@ -275,7 +530,26 @@ function DoctorList({
                   <span className="text-[var(--text-faint)]">
                     {formatKm(haversineKm(patient, d))} away
                   </span>
-                  <span className="font-semibold text-cream">{formatINR(d.consultFee)}</span>
+                  {/* Gigs are the headline offering, so they replace the bare
+                      consult fee whenever the doctor publishes any. */}
+                  {d.gigCount ? (
+                    <span className="flex items-center gap-1 font-semibold text-cream">
+                      <Briefcase className="h-3 w-3 text-salmon" />
+                      {d.gigCount} gig{d.gigCount === 1 ? "" : "s"}
+                      {d.gigFromPrice != null && (
+                        <span className="font-normal text-[var(--text-faint)]">
+                          from {formatINR(d.gigFromPrice)}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-cream">{formatINR(d.consultFee)}</span>
+                  )}
+                  {d.onGig && (
+                    <span className="rounded-full bg-status-warn/15 px-2 py-0.5 text-[10px] font-semibold text-tan">
+                      On a gig
+                    </span>
+                  )}
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
@@ -283,7 +557,7 @@ function DoctorList({
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -298,7 +572,7 @@ function DoctorDetail({
   onClose: () => void;
   onBook: () => void;
 }) {
-  const st = doctorStatus[d.status];
+  const st = doctorStatusOf(d.status);
   return (
     <div className="animate-fade-up">
       <div className="mb-3 flex items-start gap-3">
@@ -314,7 +588,7 @@ function DoctorDetail({
             {d.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-status-ok" />}
           </div>
           <p className="text-sm text-[var(--text-muted)]">
-            {d.specialty} · {doctorKind[d.kind].label}
+            {d.specialty} · {doctorKindOf(d.kind).label}
           </p>
         </div>
         <button
@@ -329,21 +603,42 @@ function DoctorDetail({
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Rating" value={d.rating > 0 ? d.rating.toFixed(1) : "New"} icon={<Star className="h-3.5 w-3.5 fill-tan text-tan" />} />
         <Stat label="Away" value={formatKm(haversineKm(patient, d))} />
-        <Stat label="Status" value={st.label} tone />
+        {/* Being on a gig is what actually decides availability, so it
+            outranks the self-reported online/offline status. */}
+        <Stat label="Status" value={d.onGig ? "On a gig" : st.label} tone />
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{doctorAbout(d)}</p>
 
+      {/* What they're actually selling — gigs when they have them, the bare
+          consult fee when they don't. */}
       <div className="mt-3 flex items-center justify-between fh-tile rounded-2xl px-3.5 py-2.5">
-        <span className="text-xs text-[var(--text-muted)]">Consult from</span>
-        <span className="text-base font-semibold text-cream">{formatINR(d.consultFee)}</span>
+        {d.gigCount ? (
+          <>
+            <span className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+              <Briefcase className="h-3.5 w-3.5 text-salmon" />
+              {d.gigCount} gig{d.gigCount === 1 ? "" : "s"} to hire
+            </span>
+            <span className="text-base font-semibold text-cream">
+              from {formatINR(d.gigFromPrice ?? d.consultFee)}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-[var(--text-muted)]">Consult from</span>
+            <span className="text-base font-semibold text-cream">
+              {formatINR(d.consultFee)}
+            </span>
+          </>
+        )}
       </div>
 
       <button
         onClick={onBook}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[15px] font-semibold text-on-accent transition-transform active:scale-[0.98]"
       >
-        View profile & book <ArrowRight className="h-4 w-4" />
+        {d.gigCount ? "See gigs & hire" : "View profile & book"}{" "}
+        <ArrowRight className="h-4 w-4" />
       </button>
     </div>
   );
@@ -436,6 +731,16 @@ function FilterSheet({
             <Chip active={filters.sort === "rating"} onClick={() => set({ sort: "rating" })}>Top rated</Chip>
             <Chip active={filters.sort === "price"} onClick={() => set({ sort: "price" })}>Cheapest</Chip>
           </Row>
+
+          <label className="flex items-center gap-2 pt-1 text-sm text-[var(--text-muted)]">
+            <input
+              type="checkbox"
+              checked={filters.gigsOnly}
+              onChange={(e) => set({ gigsOnly: e.target.checked })}
+              className="h-4 w-4 accent-[color:var(--accent)]"
+            />
+            Offering gigs I can hire
+          </label>
 
           <div className="flex items-center justify-between pt-1">
             <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">

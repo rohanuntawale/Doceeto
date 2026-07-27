@@ -1,13 +1,31 @@
 "use client";
 
-import { MapPin, Navigation, Video, Home, Building2, Stethoscope } from "lucide-react";
+import { useState } from "react";
+import {
+  MapPin,
+  Navigation,
+  Video,
+  Home,
+  Building2,
+  Stethoscope,
+  Check,
+  ArrowRight,
+  X,
+  Briefcase,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TrackMap } from "@/components/map/track-map";
-import { useConsultRequests, useDoctors } from "@/lib/hooks/data";
-import { consultType } from "@/lib/labels";
+import { useToast } from "@/components/ui/toast";
+import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
+import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
+import { consultTypeOf, tripStageOf } from "@/lib/labels";
+import { isGig } from "@/lib/scheduling/slots";
+import { stagesFor, tripStageOfRequest, nextTripStage } from "@/lib/scheduling/trip";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { initials } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
 import type { ConsultRequest, Doctor, LatLng } from "@/lib/types/domain";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 
@@ -106,17 +124,27 @@ function TrackerCard({
   const known = hasCoords(other);
   const km = known ? haversineKm(self, other as LatLng) : null;
   const isHomeVisit = req.type === "home_visit";
+  const stage = tripStageOfRequest(req);
+  const st = tripStageOf(stage);
 
+  // Copy follows the stage, so the patient sees the journey rather than a
+  // static "accepted" until it's over.
   const statusText =
-    side === "patient"
-      ? isHomeVisit
-        ? "On the way to you"
-        : req.type === "video"
-          ? "Ready for your video call"
-          : "Expecting you at the clinic"
-      : isHomeVisit
-        ? "Head to the patient"
-        : "Consult accepted";
+    stage === "arrived"
+      ? side === "patient"
+        ? "At your door"
+        : "You've arrived"
+      : stage === "in_progress"
+        ? "Consult under way"
+        : side === "patient"
+          ? isHomeVisit
+            ? "On the way to you"
+            : req.type === "video"
+              ? "Ready for your video call"
+              : "Expecting you at the clinic"
+          : isHomeVisit
+            ? "Head to the patient"
+            : "Consult accepted";
 
   return (
     <Card className="overflow-hidden">
@@ -130,12 +158,24 @@ function TrackerCard({
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-cream">{title}</p>
           <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-            {typeIcon[req.type]} {consultType[req.type].label}
-            {subtitle ? ` · ${subtitle}` : ""}
+            {isGig(req) ? (
+              <>
+                <Briefcase className="h-3.5 w-3.5" />
+                <span className="truncate">{req.gigTitle || "Gig"}</span>
+              </>
+            ) : (
+              <>
+                {typeIcon[req.type]} {consultTypeOf(req.type).label}
+                {subtitle ? ` · ${subtitle}` : ""}
+              </>
+            )}
           </p>
         </div>
-        <StatusPill tone="info">Accepted</StatusPill>
+        <StatusPill tone={st.tone}>{st.label}</StatusPill>
       </div>
+
+      {/* The rail — where the visit has got to. */}
+      <TripRail req={req} />
 
       {known ? (
         <div className="p-3">
@@ -203,6 +243,126 @@ function TrackerCard({
             : "Waiting for the patient's live location…"}
         </div>
       )}
+
+      {/* Only the doctor drives the visit forward. */}
+      {side === "doctor" && <TripControls req={req} />}
     </Card>
+  );
+}
+
+/**
+ * The stage rail. Video consults have no journey, so their rail is shorter —
+ * stagesFor() owns that, not the markup.
+ */
+function TripRail({ req }: { req: ConsultRequest }) {
+  const rail = stagesFor(req.type);
+  const current = tripStageOfRequest(req);
+  const at = current ? rail.indexOf(current) : -1;
+
+  return (
+    <div className="flex items-start gap-1 border-b border-[var(--border)] px-4 py-3">
+      {rail.map((s, i) => {
+        const done = i <= at;
+        return (
+          <div key={s} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div className="flex w-full items-center">
+              <span
+                className={cn(
+                  "h-0.5 flex-1",
+                  i === 0 ? "opacity-0" : done ? "bg-terracotta" : "bg-[var(--border)]",
+                )}
+              />
+              <span
+                className={cn(
+                  "grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors",
+                  done ? "bg-terracotta text-on-accent" : "bg-[var(--border)]",
+                )}
+              >
+                {done && <Check className="h-2.5 w-2.5" />}
+              </span>
+              <span
+                className={cn(
+                  "h-0.5 flex-1",
+                  i === rail.length - 1
+                    ? "opacity-0"
+                    : i < at
+                      ? "bg-terracotta"
+                      : "bg-[var(--border)]",
+                )}
+              />
+            </div>
+            <span
+              className={cn(
+                "truncate text-[10px] font-medium",
+                i === at ? "text-cream" : "text-[var(--text-faint)]",
+              )}
+            >
+              {tripStageOf(s).label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Advance one step, complete, or stand down with a reason. */
+function TripControls({ req }: { req: ConsultRequest }) {
+  const { advanceTrip, completeRequest } = useActions();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const next = nextTripStage(req);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] px-4 py-3">
+      {next ? (
+        <Button
+          size="sm"
+          className="flex-1"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await advanceTrip(req.id);
+            } catch (e) {
+              toast.push({
+                tone: "error",
+                title: "Couldn't update that",
+                desc: e instanceof Error ? e.message : "Please try again.",
+              });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {tripStageOf(next).label} <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={() => {
+            completeRequest(req.id);
+            toast.push({
+              tone: "success",
+              title: "Consult completed",
+              desc: "You're available again — earnings are in your wallet.",
+            });
+          }}
+        >
+          <Check className="h-3.5 w-3.5" /> Mark complete
+        </Button>
+      )}
+      <Button size="sm" variant="ghost" onClick={() => setCancelling(true)}>
+        <X className="h-3.5 w-3.5" /> Cancel
+      </Button>
+      <CancelVisitDialog
+        request={req}
+        open={cancelling}
+        onClose={() => setCancelling(false)}
+      />
+    </div>
   );
 }

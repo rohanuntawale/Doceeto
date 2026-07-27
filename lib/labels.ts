@@ -1,11 +1,14 @@
 import type {
+  BookingMode,
   ConsultStatus,
   ConsultType,
   DoctorKind,
   DoctorStatus,
+  GigStatus,
   OrderStatus,
   SosCategory,
   SosStatus,
+  TripStage,
 } from "@/lib/types/domain";
 
 type Tone = "critical" | "warn" | "ok" | "idle" | "info";
@@ -55,6 +58,31 @@ export const doctorStatus: Record<DoctorStatus, { label: string; tone: Tone }> =
   offline: { label: "Offline", tone: "idle" },
 };
 
+export const gigStatus: Record<GigStatus, { label: string; tone: Tone }> = {
+  active: { label: "Live", tone: "ok" },
+  paused: { label: "Paused", tone: "warn" },
+  archived: { label: "Archived", tone: "idle" },
+};
+
+/** How the patient reached the doctor — shown on request and consult cards. */
+export const bookingMode: Record<BookingMode, { label: string; tone: Tone }> = {
+  emergency: { label: "Urgent", tone: "critical" },
+  scheduled: { label: "Appointment", tone: "info" },
+  gig: { label: "Gig", tone: "warn" },
+};
+
+/**
+ * The Uber-style rail after a request is accepted. `step` mirrors orderStatus
+ * so the same progress-rail rendering works for both. "completed" is the
+ * consult status, not a trip stage, so it is the rail's implicit final node.
+ */
+export const tripStage: Record<TripStage, { label: string; tone: Tone; step: number }> = {
+  accepted: { label: "Accepted", tone: "info", step: 0 },
+  enroute: { label: "On the way", tone: "info", step: 1 },
+  arrived: { label: "Arrived", tone: "warn", step: 2 },
+  in_progress: { label: "In consult", tone: "ok", step: 3 },
+};
+
 export const doctorKind: Record<DoctorKind, { label: string; blurb: string }> = {
   resident: {
     label: "Junior doctor",
@@ -65,3 +93,34 @@ export const doctorKind: Record<DoctorKind, { label: string; blurb: string }> = 
     blurb: "Full-time doctor taking extra visits",
   },
 };
+
+// ── Total lookups ────────────────────────────────────────────
+/**
+ * Read a label by a value that came off the wire. Indexing these maps
+ * directly returns `undefined` for anything unexpected — a row written by an
+ * older build, an enum added since, or a hand-rolled API call — and the
+ * `.label` that follows then takes the whole page down. Every getter falls
+ * back instead, so one odd row degrades to a neutral pill.
+ */
+const of = <T,>(map: Record<string, T>, key: string | null | undefined, fallback: T): T =>
+  map[key ?? ""] ?? fallback;
+
+export const sosCategoryOf = (k?: string | null) =>
+  of(sosCategory, k, { label: "Other", kanji: "他" });
+export const sosStatusOf = (k?: string | null) =>
+  of(sosStatus, k, { label: "Unknown", tone: "idle" as Tone });
+export const consultStatusOf = (k?: string | null) =>
+  of(consultStatus, k, { label: "Unknown", tone: "idle" as Tone });
+export const consultTypeOf = (k?: string | null) => of(consultType, k, { label: "Consult" });
+export const orderStatusOf = (k?: string | null) =>
+  of(orderStatus, k, { label: "Unknown", tone: "idle" as Tone, step: 0 });
+export const doctorStatusOf = (k?: string | null) =>
+  of(doctorStatus, k, { label: "Offline", tone: "idle" as Tone });
+export const doctorKindOf = (k?: string | null) =>
+  of(doctorKind, k, { label: "Doctor", blurb: "" });
+export const gigStatusOf = (k?: string | null) =>
+  of(gigStatus, k, { label: "Unknown", tone: "idle" as Tone });
+export const bookingModeOfLabel = (k?: string | null) =>
+  of(bookingMode, k, { label: "Consult", tone: "idle" as Tone });
+export const tripStageOf = (k?: string | null) =>
+  of(tripStage, k, { label: "Accepted", tone: "info" as Tone, step: 0 });

@@ -13,10 +13,16 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
 import { demoStore } from "@/lib/demo/store";
+import { readStoredDoctorId as currentDoctorId } from "@/lib/demo/current-doctor";
+import { hasOngoingConsult, isOnGig } from "@/lib/scheduling/slots";
+import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
 import type {
   Ambulance,
   ConsultRequest,
   Doctor,
+  DoctorAvailability,
+  Gig,
+  GigStatus,
   Order,
   OpsSnapshot,
   OrderStatus,
@@ -36,7 +42,19 @@ const ORDER_ORDER: OrderStatus[] = [
 
 const POLL_MS = 4000;
 const POLL_MS_SSE = 30_000; // slow safety-net poll while SSE is connected
-const ENTITY_KEYS = ["doctors", "ambulances", "requests", "sos", "orders", "reviews", "transactions"];
+// Invalidated after every write. "availability" is a key prefix rather than
+// an entity — a new booking changes which slots a doctor has left.
+const ENTITY_KEYS = [
+  "doctors",
+  "ambulances",
+  "requests",
+  "sos",
+  "orders",
+  "reviews",
+  "transactions",
+  "gigs",
+  "availability",
+];
 
 // Flipped by the RealtimeBridge when /api/stream is connected — polling
 // then backs off to a slow safety net and SSE events drive refreshes.
@@ -69,11 +87,6 @@ function useApiEntity<T>(entity: string): T[] {
 }
 
 // ── Entity hooks (bound once to the active backend) ─────────
-function useSosDemo(): SosEvent[] {
-  return useDemoState().sos;
-}
-export const useSosEvents = isDemoMode ? useSosDemo : () => useApiEntity<SosEvent>("sos");
-
 function useRequestsDemo(): ConsultRequest[] {
   return useDemoState().requests;
 }
@@ -87,16 +100,26 @@ function useOrdersDemo(): Order[] {
 export const useOrders = isDemoMode ? useOrdersDemo : () => useApiEntity<Order>("orders");
 
 function useDoctorsDemo(): Doctor[] {
-  return useDemoState().doctors;
+  const s = useDemoState();
+  // /api/data attaches these derived fields on every doctor read, so the demo
+  // path has to as well or the search list would silently lose the "on a gig"
+  // badge and the gig teasers in demo mode.
+  return useMemo(
+    () =>
+      s.doctors.map((d) => {
+        const live = activeGigs(s.gigs.filter((g) => g.doctorId === d.id));
+        return {
+          ...d,
+          onGig: isOnGig(s.requests, d.id),
+          onConsult: hasOngoingConsult(s.requests, d.id),
+          gigCount: live.length,
+          gigFromPrice: gigFromPrice(live),
+        };
+      }),
+    [s.doctors, s.gigs, s.requests],
+  );
 }
 export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Doctor>("doctors");
-
-function useAmbulancesDemo(): Ambulance[] {
-  return useDemoState().ambulances;
-}
-export const useAmbulances = isDemoMode
-  ? useAmbulancesDemo
-  : () => useApiEntity<Ambulance>("ambulances");
 
 function useReviewsDemo(doctorId?: string): Review[] {
   const all = useDemoState().reviews;
@@ -110,6 +133,21 @@ export const useReviews = isDemoMode
   : (doctorId?: string) =>
       useApiEntity<Review>(doctorId ? `reviews&doctorId=${encodeURIComponent(doctorId)}` : "reviews");
 
+function useGigsDemo(doctorId?: string): Gig[] {
+  const all = useDemoState().gigs;
+  return doctorId ? all.filter((g) => g.doctorId === doctorId) : all;
+}
+/**
+ * Gig listings. Pass a doctorId to read one doctor's shelf — the server then
+ * returns only their ACTIVE gigs, which is what a patient should see. Called
+ * with no argument by a signed-in doctor it returns their own gigs in every
+ * status, so they can manage paused and archived ones.
+ */
+export const useGigs = isDemoMode
+  ? (doctorId?: string) => useGigsDemo(doctorId)
+  : (doctorId?: string) =>
+      useApiEntity<Gig>(doctorId ? `gigs&doctorId=${encodeURIComponent(doctorId)}` : "gigs");
+
 function useTransactionsDemo(): Transaction[] {
   return useDemoState().transactions;
 }
@@ -120,48 +158,22 @@ export const useTransactions = isDemoMode
 
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
-  const sos = useSosEvents();
   const doctors = useDoctors();
-  const ambulances = useAmbulances();
   const orders = useOrders();
 
-  return useMemo(() => {
-    const resolved = sos.filter((s) => s.status === "resolved" && s.resolvedAt);
-    const avg =
-      resolved.length > 0
-        ? resolved.reduce((acc, s) => {
-            const mins =
-              (new Date(s.resolvedAt!).getTime() - new Date(s.createdAt).getTime()) /
-              60000;
-            return acc + mins;
-          }, 0) / resolved.length
-        : 8;
-
-    return {
-      activeSos: sos.filter((s) => s.status !== "resolved" && s.status !== "cancelled")
-        .length,
-      ambulancesFree: ambulances.filter((a) => a.status === "free").length,
-      ambulancesTotal: ambulances.length,
+  return useMemo(
+    () => ({
       doctorsOnline: doctors.filter((d) => d.status === "online").length,
       doctorsTotal: doctors.length,
       ordersActive: orders.filter(
         (o) => o.status !== "delivered" && o.status !== "cancelled",
       ).length,
-      avgResponseMins: Math.round(avg),
-    };
-  }, [sos, doctors, ambulances, orders]);
+    }),
+    [doctors, orders],
+  );
 }
 
 // ── Actions (same shape in both modes) ──────────────────────
-export interface CreateSosInput {
-  patientId: string;
-  patientName: string;
-  category: SosEvent["category"];
-  address: string;
-  lat: number;
-  lng: number;
-  notes?: string;
-}
 export interface CreateRequestInput {
   patientId: string;
   patientName: string;
@@ -172,7 +184,23 @@ export interface CreateRequestInput {
   address: string;
   lat: number;
   lng: number;
+  /** Null broadcasts an urgent request to every free doctor in range. */
   doctorId?: string | null;
+  /** "emergency" (now), "scheduled" (a slot) or "gig". Defaults to emergency. */
+  mode?: ConsultRequest["mode"];
+  /** ISO start of the chosen slot — required when mode is "scheduled". */
+  scheduledAt?: string | null;
+  /** Which gig is being hired — required when mode is "gig". The price, visit
+   *  type and duration are read off that gig server-side, so `fee` and `type`
+   *  are ignored for a gig hire. */
+  gigId?: string | null;
+}
+export interface CreateGigInput {
+  title: string;
+  description: string;
+  type: ConsultRequest["type"];
+  price: number;
+  durationMinutes: number;
 }
 export interface CreateOrderInput {
   patientId: string;
@@ -196,36 +224,34 @@ export interface RatePatientInput {
   rating: number;
   comment?: string;
 }
-export interface CreateAmbulanceInput {
-  vehicleNo: string;
-  driverName: string;
-  lat?: number;
-  lng?: number;
-}
-
 export interface Actions {
-  /** Fire an SOS immediately (location goes to doctors first). Returns the
-   *  created event so its category can be refined right after. */
-  createSos: (input: CreateSosInput) => Promise<SosEvent>;
-  /** Refine an already-sent SOS's category (patient, on their own event). */
-  categorizeSos: (sosId: string, category: SosEvent["category"]) => Promise<void>;
-  createRequest: (input: CreateRequestInput) => void;
+  /** Rejects with the server's message — always `await` it and surface that. */
+  createRequest: (input: CreateRequestInput) => Promise<void>;
   createOrder: (input: CreateOrderInput) => void;
   createReview: (input: CreateReviewInput) => void;
   /** Doctor → patient rating after a completed consult. */
   ratePatient: (input: RatePatientInput) => Promise<void>;
   updateDoctor: (id: string, patch: Partial<Doctor>) => void;
   setDoctorStatus: (id: string, status: Doctor["status"]) => void;
-  acceptRequest: (id: string, doctorId: string) => void;
-  declineRequest: (id: string) => void;
+  /** Doctor's bookable calendar. `id` is used in demo mode only — the live
+   *  backend always scopes the write to the signed-in doctor. */
+  setAvailability: (id: string, availability: DoctorAvailability) => Promise<void>;
+  acceptRequest: (id: string, doctorId: string) => Promise<void>;
+  /** Pass on a request. On a broadcast this only hides it from this doctor. */
+  declineRequest: (id: string, reason?: string) => void;
+  /** Patient or doctor calls off a booking, freeing the slot. A doctor MUST
+   *  give a reason — it is shown to the patient — and cancelling a broadcast
+   *  puts it back out to other doctors rather than ending it. */
+  cancelRequest: (id: string, reason?: string) => Promise<void>;
   completeRequest: (id: string) => void;
+  /** Publish a service package. Rejects with the server's message. */
+  createGig: (input: CreateGigInput) => Promise<void>;
+  updateGig: (id: string, patch: Partial<Gig>) => Promise<void>;
+  setGigStatus: (id: string, status: GigStatus) => Promise<void>;
+  /** Move an accepted visit one step along its rail. */
+  advanceTrip: (id: string) => Promise<void>;
   requestPayout: (doctorId: string) => void;
-  assignAmbulance: (sosId: string, ambulanceId: string) => void;
-  assignDoctorToSos: (sosId: string, doctorId: string) => void;
-  advanceSos: (sosId: string, current: SosStatus) => void;
   advanceOrder: (orderId: string, current: OrderStatus) => void;
-  createAmbulance: (input: CreateAmbulanceInput) => void;
-  updateAmbulance: (id: string, patch: Partial<Ambulance>) => void;
 }
 
 /** Wipe locally-created test data (demo mode only). No-op in live mode. */
@@ -260,10 +286,6 @@ async function callAction<T = Record<string, unknown>>(
 
 export function useActions(): Actions {
   const qc = useQueryClient();
-  const nextSos = useCallback((current: SosStatus): SosStatus => {
-    const i = SOS_ORDER.indexOf(current);
-    return SOS_ORDER[Math.min(i + 1, SOS_ORDER.length - 1)];
-  }, []);
   const nextOrder = useCallback((current: OrderStatus): OrderStatus => {
     const i = ORDER_ORDER.indexOf(current);
     return ORDER_ORDER[Math.min(i + 1, ORDER_ORDER.length - 1)];
@@ -272,55 +294,62 @@ export function useActions(): Actions {
   return useMemo<Actions>(() => {
     if (isDemoMode) {
       return {
-        createSos: async (input) => demoStore.createSosEvent(input),
-        categorizeSos: async (sosId, category) => {
-          demoStore.setSosCategory(sosId, category);
-        },
-        createRequest: (input) => void demoStore.createConsultRequest(input),
+        // async so a rejected slot surfaces the same way it does live: the
+        // store throws, the promise rejects, the caller's catch runs.
+        createRequest: async (input) => void demoStore.createConsultRequest(input),
         createOrder: (input) => void demoStore.createOrder(input),
         createReview: (input) => void demoStore.createReview(input),
         // Demo store has no patient-rating model; no-op keeps the surface identical.
         ratePatient: async () => {},
-        createAmbulance: (input) => void demoStore.createAmbulance(input),
-        updateAmbulance: demoStore.updateAmbulance,
         updateDoctor: demoStore.updateDoctor,
         setDoctorStatus: demoStore.setDoctorStatus,
-        acceptRequest: demoStore.acceptRequest,
-        declineRequest: demoStore.declineRequest,
+        setAvailability: async (id, availability) =>
+          demoStore.setDoctorAvailability(id, availability),
+        acceptRequest: async (id, doctorId) => demoStore.acceptRequest(id, doctorId),
+        declineRequest: (id) => demoStore.declineRequest(id, currentDoctorId() ?? undefined),
+        // The demo store has no session, so "who is cancelling" is inferred
+        // from whether a reason was given — the doctor path is the only one
+        // that requires one.
+        cancelRequest: async (id, reason) =>
+          demoStore.cancelRequest(id, { reason, byDoctor: Boolean(reason) }),
         completeRequest: demoStore.completeRequest,
+        createGig: async (input) => {
+          const id = currentDoctorId();
+          if (!id) throw new Error("Register as a doctor first.");
+          demoStore.createGig({ ...input, doctorId: id });
+        },
+        updateGig: async (id, patch) => demoStore.updateGig(id, patch),
+        setGigStatus: async (id, status) => demoStore.setGigStatus(id, status),
+        advanceTrip: async (id) => void demoStore.advanceTrip(id),
         requestPayout: demoStore.requestPayout,
-        assignAmbulance: demoStore.assignAmbulance,
-        assignDoctorToSos: demoStore.assignDoctorToSos,
-        advanceSos: (id) => demoStore.advanceSos(id),
         advanceOrder: (id) => demoStore.advanceOrder(id),
       };
     }
     // Live: the server takes patient identity from the session, so the
     // patientId/patientName here are ignored server-side (anti-spoof).
     return {
-      createSos: (input) => callAction<SosEvent>(qc, "createSos", { ...input }),
-      categorizeSos: (sosId, category) =>
-        callAction<void>(qc, "categorizeSos", { sosId, category }),
-      createRequest: (input) => callAction(qc, "createRequest", { ...input }),
+      createRequest: async (input) => void (await callAction(qc, "createRequest", { ...input })),
       createOrder: (input) => callAction(qc, "createOrder", { ...input }),
       createReview: (input) => callAction(qc, "createReview", { ...input }),
       ratePatient: (input) => callAction<void>(qc, "ratePatient", { ...input }),
-      createAmbulance: (input) => callAction(qc, "createAmbulance", { ...input }),
-      updateAmbulance: (id, patch) => callAction(qc, "updateAmbulance", { id, patch }),
       updateDoctor: (id, patch) => callAction(qc, "updateDoctor", { patch }),
       setDoctorStatus: (_id, status) => callAction(qc, "setDoctorStatus", { status }),
-      acceptRequest: (id) => callAction(qc, "acceptRequest", { id }),
-      declineRequest: (id) => callAction(qc, "declineRequest", { id }),
+      setAvailability: (_id, availability) =>
+        callAction<void>(qc, "setAvailability", { availability }),
+      acceptRequest: async (id) => void (await callAction(qc, "acceptRequest", { id })),
+      declineRequest: (id, reason) => callAction(qc, "declineRequest", { id, reason }),
+      cancelRequest: async (id, reason) =>
+        void (await callAction(qc, "cancelRequest", { id, reason })),
       completeRequest: (id) => callAction(qc, "completeRequest", { id }),
+      // The gig's owner is the session doctor — no id is sent for creation.
+      createGig: async (input) => void (await callAction(qc, "createGig", { ...input })),
+      updateGig: async (id, patch) => void (await callAction(qc, "updateGig", { id, patch })),
+      setGigStatus: async (id, status) =>
+        void (await callAction(qc, "setGigStatus", { id, status })),
+      advanceTrip: async (id) => void (await callAction(qc, "advanceTrip", { id })),
       requestPayout: () => callAction(qc, "requestPayout", {}),
-      assignAmbulance: (sosId, ambulanceId) =>
-        callAction(qc, "assignAmbulance", { sosId, ambulanceId }),
-      assignDoctorToSos: (sosId, doctorId) =>
-        callAction(qc, "assignDoctorToSos", { sosId, doctorId }),
-      advanceSos: (sosId, current) =>
-        callAction(qc, "advanceSos", { sosId, next: nextSos(current) }),
       advanceOrder: (orderId, current) =>
         callAction(qc, "advanceOrder", { orderId, next: nextOrder(current) }),
     };
-  }, [qc, nextSos, nextOrder]);
+  }, [qc, nextOrder]);
 }

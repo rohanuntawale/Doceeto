@@ -141,6 +141,20 @@ const ROSTER: SeedDoctor[] = [
     registrationNo: "MMC-2013-49302", dLat: -0.003, dLng: 0.012,
     reviews: [{ patientName: "Anonymous", rating: 5, comment: "First doctor who actually listened. Felt heard." }],
   },
+  // Append new entries — IDs are `doc-seed-<index>`, so inserting above would
+  // renumber every doctor already booked in an existing install.
+  {
+    fullName: "Dr. Anil Bhatkar", specialty: "Neurologist", kind: "practising", gender: "male",
+    experienceYears: 14, languages: ["English", "Hindi", "Marathi"], status: "online", verified: true,
+    rating: 4.6, consultFee: 800, homeVisitFee: 1400,
+    qualifications: "MBBS, MD, DM (Neurology)", education: "King Edward Memorial Hospital, Mumbai (2008)",
+    about: "Brain and nerve care — migraines, seizures, giddiness, numbness and tremors. Fourteen years in stroke and epilepsy clinics.",
+    registrationNo: "MMC-2008-30871", dLat: 0.009, dLng: -0.008,
+    reviews: [
+      { patientName: "Deepa V.", rating: 5, comment: "Sorted out migraines I'd had for years. Took the time to explain the triggers." },
+      { patientName: "Mahesh P.", rating: 4, comment: "Thorough with my father's tremor. Clear about what the scans meant." },
+    ],
+  },
 ];
 
 /** Build the seed roster as full Doctor rows near the map center. */

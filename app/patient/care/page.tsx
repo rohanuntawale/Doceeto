@@ -39,7 +39,6 @@ import {
   type DOption,
   type Urgency,
 } from "@/lib/diagnose/engine";
-import { SosTrigger } from "@/components/patient/sos-trigger";
 import { cn } from "@/lib/utils/cn";
 
 export default function CarePage() {
@@ -84,7 +83,6 @@ function fromAiStep(s: Record<string, unknown>): DStep {
     conditions: conditions.length ? conditions : ["General consultation"],
     advice: String(s.advice ?? "A doctor is a good fit for this. Book whenever you're ready."),
     emergency: Boolean(s.emergency) || urgency === "emergency",
-    sosCategory: (s.sosCategory as DConclusion["sosCategory"]) ?? "other",
   };
 }
 
@@ -339,7 +337,6 @@ function CareInner() {
           {activeConclusion && (
             <ResultCard
               conclusion={activeConclusion}
-              patient={patient}
               onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
               onRestart={newCheck}
               readOnly={!!viewed}
@@ -384,7 +381,10 @@ function CareInner() {
       </div>
 
       {/* ── Desktop — immersive symptom checker ── */}
-      <div className="relative left-1/2 hidden h-[calc(100dvh-10.5rem)] min-h-[560px] w-screen -translate-x-1/2 overflow-hidden lg:block">
+      {/* The floor stays under the shell's own 10.5rem chrome so a short
+          laptop window can't push the composer down under the dock; the
+          transcript absorbs the loss since it scrolls. */}
+      <div className="relative left-1/2 hidden h-[calc(100dvh-10.5rem)] min-h-[420px] w-screen -translate-x-1/2 flex-col overflow-hidden lg:flex">
         {/* floating scene */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className="absolute left-[12%] top-[16%] h-56 w-56 animate-float rounded-full bg-[rgb(var(--c-terracotta))] opacity-10 blur-3xl" />
@@ -436,12 +436,18 @@ function CareInner() {
           <ImmersiveRail icon={AlertTriangle} title="Emergency" onClick={() => router.push("/patient")} />
         </div>
 
-        {/* center transcript */}
-        <div
-          ref={scrollRef2}
-          className="absolute inset-x-0 bottom-[8.5rem] top-28 z-10 mx-auto max-w-2xl overflow-y-auto px-6"
-        >
-          <div className="flex min-h-full flex-col justify-end gap-4 py-6">
+        {/* Transcript + composer share one flex column. They used to be two
+            absolutely-positioned blocks with a fixed gap between them, which
+            the option chips outgrew as soon as they wrapped onto extra rows —
+            the overflow then painted straight over the last message. As flex
+            siblings the transcript simply gives up the height instead. The
+            column is click-through so the side rails behind it stay usable. */}
+        <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col pb-6 pt-28">
+          <div
+            ref={scrollRef2}
+            className="pointer-events-auto mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-6"
+          >
+            <div className="flex min-h-full flex-col justify-end gap-4 py-6">
             {fresh ? (
               <div className="flex flex-col items-center pb-6 text-center">
                 <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
@@ -477,17 +483,16 @@ function CareInner() {
             {activeConclusion && (
               <ResultCard
                 conclusion={activeConclusion}
-                patient={patient}
                 onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
                 onRestart={newCheck}
                 readOnly={!!viewed}
               />
             )}
+            </div>
           </div>
-        </div>
 
-        {/* bottom — option chips + pill input */}
-        <div className="absolute inset-x-0 bottom-6 z-10 mx-auto max-w-2xl px-6">
+          {/* option chips + pill input */}
+          <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-3">
           {fresh && step?.kind === "question" && (
             <p className="mb-3 text-center text-[15px] font-medium text-cream">{step.question.prompt}</p>
           )}
@@ -534,6 +539,7 @@ function CareInner() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
     </>
@@ -598,13 +604,11 @@ function Bubble({ who, children }: { who: "bot" | "me"; children: React.ReactNod
 
 function ResultCard({
   conclusion,
-  patient,
   onBook,
   onRestart,
   readOnly,
 }: {
   conclusion: DConclusion;
-  patient: ReturnType<typeof useCurrentPatient>["patient"];
   onBook: (specialty: string) => void;
   onRestart: () => void;
   readOnly?: boolean;
@@ -644,11 +648,17 @@ function ResultCard({
         </div>
       )}
 
-      {emergency ? (
-        <div className="mt-4">
-          <SosTrigger patient={patient} />
-        </div>
-      ) : !readOnly ? (
+      {/* Red-flag wording still escalates the urgency and says so plainly —
+          it just routes to a doctor now rather than raising an alert. */}
+      {emergency && (
+        <p className="mt-3 flex items-start gap-2 rounded-2xl bg-status-critical/10 p-3 text-sm font-medium text-status-critical">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          This needs medical help straight away. Call your local emergency
+          number or get to the nearest hospital now.
+        </p>
+      )}
+
+      {!readOnly ? (
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <button
             onClick={() => onBook(specialty)}

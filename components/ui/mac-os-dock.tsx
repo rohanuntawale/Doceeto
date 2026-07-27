@@ -36,10 +36,16 @@ const MacOSDock: React.FC<MacOSDockProps> = ({
   const animationFrameRef = useRef<number | undefined>(undefined);
   const lastMouseMoveTime = useRef<number>(0);
 
+  /**
+   * The server has no viewport, so it and the first client render MUST agree
+   * on these numbers — measuring the window during render makes hydration
+   * mismatch on every `style` the dock emits. Both start here (the desktop
+   * size), and the real measurement lands in an effect just after mount.
+   */
+  const SSR_CONFIG = { baseIconSize: 56, maxScale: 1.75, effectWidth: 300 };
+
+  /** Client-only: never call this during render. */
   const getResponsiveConfig = useCallback(() => {
-    if (typeof window === "undefined") {
-      return { baseIconSize: 56, maxScale: 1.6, effectWidth: 240 };
-    }
     const smaller = Math.min(window.innerWidth, window.innerHeight);
     if (smaller < 480) {
       return { baseIconSize: Math.max(40, smaller * 0.08), maxScale: 1.4, effectWidth: smaller * 0.4 };
@@ -48,18 +54,20 @@ const MacOSDock: React.FC<MacOSDockProps> = ({
     } else if (smaller < 1024) {
       return { baseIconSize: 52, maxScale: 1.6, effectWidth: smaller * 0.3 };
     }
-    return { baseIconSize: 56, maxScale: 1.75, effectWidth: 300 };
+    return SSR_CONFIG;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [config, setConfig] = useState(getResponsiveConfig);
+  const [config, setConfig] = useState(SSR_CONFIG);
   const { baseIconSize, maxScale, effectWidth } = config;
   const minScale = 1.0;
   const baseSpacing = Math.max(6, baseIconSize * 0.1);
 
   useEffect(() => {
-    const handleResize = () => setConfig(getResponsiveConfig());
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const apply = () => setConfig(getResponsiveConfig());
+    apply(); // swap to the real viewport size once hydration is done
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
   }, [getResponsiveConfig]);
 
   // Authentic macOS cosine-based magnification.

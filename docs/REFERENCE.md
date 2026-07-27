@@ -82,21 +82,61 @@ The UI only ever sees these camelCase types — never raw rows. Defined in
 SosEvent   { id, patientName, category, status, address, lat, lng,
              ambulanceId, doctorId, notes, createdAt, resolvedAt }
 ConsultRequest { id, patientName, type, status, symptoms, fee,
-                 address, lat, lng, createdAt, doctorId }
+                 address, lat, lng, createdAt, doctorId,
+                 // booking path — read via bookingModeOf(), never raw
+                 mode:'emergency'|'scheduled'|'gig',
+                 scheduledAt, scheduledEnd, slotMinutes,   // appointments
+                 gigId, gigTitle,                          // gig hires
+                 broadcast,                                // went to the pool
+                 tripStage:'accepted'|'enroute'|'arrived'|'in_progress',
+                 tripStageAt, passedBy:[doctorId],
+                 acceptedAt, completedAt, cancelledAt, cancelledBy, cancelReason }
+Gig        { id, doctorId, title, description, type, price, durationMinutes,
+             status:'active'|'paused'|'archived', createdAt, updatedAt }
 Order      { id, patientName, status, items:[{name,qty}], total,
              address, darkStore, etaMins, createdAt }
 Doctor     { id, fullName, specialty, status, verified, rating,
-             consultFee, homeVisitFee, avatarColor, lat, lng, lastSeen }
+             consultFee, homeVisitFee, avatarColor, lat, lng, lastSeen,
+             availability?,
+             // derived on read by /api/data — never stored
+             onGig, onConsult, gigCount, gigFromPrice }
 Ambulance  { id, vehicleNo, driverName, status, lat, lng }
 Review     { id, patientName, rating, comment, createdAt }
 ```
+
+### The three booking paths
+
+Every engagement is **one `ConsultRequest`**, distinguished by `mode`. That is why
+they all share the wallet, review, cancellation, audit and realtime machinery.
+
+| Path | `mode` | `doctorId` | Holds a slot? | Occupies the doctor |
+|---|---|---|---|---|
+| **Hire a gig** | `gig` | the gig's owner | no | **until completed** — this is the auto-pause |
+| **Book a slot** | `scheduled` | one doctor | yes | only while the slot is running |
+| **Get care now** | `emergency` | `null` = broadcast to the pool | no | until completed |
+
+The pause needs no stored flag. `intervalOf()` returns `null` for a gig, and
+`isOngoingConsult()` treats an `accepted` row with no interval as live — so an
+accepted gig is "ongoing" until it is closed, which is what makes
+`hasOngoingConsult`, `emergencyAvailable` and `assertCanAccept` all do the right
+thing. Completing or cancelling the row releases it, so a crash mid-gig can never
+strand a doctor. **Never overload `Doctor.status` with this**; that field is the
+doctor's own online/offline intent.
+
+`bookableState(doctor, requests)` in [`lib/scheduling/slots.ts`](../lib/scheduling/slots.ts)
+is the single answer to "what can a patient do with this doctor right now?" —
+`/api/availability` and the demo path both call it, so they cannot drift.
+`GIG_LOCKS_APPOINTMENTS` in [`lib/gigs/rules.ts`](../lib/gigs/rules.ts) is the one
+switch for whether a running gig also closes the slot picker.
 
 ### The one API a component uses
 
 ```ts
 // reads (auto-refresh on realtime / demo tick)
 useSosEvents()        useConsultRequests()   useOrders()
-useDoctors()          useAmbulances()        useReviews()
+useDoctors()          useAmbulances()        useReviews(doctorId?)
+useGigs(doctorId?)    // one doctor's live gigs, or your own shelf as a doctor
+useDoctorSchedule(id) // the calendar + every bookable flag (see bookableState)
 useOpsSnapshot()      // derived KPI object
 useCurrentDoctor()    // the signed-in doctor ("me")
 
@@ -104,11 +144,21 @@ useCurrentDoctor()    // the signed-in doctor ("me")
 const a = useActions()
 // patient-side creates (feed the consoles)
 a.createSos({ patientId, patientName, category, address, lat, lng })
-a.createRequest({ patientId, patientName, type, symptoms, fee, address, lat, lng })
+a.createRequest({ ... })              // the three paths — see the table above
+//   book a slot : { mode:'scheduled', doctorId, scheduledAt }
+//   hire a gig  : { mode:'gig', doctorId, gigId }   ← fee/type read off the gig
+//   care now    : { mode:'emergency', doctorId: null }  ← broadcast
 a.createOrder({ patientId, patientName, items, total, address, darkStore })
+// doctor-side
+a.createGig({ title, description, type, price, durationMinutes })
+a.updateGig(id, patch)          a.setGigStatus(id, 'active'|'paused'|'archived')
+a.setAvailability(id, availability)
+a.advanceTrip(id)               // one step along the trip rail, server-derived
 // console-side mutations
 a.setDoctorStatus(id, 'online'|'offline'|'busy')
-a.acceptRequest(id, doctorId)   a.declineRequest(id)   a.completeRequest(id)
+a.acceptRequest(id, doctorId)   a.declineRequest(id, reason?)
+a.cancelRequest(id, reason?)    // a DOCTOR must give a reason
+a.completeRequest(id)
 a.assignAmbulance(sosId, ambId) a.assignDoctorToSos(sosId, docId)
 a.advanceSos(sosId, current)    a.advanceOrder(orderId, current)
 

@@ -7,9 +7,6 @@ import {
   ArrowLeft,
   Star,
   BadgeCheck,
-  Video,
-  Home,
-  Building2,
   Briefcase,
   Languages as LanguagesIcon,
   GraduationCap,
@@ -17,36 +14,34 @@ import {
   User as UserIcon,
   MapPin,
   ShieldCheck,
+  CalendarDays,
+  ChevronDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
-import { useToast } from "@/components/ui/toast";
-import { useDoctors, useReviews, useActions } from "@/lib/hooks/data";
+import { BookingPanel } from "@/components/patient/booking-panel";
+import { GigList } from "@/components/patient/gig-list";
+import { useDoctors, useGigs, useReviews } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { doctorStatus, doctorKind } from "@/lib/labels";
-import { formatINR, initials, timeAgo } from "@/lib/utils/format";
+import { useDoctorSchedule } from "@/lib/hooks/use-schedule";
+import { doctorStatusOf, doctorKindOf } from "@/lib/labels";
+import { initials, timeAgo } from "@/lib/utils/format";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
+import { activeGigs } from "@/lib/gigs/rules";
 import { useMounted } from "@/lib/hooks/use-mounted";
-import type { ConsultType } from "@/lib/types/domain";
-
-const MODES: { type: ConsultType; label: string; icon: React.ReactNode; help: string }[] = [
-  { type: "video", label: "Video", icon: <Video className="h-4 w-4" />, help: "Talk from home" },
-  { type: "clinic", label: "Clinic", icon: <Building2 className="h-4 w-4" />, help: "Visit the clinic" },
-  { type: "home_visit", label: "Home", icon: <Home className="h-4 w-4" />, help: "Doctor comes to you" },
-];
 
 export default function DoctorProfilePage() {
   const params = useParams<{ id: string }>();
   const id = String(params?.id ?? "");
   const router = useRouter();
-  const toast = useToast();
   const doctors = useDoctors();
   const reviews = useReviews(id);
+  const gigs = useGigs(id);
   const { patient } = useCurrentPatient();
-  const { createRequest } = useActions();
-  const [busy, setBusy] = useState<ConsultType | null>(null);
-  const [payMethod, setPayMethod] = useState<"online" | "cash">("online");
+  // One availability poll for the whole page — GigList and BookingPanel both
+  // read from it rather than each fetching the same endpoint.
+  const schedule = useDoctorSchedule(id);
+  const [showBooking, setShowBooking] = useState(false);
 
   const doctor = doctors.find((d) => d.id === id);
 
@@ -61,48 +56,11 @@ export default function DoctorProfilePage() {
     );
   }
 
-  const isOnline = doctor.status === "online";
-  const st = doctorStatus[doctor.status];
-  const feeFor = (t: ConsultType) => (t === "home_visit" ? doctor.homeVisitFee : doctor.consultFee);
-  const addressFor = (t: ConsultType) =>
-    t === "home_visit"
-      ? patient.address || "Your address"
-      : t === "clinic"
-        ? doctor.clinicAddress || "At the doctor's clinic"
-        : "Video call";
-
-  async function book(type: ConsultType) {
-    if (!doctor) return;
-    setBusy(type);
-    try {
-      await createRequest({
-        patientId: patient.id,
-        patientName: patient.name,
-        type,
-        symptoms: "General consultation.",
-        paymentMethod: payMethod,
-        fee: feeFor(type),
-        address: addressFor(type),
-        lat: patient.lat,
-        lng: patient.lng,
-        doctorId: doctor.id,
-      });
-      toast.push({
-        tone: "success",
-        title: `Request sent to ${doctor.fullName}`,
-        desc: "You'll see it under your care the moment they accept.",
-      });
-      router.push("/patient");
-    } catch (e) {
-      toast.push({
-        tone: "error",
-        title: "Couldn't send the request",
-        desc: e instanceof Error ? e.message : "Please try again.",
-      });
-    } finally {
-      setBusy(null);
-    }
-  }
+  const st = doctorStatusOf(doctor.status);
+  // Only live listings reach a patient; the server filters too, but a doctor
+  // browsing their own profile would otherwise see their paused rows here.
+  const live = activeGigs(gigs);
+  const firstName = doctor.fullName.replace("Dr. ", "").split(" ")[0];
 
   return (
     <div className="space-y-5">
@@ -123,7 +81,7 @@ export default function DoctorProfilePage() {
               {doctor.verified && <BadgeCheck className="h-5 w-5 shrink-0 text-status-ok" />}
             </div>
             <p className="mt-0.5 text-sm text-[var(--text-muted)]">
-              {doctor.specialty} · {doctorKind[doctor.kind].label}
+              {doctor.specialty} · {doctorKindOf(doctor.kind).label}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
               <span className="flex items-center gap-1 text-tan">
@@ -137,7 +95,13 @@ export default function DoctorProfilePage() {
                 <MapPin className="h-3.5 w-3.5" />
                 {formatKm(haversineKm(patient, doctor))} away
               </span>
-              <StatusPill tone={st.tone}>{st.label}</StatusPill>
+              {/* Being on a gig is what actually decides availability, so it
+                  outranks the self-reported online/offline status here. */}
+              {schedule.onGig ? (
+                <StatusPill tone="warn">On a gig</StatusPill>
+              ) : (
+                <StatusPill tone={st.tone}>{st.label}</StatusPill>
+              )}
             </div>
           </div>
         </div>
@@ -169,69 +133,79 @@ export default function DoctorProfilePage() {
         <div className="space-y-3">
           <CredRow icon={<Award className="h-4 w-4 text-salmon" />} title="Qualifications" body={doctorQualification(doctor)} />
           <CredRow icon={<GraduationCap className="h-4 w-4 text-salmon" />} title="Academic background" body={doctorEducation(doctor)} />
-          <CredRow icon={<Briefcase className="h-4 w-4 text-salmon" />} title="Experience" body={`${doctor.experienceYears} years in ${doctor.specialty.toLowerCase()} — ${doctorKind[doctor.kind].label.toLowerCase()}.`} />
+          <CredRow icon={<Briefcase className="h-4 w-4 text-salmon" />} title="Experience" body={`${doctor.experienceYears} years in ${doctor.specialty.toLowerCase()} — ${doctorKindOf(doctor.kind).label.toLowerCase()}.`} />
         </div>
       </div>
 
-      {/* ── Book a visit ────────────────────────────────── */}
-      <div className="rounded-card border border-terracotta/30 bg-espresso-800 p-5 shadow-card">
-        <div className="flex items-center justify-between">
-          <div className="label">Book a visit</div>
-          {!isOnline && (
-            <span className="text-xs text-[var(--text-faint)]">{doctor.fullName.split(" ")[1]} is {st.label.toLowerCase()}</span>
-          )}
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {MODES.map((m) => (
-            <button
-              key={m.type}
-              onClick={() => book(m.type)}
-              disabled={!isOnline || busy !== null}
-              className="flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-espresso px-2 py-3 text-center transition-colors hover:border-terracotta/50 hover:bg-terracotta/10 disabled:pointer-events-none disabled:opacity-50"
-            >
-              <span className="text-salmon">{m.icon}</span>
-              <span className="text-xs font-medium text-cream">{m.label}</span>
-              <span className="text-sm font-semibold text-cream">
-                {busy === m.type ? "Sending…" : formatINR(feeFor(m.type))}
-              </span>
-              <span className="text-[10px] text-[var(--text-faint)]">{m.help}</span>
-            </button>
-          ))}
-        </div>
-        {/* Payment method */}
-        <div className="mt-4">
-          <div className="label mb-2">Payment</div>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { m: "online", label: "Pay online", help: "UPI / card, held safely" },
-              { m: "cash", label: "Cash on visit", help: "Pay the doctor directly" },
-            ] as const).map((p) => {
-              const active = payMethod === p.m;
-              return (
-                <button
-                  key={p.m}
-                  type="button"
-                  onClick={() => setPayMethod(p.m)}
-                  className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                    active
-                      ? "border-terracotta bg-terracotta/10"
-                      : "border-[var(--border)] hover:border-terracotta/40"
-                  }`}
-                >
-                  <span className="block text-sm font-medium text-cream">{p.label}</span>
-                  <span className="block text-xs text-[var(--text-faint)]">{p.help}</span>
-                </button>
-              );
-            })}
+      {/* ── What they offer ─────────────────────────────────
+          Gigs lead when the doctor publishes any: hiring a named package is
+          the primary way to engage them. The slot picker stays available
+          behind a disclosure, and takes over entirely when there are no gigs. */}
+      {live.length > 0 ? (
+        <>
+          <div className="rounded-card border border-terracotta/30 bg-espresso-800 p-5 shadow-card">
+            <div className="flex items-center justify-between">
+              <div className="label">What {firstName} offers</div>
+              {schedule.onGig && (
+                <StatusPill tone="warn">On a gig</StatusPill>
+              )}
+            </div>
+            <p className="mb-3 mt-1 text-xs text-[var(--text-faint)]">
+              {schedule.onGig
+                ? `${firstName} is finishing another gig — you can hire once they're free.`
+                : "Pick a package and hire them directly."}
+            </p>
+            <GigList
+              doctor={doctor}
+              gigs={live}
+              patient={patient}
+              hireable={schedule.gigsHireable}
+              lockedReason={
+                schedule.onGig
+                  ? `${firstName} is on a gig right now. Try again once they're free.`
+                  : `${firstName} is with another patient right now.`
+              }
+              onHired={() => router.push("/patient")}
+            />
           </div>
-        </div>
 
-        <p className="mt-3 text-center text-[11px] text-[var(--text-faint)]">
-          {payMethod === "online"
-            ? "Paid online and held safely — released to the doctor after your visit."
-            : "You'll pay the doctor directly at the visit."}
-        </p>
-      </div>
+          {/* Appointments, demoted but not hidden. */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowBooking((v) => !v)}
+              className="flex w-full items-center justify-between rounded-card border border-[var(--border)] bg-espresso-800 px-5 py-4 text-left shadow-card transition-colors hover:border-terracotta/40"
+            >
+              <span className="flex items-center gap-2.5">
+                <CalendarDays className="h-4 w-4 text-salmon" />
+                <span className="text-sm font-medium text-cream">
+                  Or book an appointment instead
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-[var(--text-faint)] transition-transform ${showBooking ? "rotate-180" : ""}`}
+              />
+            </button>
+            {showBooking && (
+              <div className="mt-3">
+                <BookingPanel
+                  doctor={doctor}
+                  patient={patient}
+                  schedule={schedule}
+                  onBooked={() => router.push("/patient")}
+                />
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <BookingPanel
+          doctor={doctor}
+          patient={patient}
+          schedule={schedule}
+          onBooked={() => router.push("/patient")}
+        />
+      )}
 
       {/* ── Reviews ─────────────────────────────────────── */}
       <div>

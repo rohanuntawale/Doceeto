@@ -18,10 +18,24 @@
 import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS } from "@/lib/demo/seed";
 import { seedDoctors } from "@/lib/seed-doctors";
+import {
+  assertCanAccept,
+  assertCanHire,
+  reopensOnDoctorCancel,
+  resolveScheduledSlot,
+  type ResolvedHire,
+  type ResolvedSlot,
+} from "@/lib/scheduling/booking";
+import { coerceBookingMode } from "@/lib/scheduling/slots";
+import { nextTripStage } from "@/lib/scheduling/trip";
+import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
 import type {
   Ambulance,
   ConsultRequest,
   Doctor,
+  DoctorAvailability,
+  Gig,
+  GigStatus,
   Order,
   OrderStatus,
   Review,
@@ -36,6 +50,8 @@ export function walletBalance(txns: Transaction[], doctorId: string): number {
 
 export interface DemoState {
   doctors: Doctor[];
+  /** Service packages doctors publish for patients to hire. */
+  gigs: Gig[];
   ambulances: Ambulance[];
   sos: SosEvent[];
   requests: ConsultRequest[];
@@ -55,7 +71,9 @@ const ORDER_FLOW: OrderStatus[] = [
 
 // v2: pre-seeded demo data removed — old v1 payloads are ignored so
 // every browser starts genuinely empty.
-const STORAGE_KEY = "iyashi:demo-state:v2";
+// v3: gigs added. Bumped rather than backfilled because a cached v2 payload
+// would deserialize with `gigs: undefined` and every read would have to guard.
+const STORAGE_KEY = "iyashi:demo-state:v3";
 const CHANNEL = "iyashi:demo";
 // Set once the demo roster has been seeded, so we never seed over a reset
 // or over doctors the user created themselves.
@@ -75,6 +93,7 @@ function fresh(): DemoState {
   // Always empty — there is no seeded data anywhere in the app.
   return {
     doctors: [],
+    gigs: [],
     ambulances: [],
     sos: [],
     requests: [],
@@ -183,26 +202,176 @@ export const demoStore = {
     lat: number;
     lng: number;
     doctorId?: string | null;
+    mode?: ConsultRequest["mode"];
+    scheduledAt?: string | null;
+    gigId?: string | null;
   }): ConsultRequest {
+    const s = getState();
+    const doctorId = input.doctorId ?? null;
+    const mode = coerceBookingMode(input.mode);
+    // Same slot and gig rules as the server backends — a demo booking is
+    // rejected for exactly the reasons a live one would be.
+    let slot: ResolvedSlot | null = null;
+    let hire: ResolvedHire | null = null;
+    if (mode === "scheduled") {
+      if (!doctorId) throw new Error("Pick a doctor before choosing a time.");
+      slot = resolveScheduledSlot({
+        doctor: s.doctors.find((d) => d.id === doctorId),
+        startIso: String(input.scheduledAt ?? ""),
+        existing: s.requests,
+      });
+    } else if (mode === "gig") {
+      if (!doctorId) throw new Error("Pick a doctor before hiring a gig.");
+      hire = assertCanHire({
+        gig: s.gigs.find((g) => g.id === input.gigId),
+        doctor: s.doctors.find((d) => d.id === doctorId),
+        existing: s.requests,
+      });
+    }
     const req: ConsultRequest = {
       id: nextId("req"),
       patientId: input.patientId,
       patientName: input.patientName,
-      type: input.type,
+      type: hire?.type ?? input.type,
       status: "pending",
       symptoms: input.symptoms,
       paymentMethod: input.paymentMethod ?? "online",
-      fee: input.fee,
+      fee: hire ? hire.fee : input.fee,
       address: input.address,
       lat: input.lat,
       lng: input.lng,
       createdAt: new Date().toISOString(),
-      doctorId: input.doctorId ?? null,
+      mode,
+      gigId: hire?.gigId ?? null,
+      gigTitle: hire?.gigTitle ?? null,
+      broadcast: mode === "emergency" && doctorId === null,
+      scheduledAt: slot?.scheduledAt ?? null,
+      scheduledEnd: slot?.scheduledEnd ?? null,
+      slotMinutes: slot?.slotMinutes ?? hire?.durationMinutes ?? null,
+      tripStage: null,
+      tripStageAt: null,
+      passedBy: [],
+      doctorId,
     };
-    const s = getState();
     s.requests = [req, ...s.requests];
     commit();
     return req;
+  },
+
+  /** Patient or doctor calls off a booking, freeing the slot. Ownership is
+   *  checked server-side in live mode; the demo store has no sessions, so
+   *  only the state check applies here. */
+  cancelRequest(id: string, opts?: { reason?: string; byDoctor?: boolean }) {
+    const s = getState();
+    const req = s.requests.find((r) => r.id === id);
+    if (!req) throw new Error("That booking no longer exists.");
+    if (req.status !== "pending" && req.status !== "accepted") {
+      throw new Error("That booking can no longer be cancelled.");
+    }
+    const byDoctor = Boolean(opts?.byDoctor);
+    const reason = opts?.reason?.trim() || null;
+    if (byDoctor && !reason) throw new Error("Tell the patient why you're cancelling.");
+
+    // A doctor standing down from a broadcast puts it back out to the pool.
+    const reopen = byDoctor && reopensOnDoctorCancel(req);
+    const doctorId = req.doctorId;
+    s.requests = s.requests.map((r) => {
+      if (r.id !== id) return r;
+      if (reopen) {
+        return {
+          ...r,
+          status: "pending" as const,
+          doctorId: null,
+          acceptedAt: null,
+          tripStage: null,
+          tripStageAt: null,
+          cancelReason: reason,
+          passedBy: [...new Set([...(r.passedBy ?? []), ...(doctorId ? [doctorId] : [])])],
+        };
+      }
+      return {
+        ...r,
+        status: "cancelled" as const,
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: byDoctor ? ("doctor" as const) : ("patient" as const),
+        cancelReason: reason,
+      };
+    });
+    commit();
+  },
+
+  setDoctorAvailability(id: string, availability: DoctorAvailability) {
+    const s = getState();
+    s.doctors = s.doctors.map((d) => (d.id === id ? { ...d, availability } : d));
+    commit();
+  },
+
+  // ── Gigs ───────────────────────────────────────────────────
+  createGig(input: {
+    doctorId: string;
+    title: string;
+    description: string;
+    type: ConsultRequest["type"];
+    price: number;
+    durationMinutes: number;
+  }): Gig {
+    const s = getState();
+    const live = s.gigs.filter((g) => g.doctorId === input.doctorId && g.status === "active");
+    if (live.length >= MAX_ACTIVE_GIGS) {
+      throw new Error(`You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`);
+    }
+    const gig = normalizeGig(input, {
+      id: nextId("gig"),
+      doctorId: input.doctorId,
+      createdAt: new Date().toISOString(),
+    });
+    if (!gig.title) throw new Error("Give the gig a title.");
+    if (gig.price <= 0) throw new Error("Set a price for the gig.");
+    s.gigs = [gig, ...s.gigs];
+    commit();
+    return gig;
+  },
+
+  updateGig(id: string, patch: unknown) {
+    const s = getState();
+    const clean = sanitizeGigPatch(patch);
+    s.gigs = s.gigs.map((g) =>
+      g.id === id ? { ...g, ...clean, updatedAt: new Date().toISOString() } : g,
+    );
+    commit();
+  },
+
+  setGigStatus(id: string, status: GigStatus) {
+    const s = getState();
+    const gig = s.gigs.find((g) => g.id === id);
+    if (!gig) throw new Error("That gig no longer exists.");
+    if (status === "active" && gig.status !== "active") {
+      const live = s.gigs.filter(
+        (g) => g.doctorId === gig.doctorId && g.status === "active" && g.id !== id,
+      );
+      if (live.length >= MAX_ACTIVE_GIGS) {
+        throw new Error(`You can have ${MAX_ACTIVE_GIGS} live gigs at once. Pause one first.`);
+      }
+    }
+    s.gigs = s.gigs.map((g) =>
+      g.id === id ? { ...g, status, updatedAt: new Date().toISOString() } : g,
+    );
+    commit();
+  },
+
+  /** Move a visit one step along its rail. Null when there is nowhere left. */
+  advanceTrip(id: string): string | null {
+    const s = getState();
+    const req = s.requests.find((r) => r.id === id);
+    if (!req) throw new Error("That visit no longer exists.");
+    if (req.status !== "accepted") throw new Error("That visit isn't in progress.");
+    const next = nextTripStage(req);
+    if (!next) return null;
+    s.requests = s.requests.map((r) =>
+      r.id === id ? { ...r, tripStage: next, tripStageAt: new Date().toISOString() } : r,
+    );
+    commit();
+    return next;
   },
 
   createOrder(input: {
@@ -360,14 +529,40 @@ export const demoStore = {
     // pending (another doctor already claimed it).
     const target = s.requests.find((r) => r.id === id);
     if (!target || target.status !== "pending") return;
+    // Gigs and emergencies stay one-at-a-time; appointments must not
+    // double-book. Same guard the servers run, so rejections read identically.
+    assertCanAccept(target, s.requests, doctorId);
+    const at = new Date().toISOString();
     s.requests = s.requests.map((r) =>
-      r.id === id ? { ...r, status: "accepted", doctorId } : r,
+      r.id === id
+        ? {
+            ...r,
+            status: "accepted" as const,
+            doctorId,
+            acceptedAt: at,
+            // The trip rail starts the moment someone claims it.
+            tripStage: "accepted" as const,
+            tripStageAt: at,
+          }
+        : r,
     );
     commit();
   },
 
-  declineRequest(id: string) {
+  declineRequest(id: string, doctorId?: string) {
     const s = getState();
+    const req = s.requests.find((r) => r.id === id);
+    if (!req) return;
+    // Passing on a broadcast must not kill it for everyone else.
+    if (doctorId && req.broadcast && req.status === "pending" && req.doctorId === null) {
+      s.requests = s.requests.map((r) =>
+        r.id === id
+          ? { ...r, passedBy: [...new Set([...(r.passedBy ?? []), doctorId])] }
+          : r,
+      );
+      commit();
+      return;
+    }
     s.requests = s.requests.map((r) =>
       r.id === id ? { ...r, status: "declined" } : r,
     );
@@ -378,7 +573,7 @@ export const demoStore = {
     const s = getState();
     const req = s.requests.find((r) => r.id === id);
     s.requests = s.requests.map((r) =>
-      r.id === id ? { ...r, status: "completed" } : r,
+      r.id === id ? { ...r, status: "completed", completedAt: new Date().toISOString() } : r,
     );
     // Credit the doctor's wallet once: platform takes a commission, the
     // doctor's net lands in their wallet.
@@ -520,6 +715,22 @@ function setupClient() {
     // Storage unavailable (private mode): seed in memory for this session.
     if (!state || state.doctors.length === 0) {
       state = { ...(state ?? fresh()), doctors: seedDoctors() };
+    }
+  }
+
+  // Top up the roster: a doctor added to the seed list in a later version is
+  // appended to a browser seeded before they existed. Gated on the seed rows
+  // still being present, so a deliberate reset stays empty.
+  if (state && state.doctors.some((d) => d.id.startsWith("doc-seed-"))) {
+    const have = new Set(state.doctors.map((d) => d.id));
+    const added = seedDoctors().filter((d) => !have.has(d.id));
+    if (added.length > 0) {
+      state = { ...state, doctors: [...state.doctors, ...added] };
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        /* storage unavailable — the top-up still applies for this session */
+      }
     }
   }
 

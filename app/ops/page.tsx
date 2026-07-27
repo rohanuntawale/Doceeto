@@ -1,25 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Truck, Users, Pill, ArrowUpRight } from "lucide-react";
+import { Users, Pill, ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { LiveMap } from "@/components/map/live-map";
 import { OrderCard } from "@/components/auramed/order-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  useOpsSnapshot,
-  useOrders,
-  useAmbulances,
-  useDoctors,
-  useActions,
-} from "@/lib/hooks/data";
+import { useOpsSnapshot, useOrders, useDoctors, useActions } from "@/lib/hooks/data";
 
 export default function OpsOverview() {
   const snap = useOpsSnapshot();
   const orders = useOrders();
-  const ambulances = useAmbulances();
   const doctors = useDoctors();
   const actions = useActions();
 
@@ -31,12 +24,7 @@ export default function OpsOverview() {
     <>
       <PageHeader kanji="全" label="OPS · COMMAND CENTER" title="City overview" />
 
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard
-          value={`${snap.ambulancesFree}/${snap.ambulancesTotal}`}
-          label="Ambulances free"
-          icon={<Truck className="h-4 w-4" />}
-        />
+      <div className="grid grid-cols-2 gap-3">
         <StatCard
           value={`${snap.doctorsOnline}/${snap.doctorsTotal}`}
           label="Doctors online"
@@ -49,7 +37,7 @@ export default function OpsOverview() {
       <Card className="mt-5 overflow-hidden">
         <CardHeader label="LIVE MAP" title="Nagpur" action={<Legend />} />
         <div className="p-4">
-          <LiveMap events={[]} ambulances={ambulances} doctors={doctors} height={380} />
+          <LiveMap doctors={doctors} height={380} />
         </div>
       </Card>
 
@@ -80,7 +68,6 @@ export default function OpsOverview() {
 function Legend() {
   return (
     <div className="hidden items-center gap-3 text-[11px] text-[var(--text-muted)] sm:flex">
-      <Dot color="#7C8B63" label="Ambulance" />
       <Dot color="#C9A876" label="Doctor" />
     </div>
   );

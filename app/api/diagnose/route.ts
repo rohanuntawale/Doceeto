@@ -24,6 +24,7 @@ const SPECIALTIES = [
   "Dermatologist",
   "ENT",
   "Psychiatrist",
+  "Neurologist",
 ];
 
 const SYSTEM = `You are a careful medical triage assistant for an India-based on-demand doctor app.
@@ -36,11 +37,12 @@ Rules:
 - After 3-6 questions (or sooner if clear), STOP and give a conclusion.
 - ALWAYS map to exactly one of these bookable specialties: ${SPECIALTIES.join(", ")}. Default to "General Physician".
 - Use the patient's history to personalise. If a red-flag emergency is present (trouble breathing, chest pain to arm/jaw, stroke signs, heavy bleeding, unconscious, self-harm), immediately conclude with emergency=true.
+- This app does NOT dispatch ambulances. For emergency=true, the advice must tell them to call their local emergency number or go to the nearest hospital — never reference an in-app SOS or alert.
 - NEVER give a definitive diagnosis; "conditions" are gentle possibilities, not verdicts.
 
 Respond with STRICT JSON only, no prose, in ONE of these two shapes:
 {"kind":"question","id":"<slug>","prompt":"<question>","hint":"<optional short hint>","options":[{"value":"<slug>","label":"<short>","emoji":"<optional>"}]}
-{"kind":"conclusion","specialty":"<one of the list>","alt":"<optional second>","urgency":"routine|urgent|emergency","emergency":false,"conditions":["..."],"advice":"<one or two sentences>","sosCategory":"cardiac|trauma|respiratory|stroke|obstetric|other"}`;
+{"kind":"conclusion","specialty":"<one of the list>","alt":"<optional second>","urgency":"routine|urgent|emergency","emergency":false,"conditions":["..."],"advice":"<one or two sentences>"}`;
 
 interface Body {
   seed?: string;

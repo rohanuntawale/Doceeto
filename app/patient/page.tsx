@@ -10,7 +10,8 @@ import {
   Sparkles,
   ArrowRight,
   Video,
-  Home as HomeIcon,
+  Zap,
+  Briefcase,
 } from "lucide-react";
 import { CareStatus } from "@/components/patient/care-status";
 import { PatientConsultTracker } from "@/components/consult/consult-tracker";
@@ -53,7 +54,7 @@ export default function PatientHome() {
   const activityData = [20, 45, 30, 65, 40, 85, 55];
   const goals = [
     { id: "profile", label: "Complete your profile", sub: "Add your details", done: located },
-    { id: "contact", label: "Add an emergency contact", sub: "For faster SOS response" },
+    { id: "contact", label: "Add an emergency contact", sub: "Someone we can reach for you" },
     { id: "checkup", label: "Book a yearly check-up", sub: "Stay ahead with preventive care" },
     { id: "meds", label: "Set medication reminders", sub: "Never miss a dose" },
     { id: "verify", label: "Verify your phone number" },
@@ -146,10 +147,12 @@ export default function PatientHome() {
         <MapCard patient={patient} />
       </div>
 
-      {/* Quick ways to get care */}
-      <div className="grid grid-cols-3 gap-3 lg:col-span-12">
-        <CareChip href="/patient/doctors" icon={<HomeIcon className="h-5 w-5" />} label={t("home.homeVisit")} color="#C0692F" />
-        <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#7C8B5E" />
+      {/* The three ways to get care, plus medicine. "Care now" broadcasts to
+          whoever is free; "Find a doctor" is where gigs and slots are picked. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-12">
+        <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
+        <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
+        <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#5E7C8B" />
         <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
       </div>
 
@@ -180,7 +183,8 @@ export default function PatientHome() {
             {t("home.seeAll")} <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        <CareStatus patient={patient} />
+        {/* Dashboard shows only the top few — full list lives behind "See all". */}
+        <CareStatus patient={patient} limit={3} moreHref="/patient/doctors" />
       </section>
 
       {/* Health history */}

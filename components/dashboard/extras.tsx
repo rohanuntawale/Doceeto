@@ -47,7 +47,7 @@ const NEWS: Record<Role, { tag: string; title: string; time: string; color: stri
 const FAQS: Record<Role, { q: string; a: string }[]> = {
   patient: [
     { q: "How do home visits work?", a: "Pick a doctor or let us match you. They come to your address; pay online or cash after the visit." },
-    { q: "What if it's an emergency?", a: "Press SOS on your home screen — an ambulance and the nearest doctor get your live location instantly." },
+    { q: "What if it's an emergency?", a: "Doceeto isn't an emergency service. Call your local emergency number or go to the nearest hospital straight away." },
     { q: "Is my health data private?", a: "Yes. Your records are yours; only a doctor you book sees the details relevant to your visit." },
   ],
   doctor: [
