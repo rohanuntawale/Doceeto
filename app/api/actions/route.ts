@@ -4,7 +4,9 @@ import { emitChange } from "@/lib/server/events";
 import { db as repo, DomainError } from "@/lib/db";
 import { coerceBookingMode, normalizeAvailability } from "@/lib/scheduling/slots";
 import { CANCEL_REASON_MAX } from "@/lib/scheduling/booking";
+import { ARRIVE_RADIUS_KM } from "@/lib/scheduling/trip";
 import { GIG_DESC_MAX, GIG_TITLE_MAX, sanitizeGigPatch } from "@/lib/gigs/rules";
+import { haversineKm } from "@/lib/utils/geo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -265,10 +267,33 @@ export async function POST(req: Request) {
         await repo.setDoctorStatus(me, status);
         return done({ ok: true }, ["doctors"]);
       }
-      case "updateDoctor":
+      case "updateDoctor": {
         if (role !== "doctor") return needs("doctors");
-        await repo.updateDoctor(me, sanitizeDoctorPatch(payload.patch));
+        const patch = sanitizeDoctorPatch(payload.patch);
+        await repo.updateDoctor(me, patch);
+        // Delivery-app auto-arrival: the cockpit streams the doctor's live
+        // position through this action, so each fix is checked against any
+        // home visit they're en route to. Inside the radius the visit flips
+        // to "arrived" by itself — the doctor never taps a button, and the
+        // patient's tracker (and arrival notification) fire off the change.
+        if (typeof patch.lat === "number" && typeof patch.lng === "number") {
+          const here = { lat: patch.lat, lng: patch.lng };
+          const enroute = (await repo.getRequests()).filter(
+            (r) =>
+              r.doctorId === me &&
+              r.status === "accepted" &&
+              r.tripStage === "enroute" &&
+              r.type === "home_visit",
+          );
+          for (const r of enroute) {
+            if (haversineKm(here, { lat: r.lat, lng: r.lng }) <= ARRIVE_RADIUS_KM) {
+              await repo.advanceTrip(r.id, me); // enroute → arrived
+              emitChange(["requests"]);
+            }
+          }
+        }
         return done({ ok: true }, ["doctors"]);
+      }
       case "setAvailability": {
         if (role !== "doctor") return needs("doctors");
         // normalizeAvailability is the same function the slot grid is built

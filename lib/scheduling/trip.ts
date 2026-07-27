@@ -10,16 +10,23 @@
  */
 import type { ConsultRequest, ConsultType, TripStage } from "@/lib/types/domain";
 
-/** Full rail, in order. Completion is a consult status, not a stage. */
+/** Every stage a stored row may carry (kept full for legacy rows). */
 export const TRIP_STAGES: TripStage[] = ["accepted", "enroute", "arrived", "in_progress"];
 
 /**
- * A video consult has no journey, so it skips straight from accepted to being
- * in the call. Home and clinic visits walk the whole rail — for a clinic visit
- * it is the patient travelling, but the doctor still marks them arrived.
+ * How close (km) the doctor's live position must be to the visit before the
+ * server auto-marks it arrived — the delivery-app pattern: the doctor taps
+ * "On the way" once, and arrival is detected from GPS, never from a button.
+ */
+export const ARRIVE_RADIUS_KM = 0.15;
+
+/**
+ * A home visit is the only journey: the doctor taps "On the way" and GPS
+ * marks them arrived. Video and clinic visits have no rail at all — the
+ * doctor accepts, holds the consult, and marks it complete.
  */
 export function stagesFor(type: ConsultType): TripStage[] {
-  return type === "video" ? ["accepted", "in_progress"] : TRIP_STAGES;
+  return type === "home_visit" ? ["accepted", "enroute", "arrived"] : ["accepted"];
 }
 
 /** Where a request currently sits. Accepted rows predating stages read as accepted. */
@@ -40,9 +47,9 @@ export function nextTripStage(
   if (!current) return null;
   const rail = stagesFor(req.type);
   const i = rail.indexOf(current);
-  // A stage off this type's rail (the type changed after acceptance) restarts
-  // from the beginning rather than dead-ending.
-  if (i < 0) return rail[0] ?? null;
+  // A stage off this type's rail (a legacy row, or the type changed after
+  // acceptance) is treated as final — completing is the only move left.
+  if (i < 0) return null;
   return rail[i + 1] ?? null;
 }
 

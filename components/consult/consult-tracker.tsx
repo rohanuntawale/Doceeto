@@ -22,7 +22,7 @@ import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
 import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
 import { consultTypeOf, tripStageOf } from "@/lib/labels";
 import { isGig } from "@/lib/scheduling/slots";
-import { stagesFor, tripStageOfRequest, nextTripStage } from "@/lib/scheduling/trip";
+import { stagesFor, tripStageOfRequest } from "@/lib/scheduling/trip";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { initials } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -252,12 +252,16 @@ function TrackerCard({
 
 /**
  * The stage rail. Video consults have no journey, so their rail is shorter —
- * stagesFor() owns that, not the markup.
+ * stagesFor() owns that, not the markup. Exported so the on-gig banner can
+ * show the same journey without duplicating it.
  */
-function TripRail({ req }: { req: ConsultRequest }) {
+export function TripRail({ req }: { req: ConsultRequest }) {
   const rail = stagesFor(req.type);
   const current = tripStageOfRequest(req);
   const at = current ? rail.indexOf(current) : -1;
+
+  // Video and clinic visits have no journey — nothing to draw.
+  if (rail.length < 2) return null;
 
   return (
     <div className="flex items-start gap-1 border-b border-[var(--border)] px-4 py-3">
@@ -306,18 +310,24 @@ function TripRail({ req }: { req: ConsultRequest }) {
   );
 }
 
-/** Advance one step, complete, or stand down with a reason. */
-function TripControls({ req }: { req: ConsultRequest }) {
+/**
+ * The doctor's controls, delivery-app style: ONE "On the way" tap for a home
+ * visit, then arrival is detected from their live GPS position — no stage
+ * buttons to babysit. Everything else is just "Mark complete" and Cancel.
+ */
+export function TripControls({ req }: { req: ConsultRequest }) {
   const { advanceTrip, completeRequest } = useActions();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const next = nextTripStage(req);
+  const stage = tripStageOfRequest(req);
+  const startJourney = req.type === "home_visit" && stage === "accepted";
+  const travelling = req.type === "home_visit" && stage === "enroute";
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-[var(--border)] px-4 py-3">
-      {next ? (
+      {startJourney ? (
         <Button
           size="sm"
           className="flex-1"
@@ -325,7 +335,12 @@ function TripControls({ req }: { req: ConsultRequest }) {
           onClick={async () => {
             setBusy(true);
             try {
-              await advanceTrip(req.id);
+              await advanceTrip(req.id); // accepted → enroute
+              toast.push({
+                tone: "success",
+                title: "You're on the way",
+                desc: "We'll mark you arrived automatically when you reach them.",
+              });
             } catch (e) {
               toast.push({
                 tone: "error",
@@ -337,7 +352,7 @@ function TripControls({ req }: { req: ConsultRequest }) {
             }
           }}
         >
-          {tripStageOf(next).label} <ArrowRight className="h-3.5 w-3.5" />
+          On the way <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       ) : (
         <Button
@@ -358,6 +373,12 @@ function TripControls({ req }: { req: ConsultRequest }) {
       <Button size="sm" variant="ghost" onClick={() => setCancelling(true)}>
         <X className="h-3.5 w-3.5" /> Cancel
       </Button>
+      {travelling && (
+        <p className="w-full text-[11px] leading-relaxed text-[var(--text-faint)]">
+          Arrival is detected from your live location — the patient is notified
+          the moment you reach them.
+        </p>
+      )}
       <CancelVisitDialog
         request={req}
         open={cancelling}

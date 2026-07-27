@@ -50,7 +50,6 @@ const EN: Dict = {
   "account.title": "Account",
   "account.appearance": "Appearance",
   "account.language": "Language",
-  "account.doctorView": "Open doctor view",
   "account.clearData": "Clear test data",
   "account.signOut": "Sign out",
 };
@@ -87,7 +86,6 @@ const HI: Dict = {
   "account.title": "खाता",
   "account.appearance": "रूप-रंग",
   "account.language": "भाषा",
-  "account.doctorView": "डॉक्टर व्यू खोलें",
   "account.clearData": "टेस्ट डेटा साफ़ करें",
   "account.signOut": "साइन आउट",
 };
@@ -124,7 +122,6 @@ const MR: Dict = {
   "account.title": "खाते",
   "account.appearance": "स्वरूप",
   "account.language": "भाषा",
-  "account.doctorView": "डॉक्टर व्ह्यू उघडा",
   "account.clearData": "चाचणी डेटा साफ करा",
   "account.signOut": "साइन आउट",
 };

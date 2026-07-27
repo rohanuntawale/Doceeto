@@ -54,11 +54,17 @@ export async function GET(req: Request) {
         });
         if (role === "ops") return NextResponse.json(decorated);
         // A doctor's live position is public ONLY while they're not
-        // offline; hide stale coordinates from patients/doctors.
+        // offline; hide stale coordinates from patients/doctors. A doctor
+        // mid-gig has no hireable shelf, so their gig teasers vanish with it.
         return NextResponse.json(
-          decorated.map((d) =>
-            d.status === "offline" ? { ...d, lat: 0, lng: 0 } : d,
-          ),
+          decorated.map((d) => {
+            const out = d.status === "offline" ? { ...d, lat: 0, lng: 0 } : { ...d };
+            if (d.onGig) {
+              out.gigCount = 0;
+              out.gigFromPrice = null;
+            }
+            return out;
+          }),
         );
       }
 
@@ -79,10 +85,14 @@ export async function GET(req: Request) {
         if (role === "ops") return NextResponse.json(gigs);
         // A doctor managing their own shelf needs the paused and archived rows
         // too. Everyone else — including that doctor browsing someone else —
-        // only ever sees what is actually hireable.
+        // only ever sees what is actually hireable: active listings from a
+        // doctor who is NOT already committed to a gig. Accepting a hire pulls
+        // the whole shelf until it's completed — one gig at a time.
         if (role === "doctor" && !forDoctor)
           return NextResponse.json(gigs.filter((g) => g.doctorId === me));
-        return NextResponse.json(gigs.filter((g) => g.status === "active"));
+        const active = gigs.filter((g) => g.status === "active");
+        const requests = await repo.getRequests();
+        return NextResponse.json(active.filter((g) => !isOnGig(requests, g.doctorId)));
       }
 
       case "requests": {

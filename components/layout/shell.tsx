@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, ArrowLeftRight } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
@@ -29,15 +29,6 @@ export function Shell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  // Ops is admin-only, so never surface a one-click hop into it: the doctor
-  // cockpit switches to the patient app; ops switches back to the cockpit.
-  // A session cookie is one role at a time, so in live mode the switch goes
-  // through the dev-only role switcher (swaps the session); demo mode can
-  // navigate straight across.
-  const switchTo =
-    role === "doctor"
-      ? { href: isDemoMode ? "/patient" : "/api/dev/switch-role?role=patient", label: "Patient app" }
-      : { href: isDemoMode ? "/doctor" : "/api/dev/switch-role?role=doctor", label: "Doctor space" };
 
   async function logout() {
     if (role === "ops") clearOpsAuthed();
@@ -70,13 +61,6 @@ export function Shell({
         </nav>
 
         <div className="mt-auto flex flex-col gap-1 border-t border-[var(--border)] pt-3">
-          <a
-            href={switchTo.href}
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            {switchTo.label}
-          </a>
           <button
             onClick={logout}
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"

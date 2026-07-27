@@ -40,8 +40,13 @@ function LoginInner() {
       setError(data.error ?? "Could not sign in.");
       return;
     }
-    const dest =
-      data.role === "ops" ? "/ops" : data.role === "patient" ? "/patient" : next;
+    // Land in the signed-in role's own space. `next` (where middleware
+    // bounced them from) is honored only when it belongs to that space —
+    // otherwise a doctor sent to /patient/... would ping-pong between the
+    // middleware guard and this page forever.
+    const home =
+      data.role === "ops" ? "/ops" : data.role === "patient" ? "/patient" : "/doctor";
+    const dest = next.startsWith(home) ? next : home;
     router.push(dest);
     router.refresh();
   }

@@ -134,8 +134,12 @@ export const useReviews = isDemoMode
       useApiEntity<Review>(doctorId ? `reviews&doctorId=${encodeURIComponent(doctorId)}` : "reviews");
 
 function useGigsDemo(doctorId?: string): Gig[] {
-  const all = useDemoState().gigs;
-  return doctorId ? all.filter((g) => g.doctorId === doctorId) : all;
+  const s = useDemoState();
+  if (!doctorId) return s.gigs;
+  // Patient view of one doctor's shelf: nothing is hireable while that
+  // doctor is committed to a gig — same rule the live /api/data applies.
+  if (isOnGig(s.requests, doctorId)) return [];
+  return s.gigs.filter((g) => g.doctorId === doctorId);
 }
 /**
  * Gig listings. Pass a doctorId to read one doctor's shelf — the server then

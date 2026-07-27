@@ -10,7 +10,6 @@ import {
   Stethoscope,
   Wallet,
   UserRound,
-  ArrowLeftRight,
   LogOut,
 } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
@@ -21,7 +20,8 @@ import { isDemoMode } from "@/lib/config";
 
 /**
  * Doctor shell — mobile iOS tab pill, desktop macOS dock (no sidebar).
- * Switch-to-patient + sign-out live in the top bar.
+ * Sign-out lives in the top bar. A session is one role at a time, so there
+ * is no patient↔doctor view switch: use the other role's account instead.
  */
 /**
  * The two ways a doctor earns sit side by side: "Gigs" is the shelf of service
@@ -50,7 +50,6 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const active = activeIndex(pathname);
-  const switchHref = isDemoMode ? "/patient" : "/api/dev/switch-role?role=patient";
 
   async function logout() {
     if (!isDemoMode) {
@@ -80,12 +79,6 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
           <Wordmark compact />
         </Link>
         <div className="flex items-center gap-2">
-          <a
-            href={switchHref}
-            className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-surface/70 px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" /> Patient
-          </a>
           <button
             onClick={logout}
             aria-label={isDemoMode ? "Exit demo" : "Sign out"}

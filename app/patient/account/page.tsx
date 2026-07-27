@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeftRight,
   RotateCcw,
   LogOut,
   ChevronRight,
@@ -69,15 +68,6 @@ export default function PatientAccount() {
 
       {/* Actions */}
       <div className="overflow-hidden rounded-3xl fh-card shadow-soft">
-        <Row
-          icon={<ArrowLeftRight className="h-4 w-4" />}
-          label={t("account.doctorView")}
-          onClick={() => {
-            window.location.href = isDemoMode
-              ? "/doctor"
-              : "/api/dev/switch-role?role=doctor";
-          }}
-        />
         {isDemoMode && (
           <Row
             icon={<RotateCcw className="h-4 w-4" />}
