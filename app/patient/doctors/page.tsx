@@ -16,7 +16,7 @@ import {
   Ear,
   Bone,
   Brain,
-  BrainCircuit,
+  MessageCircleHeart,
   Baby,
   Flower2,
   HeartPulse,
@@ -70,10 +70,12 @@ const SPECIALTY_ICON: Record<string, LucideIcon> = {
   Orthopedic: Bone,
   Dermatologist: Hand,
   ENT: Ear,
-  // Two brain-adjacent specialities, so they get distinct glyphs: the organ
-  // for the mind doctor, the wiring for the nerve doctor.
-  Psychiatrist: Brain,
-  Neurologist: BrainCircuit,
+  // The nerve doctor gets the organ itself. Psychiatry deliberately doesn't —
+  // two brain glyphs side by side in the quick-pick row read as the same tile
+  // twice, and a patient looking for help with their head isn't looking for an
+  // anatomy diagram. The talking speciality gets a conversation instead.
+  Neurologist: Brain,
+  Psychiatrist: MessageCircleHeart,
 };
 
 /**
@@ -92,6 +94,14 @@ const SPECIALTY_SHORT: Record<string, string> = {
   Psychiatrist: "Mind",
   Neurologist: "Brain",
 };
+
+/**
+ * The number a patient actually compares on a row: the cheapest gig when the
+ * doctor publishes any, otherwise the plain consult fee.
+ */
+function priceOf(d: Doctor) {
+  return d.gigCount ? (d.gigFromPrice ?? d.consultFee) : d.consultFee;
+}
 
 export default function PatientDoctors() {
   return (
@@ -137,8 +147,13 @@ function DoctorsBrowser() {
       return true;
     });
     out.sort((a, b) => {
+      // A published gig is something a patient can hire outright, so it always
+      // outranks a doctor who only takes appointment bookings. The chosen sort
+      // then orders within each band rather than across them.
+      const gigRank = Number(Boolean(b.gigCount)) - Number(Boolean(a.gigCount));
+      if (gigRank !== 0) return gigRank;
       if (filters.sort === "rating") return b.rating - a.rating;
-      if (filters.sort === "price") return a.consultFee - b.consultFee;
+      if (filters.sort === "price") return priceOf(a) - priceOf(b);
       if ((a.status === "online") !== (b.status === "online"))
         return a.status === "online" ? -1 : 1;
       return haversineKm(patient, a) - haversineKm(patient, b);

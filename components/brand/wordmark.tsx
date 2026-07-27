@@ -1,8 +1,16 @@
 import { cn } from "@/lib/utils/cn";
 
-/** Doceeto wordmark — the door-and-plus brand mark beside the lowercase name
- *  ("doc·ee·to" with the middle pair in terracotta). `compact` drops the
- *  tagline for app bars. */
+/** Doceeto brand colours from the logo reference sheet. */
+const BRAND = {
+  green: "#1C3A2E",
+  gold: "#C9A24A",
+  bone: "#ECEAE0",
+};
+
+/** Doceeto wordmark — the D-mark app icon beside the lowercase name
+ *  ("doc·ee·to" with the middle pair in brand gold). `compact` drops the
+ *  tagline for app bars and uses the reduced-cut mark (no stethoscope
+ *  detail below 40px, per the logo reference). */
 export function Wordmark({
   className,
   compact = false,
@@ -13,13 +21,19 @@ export function Wordmark({
 }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <BrandMark />
+      <BrandMark
+        className={compact ? "h-[34px] w-[34px]" : "h-10 w-10"}
+        reduced={compact}
+      />
       {compact ? (
         <Name className="text-xl" />
       ) : (
         <div className="leading-none">
           <Name className="text-xl" />
-          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgb(var(--c-salmon))]">
+          <div
+            className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: BRAND.gold }}
+          >
             Care that reaches you
           </div>
         </div>
@@ -28,19 +42,28 @@ export function Wordmark({
   );
 }
 
-/** The "doc·ee·to" lockup with the middle pair in terracotta. */
+/** The "doc·ee·to" lockup with the middle pair in brand gold. */
 export function Name({ className }: { className?: string }) {
   return (
     <span className={cn("font-serif font-bold lowercase tracking-tight text-[var(--text)]", className)}>
-      doc<span className="text-[rgb(var(--c-terracotta))]">ee</span>to
+      doc<span style={{ color: BRAND.gold }}>ee</span>to
     </span>
   );
 }
 
-/** The new mark — a location pin with a medical plus on an olive squircle:
- *  "care that reaches you", right where you are. Inline SVG so it stays crisp
- *  at any size and carries the brand colours without an image file. */
-export function BrandMark({ className }: { subtle?: boolean; className?: string }) {
+/** The Doceeto mark — a D read as a doctor seen from directly above:
+ *  shoulders form the stem, a stethoscope crosses the chest, and both arms
+ *  curve in to close around the patient, shown as the gold dot in the break.
+ *  Rendered as the on-dark app-icon tile so it holds up on every theme.
+ *  `reduced` drops the stethoscope detail for sizes under 40px. */
+export function BrandMark({
+  className,
+  reduced = false,
+}: {
+  subtle?: boolean;
+  className?: string;
+  reduced?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 100 100"
@@ -48,30 +71,34 @@ export function BrandMark({ className }: { subtle?: boolean; className?: string 
       role="img"
       aria-label="Doceeto"
     >
-      <defs>
-        <linearGradient id="dc-bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#8C9B6C" />
-          <stop offset="1" stopColor="#717E54" />
-        </linearGradient>
-      </defs>
-      {/* olive squircle */}
-      <rect x="1" y="1" width="98" height="98" rx="26" fill="url(#dc-bg)" />
-      <rect x="1" y="1" width="98" height="49" rx="26" fill="#ffffff" opacity="0.06" />
-      {/* soft shadow under the pin */}
+      {/* green app-icon squircle */}
+      <rect x="2" y="2" width="96" height="96" rx="24" fill={BRAND.green} />
+      {/* the D — stem and arms, open at the break */}
       <path
-        d="M50 23 C36.7 23 26.5 33.2 26.5 45.5 C26.5 61 50 79 50 79 C50 79 73.5 61 73.5 45.5 C73.5 33.2 63.3 23 50 23 Z"
-        fill="#000000"
-        opacity="0.12"
-        transform="translate(0,2.5)"
+        d="M 69.5 39 C 65.5 32.6 57.5 29 48 29 L 31 29 L 31 71 L 48 71 C 57.5 71 65.5 67.4 69.5 61"
+        fill="none"
+        stroke={BRAND.bone}
+        strokeWidth="13"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      {/* cream location pin */}
-      <path
-        d="M50 20 C36.7 20 26.5 30.2 26.5 42.5 C26.5 58 50 76 50 76 C50 76 73.5 58 73.5 42.5 C73.5 30.2 63.3 20 50 20 Z"
-        fill="#F7F0E4"
-      />
-      {/* terracotta medical plus in the pin head */}
-      <rect x="38.8" y="39" width="22.4" height="7.2" rx="3.6" fill="#C0692F" />
-      <rect x="46.4" y="31.4" width="7.2" height="22.4" rx="3.6" fill="#C0692F" />
+      {/* the patient — gold dot held in the break of the arms */}
+      <circle cx="79" cy="50" r="5.2" fill={BRAND.gold} />
+      {!reduced && (
+        <>
+          {/* stethoscope crossing the chest */}
+          <circle cx="46.5" cy="47" r="8.3" fill={BRAND.bone} />
+          <circle cx="46.5" cy="47" r="3.2" fill={BRAND.green} />
+          <path
+            d="M 38 51 C 38.4 57.8 42.8 61.8 48.6 61.2"
+            fill="none"
+            stroke={BRAND.gold}
+            strokeWidth="2.8"
+            strokeLinecap="round"
+          />
+          <circle cx="53.8" cy="60" r="2.7" fill={BRAND.gold} />
+        </>
+      )}
     </svg>
   );
 }

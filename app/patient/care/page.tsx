@@ -31,8 +31,10 @@ import { useT } from "@/lib/i18n";
 import {
   initState,
   applyAnswer,
+  applyAiAnswer,
   applyText,
   nextStep,
+  forceConclusion,
   type DState,
   type DStep,
   type DConclusion,
@@ -100,10 +102,14 @@ function CareInner() {
   const [step, setStep] = useState<DStep | null>(null);
   const [thinking, setThinking] = useState(false);
   const [aiOn, setAiOn] = useState(false);
+  const [aiModel, setAiModel] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewed, setViewed] = useState<CheckSession | null>(null);
   const sessionId = useRef(`care-${Date.now().toString(36)}`);
+  /** Whether the AI has driven any turn this session — decides how we recover
+   *  when it drops out (resume the local funnel vs. wrap up). */
+  const aiDrove = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRef2 = useRef<HTMLDivElement>(null);
 
@@ -129,6 +135,14 @@ function CareInner() {
     }
     setThinking(true);
     (async () => {
+      /* When the AI drops out mid-session its questions leave no tags on the
+         local state, so `nextStep` would hand back the funnel's very first
+         question — the patient would be asked to screen for emergencies again
+         after five AI turns. Once we have enough to go on, wrap up instead. */
+      const offline = () => {
+        setStep(aiDrove.current && state.answers.length >= 3 ? forceConclusion(state) : local);
+        setAiOn(false);
+      };
       try {
         const res = await fetch("/api/diagnose", {
           method: "POST",
@@ -142,17 +156,15 @@ function CareInner() {
         const data = await res.json();
         if (cancelled) return;
         if (data?.step) {
+          aiDrove.current = true;
           setStep(fromAiStep(data.step));
+          setAiModel(typeof data.model === "string" ? data.model : null);
           setAiOn(true);
         } else {
-          setStep(local);
-          setAiOn(false);
+          offline();
         }
       } catch {
-        if (!cancelled) {
-          setStep(local);
-          setAiOn(false);
-        }
+        if (!cancelled) offline();
       } finally {
         if (!cancelled) setThinking(false);
       }
@@ -191,6 +203,7 @@ function CareInner() {
 
   function newCheck() {
     sessionId.current = `care-${Date.now().toString(36)}`;
+    aiDrove.current = false;
     setState(initState("", recentConditions()));
     setViewed(null);
     setDraft("");
@@ -202,7 +215,10 @@ function CareInner() {
     const q = step.question;
     const found = q.options.find((o) => o.value === opt.value);
     const dopt: DOption = found ?? { value: opt.value, label: opt.label };
-    setState((s) => applyAnswer(s, q, dopt));
+    // applyAiAnswer, not applyAnswer: AI-written chips carry no scores or
+    // red-flag data, so it runs the keyword triage over the label to keep the
+    // emergency short-circuit and the offline fallback fed underneath.
+    setState((s) => applyAiAnswer(s, q, dopt));
   }
 
   function sendText() {
@@ -408,7 +424,10 @@ function CareInner() {
               {t(greetKey)}, <span className="text-[rgb(var(--c-terracotta))]">{firstName}</span>
             </h1>
           </div>
-          <div className="flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]">
+          <div
+            title={aiModel ? `Model: ${aiModel}` : "Offline rule engine"}
+            className="flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]"
+          >
             <span className={cn("h-2 w-2 rounded-full", aiOn ? "bg-status-ok" : "bg-[rgb(var(--c-tan))]")} />
             {aiOn ? "AI ready" : "Guided mode"}
           </div>

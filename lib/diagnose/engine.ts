@@ -363,6 +363,37 @@ export function applyAnswer(prev: DState, q: DQuestion, opt: DOption): DState {
   return s;
 }
 
+/**
+ * Record an answer to an AI-generated question. The model writes its own
+ * option chips, so they carry no `score`/`flag`/`tags` of their own — without
+ * this the local state would stay empty the whole session, meaning (a) the
+ * red-flag short-circuit never fires and we'd be trusting the model alone on
+ * emergencies, and (b) a mid-session fallback to the offline engine would have
+ * nothing to conclude from. Running the keyword triage over the chosen label
+ * keeps both safety nets alive underneath the AI.
+ */
+export function applyAiAnswer(prev: DState, q: DQuestion, opt: DOption): DState {
+  const s = applyAnswer(prev, q, opt);
+  // A scored option came from the local bank — applyAnswer already folded it.
+  if (opt.score || opt.flag || opt.tags) return s;
+
+  const t = analyzeSymptoms(`${opt.label}`);
+  if (t?.matched) {
+    foldTriage(s, t);
+    t.conditions.forEach((c) => addCondition(s, c));
+    s.urgency = bump(s.urgency, t.urgency);
+    if (t.redFlags[0]) s.flags.push({ label: t.redFlags[0], sos: t.sosCategory ?? "other" });
+  }
+  return s;
+}
+
+/** Close the session out with what we know. Used when the AI runs past its
+ *  question budget or drops out mid-flow — `nextStep` would otherwise restart
+ *  the local funnel from its first question, which reads as amnesia. */
+export function forceConclusion(s: DState): DConclusion {
+  return conclude(s, s.flags.length > 0);
+}
+
 /** Did the patient type one of the on-screen options in words? */
 function spokenOption(q: DQuestion, text: string): DOption | undefined {
   const t = text.toLowerCase().trim();
