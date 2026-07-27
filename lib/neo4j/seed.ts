@@ -1,6 +1,6 @@
 import "server-only";
 import { read, write } from "@/lib/neo4j/driver";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
 /** Uniqueness + lookup constraints and indexes (idempotent).
  *  NOTE: this is SCHEMA ONLY. No demo data is ever seeded — doctors,
@@ -25,12 +25,28 @@ export async function ensureConstraints() {
   for (const s of stmts) await write(s);
 }
 
-/** Create the ops/admin login if it does not exist yet. */
+/** Create the ops/admin login, or converge its password to OPS_PASSWORD.
+ *  Re-running setup after rotating the env var rotates the login too —
+ *  without this, OPS_PASSWORD is silently ignored once the user exists. */
 export async function ensureOpsUser() {
   const email = (process.env.OPS_EMAIL || "ops@doceeto.health").toLowerCase();
-  const exists = await read(`MATCH (u:User {email: $email}) RETURN properties(u) AS u`, { email });
-  if (exists.length > 0) return { email, created: false };
-  const passwordHash = await hashPassword(process.env.OPS_PASSWORD || "iyashi-ops");
+  const password = process.env.OPS_PASSWORD || "iyashi-ops";
+  const exists = await read<{ u: { passwordHash?: string } }>(
+    `MATCH (u:User {email: $email, role: 'ops'}) RETURN properties(u) AS u`,
+    { email },
+  );
+  if (exists.length > 0) {
+    const stored = exists[0].u.passwordHash;
+    if (stored && (await verifyPassword(password, stored)))
+      return { email, created: false, rotated: false };
+    const passwordHash = await hashPassword(password);
+    await write(
+      `MATCH (u:User {email: $email, role: 'ops'}) SET u.passwordHash = $passwordHash`,
+      { email, passwordHash },
+    );
+    return { email, created: false, rotated: true };
+  }
+  const passwordHash = await hashPassword(password);
   await write(
     `CREATE (u:User { id: $id, email: $email, passwordHash: $passwordHash, role: 'ops', name: 'Doceeto Ops', createdAt: $now })`,
     { id: `ops-${crypto.randomUUID()}`, email, passwordHash, now: new Date().toISOString() },
