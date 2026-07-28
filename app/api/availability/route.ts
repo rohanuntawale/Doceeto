@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getRequestSession } from "@/lib/auth/session";
 import { db as repo } from "@/lib/db";
 import { bookableState, buildSchedule, busyIntervals } from "@/lib/scheduling/slots";
 import { activeGigs } from "@/lib/gigs/rules";
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * GET /api/availability?doctorId=doc-123
  */
 export async function GET(req: Request) {
-  const session = await getSession();
+  const session = await getRequestSession(req);
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const doctorId = new URL(req.url).searchParams.get("doctorId");

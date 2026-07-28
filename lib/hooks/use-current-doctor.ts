@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 import { useDoctors } from "@/lib/hooks/data";
 import { readStoredDoctorId, setCurrentDoctorId } from "@/lib/demo/current-doctor";
 import type { Doctor } from "@/lib/types/domain";
@@ -25,7 +26,7 @@ export function useCurrentDoctor(): Doctor | undefined {
     queryKey: ["me-doctor"],
     enabled: !isDemoMode,
     queryFn: async (): Promise<Doctor | null> => {
-      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const res = await apiFetch("/api/auth/me", { cache: "no-store" });
       if (!res.ok) return null;
       const data = await res.json();
       return data.role === "doctor" ? (data.doctor ?? null) : null;

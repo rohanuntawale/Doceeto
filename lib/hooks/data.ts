@@ -12,6 +12,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 import { demoStore } from "@/lib/demo/store";
 import { readStoredDoctorId as currentDoctorId } from "@/lib/demo/current-doctor";
 import { hasOngoingConsult, isOnGig } from "@/lib/scheduling/slots";
@@ -70,7 +71,7 @@ function useDemoState() {
 
 // ── Live primitive: fetch an entity from /api/data with polling ──
 async function fetchEntity<T>(entity: string): Promise<T[]> {
-  const res = await fetch(`/api/data?entity=${entity}`, { cache: "no-store" });
+  const res = await apiFetch(`/api/data?entity=${entity}`, { cache: "no-store" });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? (data as T[]) : [];
@@ -272,7 +273,7 @@ async function callAction<T = Record<string, unknown>>(
   action: string,
   payload: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch("/api/actions", {
+  const res = await apiFetch("/api/actions", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ action, payload }),

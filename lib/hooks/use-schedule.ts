@@ -10,6 +10,7 @@
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api/client";
 import { isDemoMode } from "@/lib/config";
 import { useConsultRequests, useDoctors } from "@/lib/hooks/data";
 import {
@@ -60,7 +61,7 @@ export function useDoctorSchedule(doctorId?: string | null): DoctorSchedule {
     enabled: !isDemoMode && Boolean(doctorId),
     refetchInterval: SCHEDULE_POLL_MS,
     queryFn: async (): Promise<Omit<DoctorSchedule, "loading">> => {
-      const res = await fetch(`/api/availability?doctorId=${encodeURIComponent(doctorId!)}`, {
+      const res = await apiFetch(`/api/availability?doctorId=${encodeURIComponent(doctorId!)}`, {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Could not load the schedule.");

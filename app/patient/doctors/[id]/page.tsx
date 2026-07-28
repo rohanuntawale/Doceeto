@@ -122,7 +122,11 @@ export default function DoctorProfilePage() {
       {/* ── Quick facts ─────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact icon={<Briefcase className="h-4 w-4" />} label="Experience" value={`${doctor.experienceYears} yr${doctor.experienceYears === 1 ? "" : "s"}`} />
-        <Fact icon={<UserIcon className="h-4 w-4" />} label="Doctor" value={doctor.gender === "male" ? "Male" : "Female"} />
+        <Fact
+          icon={<UserIcon className="h-4 w-4" />}
+          label="Doctor"
+          value={`${doctor.gender === "male" ? "Male" : "Female"}${doctor.age ? ` · ${doctor.age}` : ""}`}
+        />
         <Fact icon={<LanguagesIcon className="h-4 w-4" />} label="Speaks" value={doctor.languages.slice(0, 2).join(", ")} />
         <Fact icon={<ShieldCheck className="h-4 w-4" />} label="Reg. no." value={doctor.registrationNo || "On file"} />
       </div>

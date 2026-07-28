@@ -159,6 +159,7 @@ export interface Doctor {
   // lib/utils/doctor.ts) until they fill their profile.
   qualifications?: string; // e.g. "MBBS, MD (General Medicine)"
   education?: string; // academic background, e.g. "Seth GS Medical College, Mumbai"
+  age?: number; // collected at onboarding; shown alongside gender on the profile
   about?: string; // short bio
   registrationNo?: string; // medical council registration
   clinicAddress?: string; // where the doctor practises — shown to patients, used for clinic visits

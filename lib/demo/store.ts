@@ -470,7 +470,13 @@ export const demoStore = {
     specialty: string;
     kind: Doctor["kind"];
     gender: Doctor["gender"];
+    age?: number;
     experienceYears: number;
+    languages?: string[];
+    qualifications?: string;
+    education?: string;
+    registrationNo?: string;
+    about?: string;
     consultFee: number;
     homeVisitFee: number;
     clinicAddress?: string;
@@ -488,8 +494,13 @@ export const demoStore = {
       specialty: input.specialty,
       kind: input.kind,
       gender: input.gender,
+      age: input.age,
       experienceYears: input.experienceYears,
-      languages: ["English", "Hindi"],
+      languages: input.languages?.length ? input.languages : ["English", "Hindi"],
+      qualifications: input.qualifications,
+      education: input.education,
+      registrationNo: input.registrationNo,
+      about: input.about,
       status: "online",
       verified: false,
       rating: 0,

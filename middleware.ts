@@ -1,49 +1,53 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { verifySession } from "@/lib/auth/jwt";
-import { SESSION_COOKIE } from "@/lib/auth/constants";
+import {
+  PATH_HEADER,
+  RETIRED_COOKIES,
+  SESSION_COOKIES,
+  signInFor,
+  surfaceFromPath,
+} from "@/lib/auth/constants";
 
 const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 
-const isDoctorPath = (p: string) => p === "/doctor" || p.startsWith("/doctor/");
-const isOpsPath = (p: string) => p === "/ops" || p.startsWith("/ops/");
-const isPatientPath = (p: string) => p === "/patient" || p.startsWith("/patient/");
-
-export async function middleware(request: NextRequest) {
-  // Demo mode: no real auth; everything is open (client-side ops gate only).
-  if (!isLiveMode) return NextResponse.next();
-
+/**
+ * Two jobs only, both cheap.
+ *
+ * Sessions now live in the database, and the Edge runtime cannot reach the
+ * Neo4j driver, so the middleware no longer decides who anyone is — that check
+ * belongs to the surface layouts, which run on Node and read the store. What it
+ * still does is turn away visitors carrying no session cookie at all (a
+ * definite "not signed in", no lookup required) so an anonymous hit never
+ * renders a dashboard, and publish the pathname for those layouts to read.
+ */
+export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? await verifySession(token) : null;
 
-  // Guard the doctor and ops surfaces by role.
-  if (isOpsPath(path) && session?.role !== "ops") {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATH_HEADER, path + request.nextUrl.search);
+  const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Demo mode: no real auth; everything is open (client-side ops gate only).
+  if (!isLiveMode) return pass();
+
+  const surface = surfaceFromPath(path);
+  if (surface && !request.cookies.get(SESSION_COOKIES[surface])?.value) {
     const url = request.nextUrl.clone();
-    url.pathname = "/ops-signin";
-    return NextResponse.redirect(url);
-  }
-  if (isDoctorPath(path) && session?.role !== "doctor") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
-  }
-  if (isPatientPath(path) && session?.role !== "patient") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
-  }
-  // Signed-in users skip the auth pages, landing on their own space.
-  if (path === "/login") {
-    if (session?.role === "doctor" || session?.role === "patient") {
-      const url = request.nextUrl.clone();
-      url.pathname = session.role === "doctor" ? "/doctor" : "/patient";
-      return NextResponse.redirect(url);
-    }
+    const target = signInFor(surface, path);
+    const [pathname, query] = target.split("?");
+    url.pathname = pathname;
+    url.search = query ? `?${query}` : "";
+    return sweep(request, NextResponse.redirect(url));
   }
 
-  return NextResponse.next();
+  return sweep(request, pass());
+}
+
+/** Drop cookies from the pre-database schemes so nothing stale is presented. */
+function sweep(request: NextRequest, res: NextResponse) {
+  for (const name of RETIRED_COOKIES) {
+    if (request.cookies.get(name)) res.cookies.delete(name);
+  }
+  return res;
 }
 
 export const config = {

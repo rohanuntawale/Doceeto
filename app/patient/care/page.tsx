@@ -24,6 +24,7 @@ import {
   Baby,
   type LucideIcon,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api/client";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useConsultRequests } from "@/lib/hooks/data";
 import { useMedicalHistory, type CheckSession } from "@/lib/hooks/use-medical-history";
@@ -144,7 +145,7 @@ function CareInner() {
         setAiOn(false);
       };
       try {
-        const res = await fetch("/api/diagnose", {
+        const res = await apiFetch("/api/diagnose", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

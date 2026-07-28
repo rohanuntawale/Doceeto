@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth/session";
+import { getRequestSession } from "@/lib/auth/session";
 import { subscribe } from "@/lib/server/events";
 
 export const runtime = "nodejs";
@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
  * client silently falls back to its polling interval.
  */
 export async function GET(req: Request) {
-  const session = await getSession();
+  // EventSource cannot set headers, so the client passes ?surface= instead.
+  const session = await getRequestSession(req);
   if (!session) return new Response("Not signed in.", { status: 401 });
 
   const enc = new TextEncoder();

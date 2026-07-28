@@ -17,6 +17,7 @@ import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 
 /**
  * Doctor shell — mobile iOS tab pill, desktop macOS dock (no sidebar).
@@ -54,7 +55,8 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   async function logout() {
     if (!isDemoMode) {
       try {
-        await fetch("/api/auth/logout", { method: "POST" });
+        // Surface-tagged: ends the cockpit session only, not the patient's.
+        await apiFetch("/api/auth/logout", { method: "POST" });
       } catch {
         /* ignore */
       }

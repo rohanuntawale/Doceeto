@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getRequestSession } from "@/lib/auth/session";
 import { db as repo, type Near } from "@/lib/db";
 import { hasOngoingConsult, isOnGig, visibleToDoctor } from "@/lib/scheduling/slots";
 import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
@@ -25,13 +25,15 @@ function parseNear(params: URLSearchParams): Near | undefined {
  * to see. Supports geo filtering: ?entity=doctors&near=21.14,79.08&km=10
  */
 export async function GET(req: Request) {
-  const session = await getSession();
+  // Resolved against the calling surface, so a browser holding both a patient
+  // and a doctor session gets answered as whichever app is asking.
+  const session = await getRequestSession(req);
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const params = new URL(req.url).searchParams;
   const entity = params.get("entity");
   const near = parseNear(params);
-  const me = session.sub;
+  const me = session.userId;
   const role = session.role;
 
   try {

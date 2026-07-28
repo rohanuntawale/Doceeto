@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { isDemoMode } from "@/lib/config";
+import { currentSurface } from "@/lib/api/client";
 import { setSseConnected } from "@/lib/hooks/data";
 
 /**
@@ -26,7 +27,11 @@ export function RealtimeBridge() {
 
     const connect = () => {
       if (stopped) return;
-      es = new EventSource("/api/stream");
+      // EventSource cannot set headers, so the surface rides in the query
+      // string — without it the stream could authorize as the other role
+      // signed in on this browser.
+      const surface = currentSurface();
+      es = new EventSource(surface ? `/api/stream?surface=${surface}` : "/api/stream");
       es.onopen = () => setSseConnected(true);
       es.onmessage = (e) => {
         try {

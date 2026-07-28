@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { MAP_CENTER, isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 
 export interface PatientIdentity {
   id: string;
@@ -52,7 +53,7 @@ function hydrateOnce() {
 
   if (!isDemoMode) {
     // Live: pull the real signed-in patient.
-    fetch("/api/auth/me", { cache: "no-store" })
+    apiFetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.role === "patient" && data.patient) {

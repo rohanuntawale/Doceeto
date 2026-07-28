@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { Name, BrandMark } from "@/components/brand/wordmark";
@@ -16,12 +16,26 @@ import { cn } from "@/lib/utils/cn";
 
 type Role = "patient" | "doctor";
 
+// Kept in step with components/doctor/edit-profile-dialog.tsx.
+const SPECIALTIES = [
+  "General Physician",
+  "Cardiologist",
+  "Pediatrician",
+  "Orthopedic",
+  "Dermatologist",
+  "Gynecologist",
+  "ENT",
+  "Psychiatrist",
+  "Neurologist",
+];
+
 /**
  * Doceeto landing — the single onboarding, matched to the pitch deck:
  * deep-forest shell, paper text, gold accents, the serif "Doceeto" wordmark
- * (gold "ee") and the doctor mascot. Patients and doctors both sign up here
- * with name/email/password; doctors set specialty/fees later in their
- * dashboard. `?as=doctor` preselects the doctor toggle (deep links).
+ * (gold "ee") and the doctor mascot. Patients sign up with name/email/password;
+ * doctors continue to a second step that captures their full practice profile
+ * (specialty, credentials, languages, fees) so patients see a complete card
+ * from day one. `?as=doctor` preselects the doctor toggle (deep links).
  */
 export default function Landing() {
   return (
@@ -57,32 +71,81 @@ function OnboardingPanel() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [clinicAddress, setClinicAddress] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Doctor onboarding is two steps: account basics, then the full practice
+  // profile — everything a patient reads on the doctor's card and detail page.
+  const [step, setStep] = useState<1 | 2>(1);
+  const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
+  const [kind, setKind] = useState<"practising" | "resident">("practising");
+  const [gender, setGender] = useState<"" | "female" | "male">("");
+  const [age, setAge] = useState("");
+  const [experienceYears, setExperienceYears] = useState("");
+  const [languages, setLanguages] = useState("");
+  const [qualifications, setQualifications] = useState("");
+  const [education, setEducation] = useState("");
+  const [registrationNo, setRegistrationNo] = useState("");
+  const [consultFee, setConsultFee] = useState("400");
+  const [homeVisitFee, setHomeVisitFee] = useState("900");
+  const [clinicAddress, setClinicAddress] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (role === "doctor") {
-      // Minimal doctor sign-up — specialty, fees and availability are set
-      // afterwards in the doctor profile. Demo keeps the doctor in the
-      // browser; live creates the account + session on the backend.
+      // Step 1 → 2: check the account basics here (mirroring the server's
+      // rules) so nobody fills the whole profile only to bounce on a weak
+      // password afterwards.
+      if (step === 1) {
+        if (!isDemoMode) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            return setError("Enter a valid email address.");
+          }
+          if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+            return setError("Password must be 8+ characters and include a letter and a number.");
+          }
+        }
+        setStep(2);
+        return;
+      }
+
+      // Step 2 — the profile itself. Demo keeps the doctor in the browser;
+      // live creates the account + session on the backend.
+      const ageNum = Math.round(Number(age));
+      if (!gender) return setError("Select your gender.");
+      if (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 100) {
+        return setError("Enter your age (18–100).");
+      }
+      const languageList = languages.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6);
+      if (languageList.length === 0) {
+        return setError("List at least one language you consult in.");
+      }
+      if (!qualifications.trim()) {
+        return setError("Add your qualifications — patients see these first.");
+      }
+      const profile = {
+        fullName: name.trim() || "Doctor",
+        specialty,
+        kind,
+        gender,
+        age: ageNum,
+        experienceYears: Math.max(0, Math.min(70, Math.round(Number(experienceYears)) || 0)),
+        languages: languageList,
+        qualifications: qualifications.trim(),
+        education: education.trim(),
+        registrationNo: registrationNo.trim(),
+        consultFee: Math.max(0, Number(consultFee) || 400),
+        homeVisitFee: Math.max(0, Number(homeVisitFee) || 900),
+        clinicAddress: clinicAddress.trim(),
+      };
+
       if (isDemoMode) {
-        const doc = demoStore.registerDoctor({
-          fullName: name.trim() || "Doctor",
-          specialty: "General Physician",
-          kind: "practising",
-          gender: "female",
-          experienceYears: 0,
-          consultFee: 400,
-          homeVisitFee: 900,
-          clinicAddress: clinicAddress.trim(),
-        });
+        const doc = demoStore.registerDoctor(profile);
         setCurrentDoctorId(doc.id);
-        toast.push({ tone: "success", title: "Welcome to Doceeto", desc: "Set up your practice to go online." });
+        toast.push({ tone: "success", title: "Welcome to Doceeto", desc: "Your profile is live — go online when ready." });
         router.push("/doctor");
         return;
       }
@@ -90,12 +153,12 @@ function OnboardingPanel() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ role: "doctor", fullName: name, email, password, clinicAddress: clinicAddress.trim() }),
+        body: JSON.stringify({ role: "doctor", email, password, ...profile }),
       });
       const data = await res.json().catch(() => ({}));
       setLoading(false);
       if (!res.ok) return setError(data.error ?? "Could not create the account.");
-      toast.push({ tone: "success", title: "Welcome to Doceeto", desc: "Set up your practice to go online." });
+      toast.push({ tone: "success", title: "Welcome to Doceeto", desc: "Your profile is live — go online when ready." });
       router.push("/doctor");
       router.refresh();
       return;
@@ -150,117 +213,272 @@ function OnboardingPanel() {
           className="animate-rise mt-8 font-serif text-[2.6rem] leading-[1.03] tracking-tight text-cream sm:text-[3rem]"
           style={{ animationDelay: "40ms" }}
         >
-          Start your <span className="text-salmon">care journey</span>
+          {step === 2 ? (
+            <>Your <span className="text-salmon">practice profile</span></>
+          ) : (
+            <>Start your <span className="text-salmon">care journey</span></>
+          )}
         </h1>
 
-        {/* social trio — styled, not yet wired to OAuth */}
-        <div className="animate-rise mt-7 flex justify-center" style={{ animationDelay: "90ms" }}>
-          <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
-            <SocialButton label="Continue with Apple">
-              <AppleGlyph />
-            </SocialButton>
-            <SocialButton label="Continue with Google">
-              <GoogleGlyph />
-            </SocialButton>
-          </div>
-        </div>
+        {step === 1 && (
+          <>
+            {/* social trio — styled, not yet wired to OAuth */}
+            <div className="animate-rise mt-7 flex justify-center" style={{ animationDelay: "90ms" }}>
+              <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
+                <SocialButton label="Continue with Apple">
+                  <AppleGlyph />
+                </SocialButton>
+                <SocialButton label="Continue with Google">
+                  <GoogleGlyph />
+                </SocialButton>
+              </div>
+            </div>
 
-        {/* or divider */}
-        <div className="animate-rise mt-6 flex items-center gap-3" style={{ animationDelay: "120ms" }}>
-          <span className="h-px flex-1 bg-[var(--border)]" />
-          <span className="text-xs text-[var(--text-faint)]">or</span>
-          <span className="h-px flex-1 bg-[var(--border)]" />
-        </div>
+            {/* or divider */}
+            <div className="animate-rise mt-6 flex items-center gap-3" style={{ animationDelay: "120ms" }}>
+              <span className="h-px flex-1 bg-[var(--border)]" />
+              <span className="text-xs text-[var(--text-faint)]">or</span>
+              <span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
 
-        {/* role toggle */}
-        <div className="animate-rise mt-6" style={{ animationDelay: "150ms" }}>
-          <div className="flex rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
-            {(["patient", "doctor"] as Role[]).map((r) => {
-              const active = role === r;
-              return (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => {
-                    setRole(r);
-                    setError(null);
-                  }}
-                  className={cn(
-                    "flex-1 rounded-full px-3 py-2 font-medium transition-colors",
-                    active
-                      ? "bg-terracotta text-on-accent"
-                      : "text-[var(--text-muted)] hover:text-cream",
-                  )}
-                >
-                  {r === "patient" ? "I need care" : "I'm a doctor"}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            {/* role toggle */}
+            <div className="animate-rise mt-6" style={{ animationDelay: "150ms" }}>
+              <div className="flex rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
+                {(["patient", "doctor"] as Role[]).map((r) => {
+                  const active = role === r;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => {
+                        setRole(r);
+                        setError(null);
+                      }}
+                      className={cn(
+                        "flex-1 rounded-full px-3 py-2 font-medium transition-colors",
+                        active
+                          ? "bg-terracotta text-on-accent"
+                          : "text-[var(--text-muted)] hover:text-cream",
+                      )}
+                    >
+                      {r === "patient" ? "I need care" : "I'm a doctor"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* the form — same minimal fields for both roles */}
         <form
           onSubmit={onSubmit}
           className="animate-rise mt-5 space-y-3 text-left"
           style={{ animationDelay: "190ms" }}
         >
-          <label className="block">
-            <span className="sr-only">Full name</span>
-            <input
-              className={inputCls}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
-              autoComplete="name"
-              required
-            />
-          </label>
-          <label className="block">
-            <span className="sr-only">Email</span>
-            <input
-              type="email"
-              className={inputCls}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              autoComplete="email"
-              required={!isDemoMode}
-            />
-          </label>
-          <label className="relative block">
-            <span className="sr-only">Password</span>
-            <input
-              type={showPw ? "text" : "password"}
-              className={cn(inputCls, "pr-11")}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              autoComplete="new-password"
-              required={!isDemoMode}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw((v) => !v)}
-              aria-label={showPw ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] transition-colors hover:text-cream"
-            >
-              {showPw ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
-            </button>
-          </label>
+          {step === 1 ? (
+            <>
+              <label className="block">
+                <span className="sr-only">Full name</span>
+                <input
+                  className={inputCls}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Full name"
+                  autoComplete="name"
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="sr-only">Email</span>
+                <input
+                  type="email"
+                  className={inputCls}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  autoComplete="email"
+                  required={!isDemoMode}
+                />
+              </label>
+              <label className="relative block">
+                <span className="sr-only">Password</span>
+                <input
+                  type={showPw ? "text" : "password"}
+                  className={cn(inputCls, "pr-11")}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="new-password"
+                  required={!isDemoMode}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] transition-colors hover:text-cream"
+                >
+                  {showPw ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                </button>
+              </label>
+            </>
+          ) : (
+            <>
+              {/* Step 2 — the profile patients will read. Everything here
+                  lands on the doctor's public card and detail page. */}
+              <Field label="Specialty">
+                <select
+                  className={inputCls}
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  required
+                >
+                  {SPECIALTIES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-          {role === "doctor" && (
-            <label className="block">
-              <span className="sr-only">Clinic address (optional)</span>
-              <input
-                className={inputCls}
-                value={clinicAddress}
-                onChange={(e) => setClinicAddress(e.target.value)}
-                placeholder="Clinic address (optional)"
-                autoComplete="off"
-                maxLength={160}
-              />
-            </label>
+              <div>
+                <span className="label">Practice status</span>
+                <div className="mt-1.5 flex rounded-xl border border-[var(--border)] bg-espresso/60 p-1 text-sm">
+                  {(["practising", "resident"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setKind(k)}
+                      className={cn(
+                        "flex-1 rounded-lg px-3 py-2 font-medium capitalize transition-colors",
+                        kind === k
+                          ? "bg-terracotta text-on-accent"
+                          : "text-[var(--text-muted)] hover:text-cream",
+                      )}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Gender">
+                  <select
+                    className={inputCls}
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as "" | "female" | "male")}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select…
+                    </option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </Field>
+                <Field label="Age">
+                  <input
+                    type="number"
+                    min={18}
+                    max={100}
+                    className={inputCls}
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="34"
+                    required
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Experience (years)">
+                  <input
+                    type="number"
+                    min={0}
+                    max={70}
+                    className={inputCls}
+                    value={experienceYears}
+                    onChange={(e) => setExperienceYears(e.target.value)}
+                    placeholder="8"
+                    required
+                  />
+                </Field>
+                <Field label="Medical reg. no.">
+                  <input
+                    className={inputCls}
+                    value={registrationNo}
+                    onChange={(e) => setRegistrationNo(e.target.value)}
+                    placeholder="MH-12345"
+                    maxLength={60}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Languages (comma-separated)">
+                <input
+                  className={inputCls}
+                  value={languages}
+                  onChange={(e) => setLanguages(e.target.value)}
+                  placeholder="English, Hindi, Marathi"
+                  required
+                />
+              </Field>
+
+              <Field label="Qualifications">
+                <input
+                  className={inputCls}
+                  value={qualifications}
+                  onChange={(e) => setQualifications(e.target.value)}
+                  placeholder="MBBS, MD (General Medicine)"
+                  maxLength={200}
+                  required
+                />
+              </Field>
+
+              <Field label="Educational background">
+                <input
+                  className={inputCls}
+                  value={education}
+                  onChange={(e) => setEducation(e.target.value)}
+                  placeholder="Seth GS Medical College, Mumbai"
+                  maxLength={200}
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Consult fee (₹)">
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputCls}
+                    value={consultFee}
+                    onChange={(e) => setConsultFee(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Field label="Home visit fee (₹)">
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputCls}
+                    value={homeVisitFee}
+                    onChange={(e) => setHomeVisitFee(e.target.value)}
+                    required
+                  />
+                </Field>
+              </div>
+
+              <Field label="Clinic address (optional)">
+                <input
+                  className={inputCls}
+                  value={clinicAddress}
+                  onChange={(e) => setClinicAddress(e.target.value)}
+                  placeholder="Shivaji Nagar, Pune — near City Hospital"
+                  autoComplete="off"
+                  maxLength={160}
+                />
+              </Field>
+            </>
           )}
 
           {error && <p className="text-sm text-terracotta-300">{error}</p>}
@@ -268,7 +486,13 @@ function OnboardingPanel() {
           {/* primary CTA with a subtle sheen sweep on hover */}
           <div className="group relative overflow-hidden rounded-lg">
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Setting up…" : role === "doctor" ? "Join" : "Start"}
+              {loading
+                ? "Setting up…"
+                : step === 2
+                  ? "Join"
+                  : role === "doctor"
+                    ? "Continue"
+                    : "Start"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             <span
@@ -277,10 +501,26 @@ function OnboardingPanel() {
             />
           </div>
 
+          {step === 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                setError(null);
+              }}
+              className="mx-auto flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-cream"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to account details
+            </button>
+          )}
+
           <p className="text-center text-xs text-[var(--text-faint)]">
-            {role === "doctor"
-              ? "Set your specialty & fees next, in your dashboard"
-              : "as a patient — no card, no wait"}
+            {step === 2
+              ? "Patients see this on your profile — you can edit it anytime"
+              : role === "doctor"
+                ? "Next: your specialty, credentials & fees"
+                : "as a patient — no card, no wait"}
           </p>
         </form>
 
@@ -301,6 +541,17 @@ function OnboardingPanel() {
 
 const inputCls =
   "h-12 w-full rounded-xl border border-[var(--border)] bg-espresso/60 px-4 text-sm text-cream outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-terracotta focus:ring-1 focus:ring-terracotta/40";
+
+// Labelled field for the doctor profile step — unlike step 1's placeholder-only
+// inputs, a dozen fields need visible labels to stay scannable.
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="label">{label}</span>
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
 
 // Small circular social button. Non-functional until OAuth is wired — it just
 // nudges the user with a toast so the affordance never feels broken.

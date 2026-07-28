@@ -37,6 +37,7 @@ export function EditProfileDialog({
     consultFee: doctor.consultFee,
     homeVisitFee: doctor.homeVisitFee,
     experienceYears: doctor.experienceYears,
+    age: doctor.age ?? ("" as number | ""),
     languages: doctor.languages.join(", "),
     qualifications: doctor.qualifications ?? "",
     education: doctor.education ?? "",
@@ -62,6 +63,8 @@ export function EditProfileDialog({
       consultFee: Number(form.consultFee) || 0,
       homeVisitFee: Number(form.homeVisitFee) || 0,
       experienceYears: Math.max(0, Number(form.experienceYears) || 0),
+      // Only send age when set — the sanitizer clamps to 18–100.
+      ...(form.age !== "" && Number(form.age) ? { age: Number(form.age) } : {}),
       // Comma-separated → array; empty entries dropped.
       languages: form.languages
         .split(",")
@@ -162,8 +165,8 @@ export function EditProfileDialog({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Experience (years)">
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Experience (yrs)">
               <input
                 type="number"
                 min={0}
@@ -175,7 +178,20 @@ export function EditProfileDialog({
                 className={inputCls}
               />
             </Field>
-            <Field label="Medical reg. no.">
+            <Field label="Age">
+              <input
+                type="number"
+                min={18}
+                max={100}
+                value={form.age}
+                onChange={(e) =>
+                  setForm({ ...form, age: e.target.value === "" ? "" : Number(e.target.value) })
+                }
+                className={inputCls}
+                placeholder="34"
+              />
+            </Field>
+            <Field label="Med. reg. no.">
               <input
                 value={form.registrationNo}
                 onChange={(e) => setForm({ ...form, registrationNo: e.target.value })}

@@ -1,6 +1,13 @@
 import "server-only";
 import { data, persist, type StoredUser } from "@/lib/filedb/store";
-import { DomainError, type Near, type UserRecord } from "@/lib/db/shared";
+import {
+  DomainError,
+  SESSION_TTL_MS,
+  newSessionId,
+  type Near,
+  type SessionRecord,
+  type UserRecord,
+} from "@/lib/db/shared";
 import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import { hashPassword } from "@/lib/auth/password";
@@ -32,7 +39,7 @@ import type {
 } from "@/lib/types/domain";
 
 export { DomainError };
-export type { Near, UserRecord };
+export type { Near, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -47,6 +54,66 @@ function withinNear<T extends { lat?: number; lng?: number }>(rows: T[], near?: 
       typeof r.lng === "number" &&
       km({ lat: r.lat, lng: r.lng }, near) <= near.km,
   );
+}
+
+// ── Sessions ─────────────────────────────────────────────────
+// Same contract as the Postgres store: the session lives HERE, the browser
+// holds only its opaque id. Kept in step with lib/postgres/repo.ts so switching
+// backends changes nothing about how sign-in behaves.
+
+export async function createSession(input: {
+  userId: string;
+  role: UserRecord["role"];
+  name: string;
+}): Promise<SessionRecord> {
+  const now = Date.now();
+  const session: SessionRecord = {
+    id: newSessionId(),
+    userId: input.userId,
+    role: input.role,
+    name: input.name,
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + SESSION_TTL_MS).toISOString(),
+  };
+  data().sessions.push(session);
+  persist();
+  return session;
+}
+
+export async function getSessionById(id: string): Promise<SessionRecord | null> {
+  if (!id) return null;
+  const found = data().sessions.find((s) => s.id === id);
+  if (!found) return null;
+  if (new Date(found.expiresAt).getTime() <= Date.now()) {
+    await deleteSession(id);
+    return null;
+  }
+  return found;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  const d = data();
+  const i = d.sessions.findIndex((s) => s.id === id);
+  if (i === -1) return;
+  d.sessions.splice(i, 1);
+  persist();
+}
+
+export async function deleteSessionsForUser(userId: string): Promise<void> {
+  const d = data();
+  const keep = d.sessions.filter((s) => s.userId !== userId);
+  if (keep.length === d.sessions.length) return;
+  d.sessions = keep;
+  persist();
+}
+
+export async function purgeExpiredSessions(): Promise<void> {
+  const d = data();
+  const now = Date.now();
+  const keep = d.sessions.filter((s) => new Date(s.expiresAt).getTime() > now);
+  if (keep.length === d.sessions.length) return;
+  d.sessions = keep;
+  persist();
 }
 
 // ── Auth ─────────────────────────────────────────────────────
@@ -83,7 +150,13 @@ export async function createDoctorUser(input: {
   specialty: string;
   kind: string;
   gender: string;
+  age?: number;
   experienceYears: number;
+  languages?: string[];
+  qualifications?: string;
+  education?: string;
+  registrationNo?: string;
+  about?: string;
   consultFee: number;
   homeVisitFee: number;
   clinicAddress?: string;
@@ -106,8 +179,13 @@ export async function createDoctorUser(input: {
     specialty: input.specialty,
     kind: input.kind === "resident" ? "resident" : "practising",
     gender: input.gender === "male" ? "male" : "female",
+    age: input.age,
     experienceYears: Number(input.experienceYears) || 0,
-    languages: ["English", "Hindi"],
+    languages: input.languages?.length ? input.languages : ["English", "Hindi"],
+    qualifications: input.qualifications,
+    education: input.education,
+    registrationNo: input.registrationNo,
+    about: input.about,
     status: "online",
     verified: false,
     rating: 0,
@@ -421,6 +499,7 @@ export async function updateDoctor(
     specialty?: string;
     consultFee?: number;
     homeVisitFee?: number;
+    age?: number;
     experienceYears?: number;
     languages?: string[];
     qualifications?: string;
@@ -438,6 +517,7 @@ export async function updateDoctor(
   if (patch.specialty !== undefined) doc.specialty = patch.specialty;
   if (patch.consultFee !== undefined) doc.consultFee = patch.consultFee;
   if (patch.homeVisitFee !== undefined) doc.homeVisitFee = patch.homeVisitFee;
+  if (patch.age !== undefined) doc.age = patch.age;
   if (patch.experienceYears !== undefined) doc.experienceYears = patch.experienceYears;
   if (Array.isArray(patch.languages) && patch.languages.length > 0)
     doc.languages = patch.languages;

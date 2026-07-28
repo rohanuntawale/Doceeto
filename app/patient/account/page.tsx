@@ -9,6 +9,7 @@ import {
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useT, type LangCode } from "@/lib/i18n";
 import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 import { resetTestData } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
@@ -20,7 +21,7 @@ export default function PatientAccount() {
 
   async function signOut() {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {
       /* ignore */
     }

@@ -40,14 +40,26 @@ export async function POST(req: Request) {
     const lng = Number.isFinite(Number(body.lng)) ? Number(body.lng) : null;
 
     if (body.role === "doctor") {
+      // Profile detail from the onboarding form — same caps as the profile
+      // editor's sanitizer (app/api/actions/route.ts) so both paths agree.
+      const age = Math.round(Number(body.age));
+      const languages = Array.isArray(body.languages)
+        ? body.languages.map((x: unknown) => String(x).trim()).filter(Boolean).slice(0, 6)
+        : undefined;
       const { user, doctor } = await db.createDoctorUser({
         email,
         passwordHash,
         fullName: String(body.fullName ?? "Doctor"),
-        specialty: String(body.specialty ?? "General Physician"),
+        specialty: String(body.specialty ?? "General Physician").slice(0, 60),
         kind: body.kind === "resident" ? "resident" : "practising",
         gender: body.gender === "male" ? "male" : "female",
-        experienceYears: Number(body.experienceYears ?? 0),
+        age: age >= 18 && age <= 100 ? age : undefined,
+        experienceYears: Math.max(0, Math.min(70, Number(body.experienceYears) || 0)),
+        languages: languages?.length ? languages : undefined,
+        qualifications: String(body.qualifications ?? "").trim().slice(0, 200) || undefined,
+        education: String(body.education ?? "").trim().slice(0, 200) || undefined,
+        registrationNo: String(body.registrationNo ?? "").trim().slice(0, 60) || undefined,
+        about: String(body.about ?? "").trim().slice(0, 600) || undefined,
         consultFee: Number(body.consultFee ?? 400),
         homeVisitFee: Number(body.homeVisitFee ?? 900),
         clinicAddress: String(body.clinicAddress ?? "").slice(0, 160),

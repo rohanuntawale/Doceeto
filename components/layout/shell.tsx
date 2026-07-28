@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 import { clearOpsAuthed } from "@/lib/ops-auth";
 
 export interface NavItem {
@@ -34,7 +35,8 @@ export function Shell({
     if (role === "ops") clearOpsAuthed();
     if (!isDemoMode) {
       try {
-        await fetch("/api/auth/logout", { method: "POST" });
+        // Surface-tagged, so signing out here leaves any other role signed in.
+        await apiFetch("/api/auth/logout", { method: "POST" });
       } catch {
         /* ignore */
       }

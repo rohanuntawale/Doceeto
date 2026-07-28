@@ -1,6 +1,7 @@
 import { LayoutDashboard, Users, Pill } from "lucide-react";
 import { Shell, type NavItem } from "@/components/layout/shell";
 import { OpsGuard } from "@/components/ops/ops-guard";
+import { requireSurface } from "@/lib/auth/guard";
 
 const nav: NavItem[] = [
   { href: "/ops", label: "Overview", kanji: "全", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -8,7 +9,10 @@ const nav: NavItem[] = [
   { href: "/ops/orders", label: "AuraMed", kanji: "薬", icon: <Pill className="h-4 w-4" /> },
 ];
 
-export default function OpsLayout({ children }: { children: React.ReactNode }) {
+export default async function OpsLayout({ children }: { children: React.ReactNode }) {
+  // Ops session only. OpsGuard stays for demo mode, where there are no accounts.
+  await requireSurface("ops");
+
   return (
     <OpsGuard>
       <Shell role="ops" sectionLabel="COMMAND CENTER" nav={nav}>

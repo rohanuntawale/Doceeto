@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { getRequestSession } from "@/lib/auth/session";
 import { emitChange } from "@/lib/server/events";
 import { db as repo, DomainError } from "@/lib/db";
 import { coerceBookingMode, normalizeAvailability } from "@/lib/scheduling/slots";
@@ -53,6 +53,7 @@ function sanitizeDoctorPatch(raw: unknown): Record<string, unknown> {
   if (p.consultFee !== undefined) out.consultFee = num(p.consultFee, 0, 100_000);
   if (p.homeVisitFee !== undefined) out.homeVisitFee = num(p.homeVisitFee, 0, 100_000);
   if (p.experienceYears !== undefined) out.experienceYears = num(p.experienceYears, 0, 70);
+  if (p.age !== undefined) out.age = num(p.age, 18, 100);
   // Credential text — empty string is allowed (reverts to the fallback on the
   // patient profile), so include it whenever the key was sent.
   if (p.qualifications !== undefined) out.qualifications = str(p.qualifications, 200);
@@ -79,7 +80,10 @@ function sanitizeDoctorPatch(raw: unknown): Record<string, unknown> {
  * event so SSE-connected clients refresh instantly.
  */
 export async function POST(req: Request) {
-  const session = await getSession();
+  // The acting session is the one belonging to the surface that made the call,
+  // so a doctor accepting a gig can never be resolved as the patient (or vice
+  // versa) when both accounts are signed in on this browser.
+  const session = await getRequestSession(req);
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   let body: { action?: string; payload?: Record<string, unknown> };
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
   }
   const action = String(body.action ?? "");
   const payload = body.payload ?? {};
-  const me = session.sub;
+  const me = session.userId;
   const role = session.role;
 
   const needs = (r: string) =>
