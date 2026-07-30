@@ -23,10 +23,11 @@ export default function OrdersBoard() {
     <>
       <PageHeader kanji="薬" label="AURAMED · FULFILMENT" title="Medicine orders" />
 
+      {/* dense: the poster-size variant clips ₹-values at 3-up on a phone */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard value={active.length} label="In flight" accent />
-        <StatCard value="10m" label="Target ETA" />
-        <StatCard value={formatINRCompact(revenue)} label="Order value" />
+        <StatCard dense value={active.length} label="In flight" accent />
+        <StatCard dense value="10m" label="Target ETA" />
+        <StatCard dense value={formatINRCompact(revenue)} label="Order value" />
       </div>
 
       <section className="mt-6">

@@ -87,9 +87,12 @@ export function NewsCard({ role }: { role: Role }) {
         </h3>
         <span className="text-xs text-[var(--text-faint)]">Today</span>
       </div>
+      {/* Static digest rows — no article pages exist yet, so these must not
+          look clickable (they were <button>s with an external-link arrow that
+          did nothing). */}
       <div className="mt-2 divide-y divide-[var(--border)]">
         {NEWS[role].map((n) => (
-          <button key={n.title} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.04]">
+          <div key={n.title} className="flex w-full items-center gap-3 px-4 py-3 text-left">
             <span
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-bold"
               style={{ background: `${n.color}22`, color: n.color }}
@@ -105,8 +108,7 @@ export function NewsCard({ role }: { role: Role }) {
               </span>
               <span className="mt-0.5 block truncate text-[13px] font-medium text-cream">{n.title}</span>
             </span>
-            <ArrowUpRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-          </button>
+          </div>
         ))}
       </div>
     </section>

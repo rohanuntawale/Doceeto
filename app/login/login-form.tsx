@@ -8,24 +8,29 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
 import { surfaceFromPath } from "@/lib/auth/constants";
+import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 
-export function LoginForm() {
+export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
-      <LoginInner />
+      <LoginInner googleEnabled={googleEnabled} />
     </Suspense>
   );
 }
 
-function LoginInner() {
+function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/doctor";
   const wantedSurface = surfaceFromPath(params.get("next") ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // The OAuth callback reports failures by bouncing back here with ?error=,
+  // since it is a full-page redirect and has no other way to speak.
+  const [error, setError] = useState<string | null>(params.get("error"));
   const [loading, setLoading] = useState(false);
+  /** Google needs to know which app is being entered; default to the patient. */
+  const googleRole = wantedSurface === "doctor" ? "doctor" : "patient";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +76,7 @@ function LoginInner() {
               patient. Set <span className="font-mono">NEXT_PUBLIC_BACKEND=neo4j</span>{" "}
               with Neo4j credentials to turn on real accounts.
             </p>
-            <div className="mt-5 flex gap-2">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <Button className="flex-1" onClick={() => router.push("/doctor")}>
                 Sign in as Doctor
               </Button>
@@ -90,6 +95,19 @@ function LoginInner() {
             className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 shadow-card"
           >
             <div className="label mb-4">SIGN IN</div>
+
+            {/* Google first: for most people it is one tap against a form. */}
+            {googleEnabled && (
+              <>
+                <GoogleButton
+                  role={googleRole}
+                  next={params.get("next") ?? undefined}
+                  label={`Continue with Google${googleRole === "doctor" ? " as a doctor" : ""}`}
+                />
+                <AuthDivider>or use your password</AuthDivider>
+              </>
+            )}
+
             {/* Which surface asked for a sign-in. Landing here from /doctor used
                 to silently show the patient dashboard instead; saying it plainly
                 also makes clear that the other role stays signed in. */}
@@ -134,7 +152,16 @@ function LoginInner() {
           </form>
         )}
 
-        <p className="mt-6 text-center text-xs text-[var(--text-faint)]">
+        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-[var(--text-faint)]">
+          <Link href="/about" className="transition-colors hover:text-cream">
+            About
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href="/contact" className="transition-colors hover:text-cream">
+            Contact
+          </Link>
+        </div>
+        <p className="mt-2 text-center text-xs text-[var(--text-faint)]">
           Doceeto Health · Healing, on demand
         </p>
       </div>

@@ -41,7 +41,7 @@ export default function ProfilePage() {
     <>
       <PageHeader
         kanji="私"
-        label="ZUMI · PROFILE"
+        label="DOCEETO · PROFILE"
         title="Your profile"
         action={
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -59,11 +59,11 @@ export default function ProfilePage() {
             >
               {initials(me.fullName.replace("Dr. ", ""))}
             </span>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="font-serif text-2xl text-cream">{me.fullName}</h2>
+                <h2 className="truncate font-serif text-2xl text-cream">{me.fullName}</h2>
                 {me.verified && (
-                  <BadgeCheck className="h-5 w-5 text-status-ok" />
+                  <BadgeCheck className="h-5 w-5 shrink-0 text-status-ok" />
                 )}
               </div>
               <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
@@ -118,7 +118,7 @@ export default function ProfilePage() {
 
         {/* Anchor target for the dashboard's Rating tile. */}
         <Card id="reviews" className="scroll-mt-24">
-          <CardHeader label="ZUMI · REVIEWS" title={`Patient reviews (${mine.length})`} />
+          <CardHeader label="DOCEETO · REVIEWS" title={`Patient reviews (${mine.length})`} />
           {mine.length === 0 ? (
             <div className="p-4">
               <EmptyState kanji="星" title="No reviews yet" />

@@ -18,6 +18,15 @@ export const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 export const isDemoMode = !isLiveMode;
 
 /**
+ * Whether to offer "Continue with Google".
+ *
+ * Keyed on the CLIENT ID, which is public by design — it travels in the URL
+ * the browser sends to Google. The secret stays server-side in
+ * GOOGLE_CLIENT_SECRET and is never referenced from a client component.
+ */
+export const googleAuthEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+
+/**
  * There is NO seeded demo data. Every doctor, patient, SOS, request and
  * order in the app is created through the product itself (register,
  * book, SOS) — in demo mode into the in-browser store, in live mode

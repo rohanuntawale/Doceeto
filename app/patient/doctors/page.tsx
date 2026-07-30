@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Star,
@@ -136,6 +137,10 @@ function DoctorsBrowser() {
   const matched = useMemo(() => {
     const q = query.trim().toLowerCase();
     const out = doctors.filter((d) => {
+      // Offline doctors are off the platform entirely. The live API already
+      // withholds them; this keeps demo mode (and any carve-out rows a
+      // patient's own history brings along) out of discovery too.
+      if (d.status === "offline") return false;
       if (q && !`${d.fullName} ${d.specialty}`.toLowerCase().includes(q)) return false;
       if (filters.specialty !== "any" && d.specialty !== filters.specialty) return false;
       if (filters.maxPrice !== null && d.consultFee > filters.maxPrice) return false;
@@ -253,6 +258,10 @@ function DoctorsBrowser() {
         patient={patient}
         onSelect={selectDoctor}
         onOpen={openProfile}
+        onClearFilters={() => {
+          setFilters(EMPTY_FILTERS);
+          setQuery("");
+        }}
       />
     </>
   );
@@ -272,7 +281,7 @@ function DoctorsBrowser() {
   }
 
   return (
-    <div className="map-chip-overlay relative -mx-4 -mt-4 h-[calc(100dvh-8.5rem)] min-h-[460px] overflow-hidden sm:-mx-6 lg:rounded-3xl lg:border lg:border-[var(--border)]">
+    <div className="map-chip-overlay relative -mx-4 -mt-4 -mb-[calc(var(--chrome-dock)+1.75rem)] h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[460px] overflow-hidden sm:-mx-6 lg:rounded-3xl lg:border lg:border-[var(--border)]">
       {/* Map layer. On desktop it stops where the side panel starts, so the
           panel sits beside the map rather than covering it. */}
       <div
@@ -297,13 +306,26 @@ function DoctorsBrowser() {
           panelOpen && "lg:right-96",
         )}
       >
-        <div className="glass-control pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm">
-          <Stethoscope className="h-4 w-4 text-primary" />
-          <span className="font-medium text-cream">
-            {filters.specialty !== "any" ? filters.specialty : "All doctors"}
-          </span>
-          <span className="text-[var(--text-faint)]">·</span>
-          <span className="text-[var(--text-muted)]">{onMap.length} near you</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            onClick={() => (window.history.length > 1 ? router.back() : router.push("/patient"))}
+            aria-label="Go back"
+            title="Go back"
+            className="glass-control pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-full text-cream transition-colors hover:bg-[rgb(var(--c-terracotta))]/10"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          {/* min-w-0 + truncate: a long specialty ("General Physician") plus
+              the count can outgrow a 320px phone; the name gives way and the
+              count stays whole. */}
+          <div className="glass-control pointer-events-auto flex min-w-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm">
+            <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
+            <span className="min-w-0 truncate font-medium text-cream">
+              {filters.specialty !== "any" ? filters.specialty : "All doctors"}
+            </span>
+            <span className="text-[var(--text-faint)]">·</span>
+            <span className="whitespace-nowrap text-[var(--text-muted)]">{onMap.length} near you</span>
+          </div>
         </div>
       </div>
 
@@ -496,11 +518,13 @@ function DoctorList({
   patient,
   onSelect,
   onOpen,
+  onClearFilters,
 }: {
   doctors: Doctor[];
   patient: { lat: number; lng: number };
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
+  onClearFilters: () => void;
 }) {
   return (
     <section>
@@ -511,16 +535,23 @@ function DoctorList({
         <span className="text-xs text-[var(--text-faint)]">{doctors.length} available</span>
       </div>
       {doctors.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[var(--text-muted)]">
-          No doctors match this search. Try a different name or speciality.
-        </p>
+        <div className="py-10 text-center">
+          <p className="text-sm text-[var(--text-muted)]">
+            No doctors match this search. Try a different name or speciality.
+          </p>
+          <button
+            onClick={onClearFilters}
+            className="mt-3 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-on-accent"
+          >
+            Clear search &amp; filters
+          </button>
+        </div>
       ) : (
         <div className="space-y-2">
           {doctors.map((d) => (
             <button
               key={d.id}
               onClick={() => onSelect(d.id)}
-              onDoubleClick={() => onOpen(d.id)}
               className="glass-inset flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:border-primary/40"
             >
               <span
@@ -567,7 +598,27 @@ function DoctorList({
                   )}
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
+              {/* Explicit way into the profile — double-tap isn't a mobile
+                  gesture, so the chevron is a real control, not decoration. */}
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${d.fullName}'s profile`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(d.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpen(d.id);
+                  }
+                }}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--text-faint)] transition-colors hover:bg-white/5 hover:text-cream"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </span>
             </button>
           ))}
         </div>
@@ -695,10 +746,14 @@ function FilterSheet({
   onClose: () => void;
 }) {
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
-  return (
-    <div className="absolute inset-0 z-50">
+  // Portalled like every other dialog: rendered in place it sits inside
+  // <main>'s z-10 stacking context, where the shell's scrim, tab pill and
+  // dock all paint over it. (Only mounted after a user tap, so document
+  // is always available.)
+  return createPortal(
+    <div className="fixed inset-0 z-[90]">
       <button aria-hidden onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="absolute inset-x-0 bottom-0 max-h-[85%] overflow-y-auto rounded-t-3xl border-t border-[var(--border)] bg-[var(--glass-bg-strong)] p-5 shadow-soft-lg backdrop-blur-xl">
+      <div className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-[var(--border)] bg-[var(--glass-bg-strong)] p-5 shadow-soft-lg backdrop-blur-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-cream">Filters</h2>
           <button onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full fh-tile text-[var(--text-muted)]">
@@ -780,7 +835,8 @@ function FilterSheet({
           Show doctors
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

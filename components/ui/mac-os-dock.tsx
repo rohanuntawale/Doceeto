@@ -101,11 +101,16 @@ const MacOSDock: React.FC<MacOSDockProps> = ({
     [baseIconSize, baseSpacing],
   );
 
+  // Reset geometry only when the icon count or sizing config changes — the
+  // shells rebuild the `apps` array on every render (live data polls), and
+  // keying on its identity reset scales/positions mid-animation, which is
+  // what left the tiles overlapping each other.
   useEffect(() => {
     const initialScales = apps.map(() => minScale);
     setCurrentScales(initialScales);
     setCurrentPositions(calculatePositions(initialScales));
-  }, [apps, calculatePositions, minScale, config]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apps.length, calculatePositions, minScale, config]);
 
   const animateToTarget = useCallback(() => {
     const targetScales = calculateTargetMagnification(mouseX);
@@ -113,10 +118,19 @@ const MacOSDock: React.FC<MacOSDockProps> = ({
     const lerpFactor = mouseX !== null ? 0.2 : 0.12;
 
     setCurrentScales((prev) =>
-      prev.map((s, i) => s + (targetScales[i] - s) * lerpFactor),
+      targetScales.map((t, i) => {
+        const s = prev[i] ?? minScale;
+        return s + (t - s) * lerpFactor;
+      }),
     );
+    // Map over the TARGET so a not-yet-initialised (empty) position array
+    // seeds itself instead of staying empty forever — the empty state drew
+    // every icon at the tray's left edge, stacked on top of each other.
     setCurrentPositions((prev) =>
-      prev.map((p, i) => p + ((targetPositions[i] ?? p) - p) * lerpFactor),
+      targetPositions.map((t, i) => {
+        const p = prev[i] ?? t;
+        return p + (t - p) * lerpFactor;
+      }),
     );
 
     const scalesNeedUpdate = currentScales.some(
@@ -201,8 +215,11 @@ const MacOSDock: React.FC<MacOSDockProps> = ({
     >
       <div className="relative" style={{ height: `${baseIconSize}px`, width: "100%" }}>
         {apps.map((app, index) => {
-          const scale = currentScales[index];
-          const position = currentPositions[index] || 0;
+          const scale = currentScales[index] ?? 1;
+          // Fall back to the icon's rest slot, never 0 — a 0 fallback piled
+          // every icon onto the left edge for the first frames.
+          const restCenter = index * (baseIconSize + baseSpacing) + baseIconSize / 2;
+          const position = currentPositions[index] ?? restCenter;
           const scaledSize = baseIconSize * scale;
           return (
             <div

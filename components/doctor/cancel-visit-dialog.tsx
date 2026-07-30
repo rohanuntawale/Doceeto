@@ -84,7 +84,7 @@ export function CancelVisitDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="label">ZUMI · CANCEL</div>
+            <div className="label">DOCEETO · CANCEL</div>
             <h3 className="font-serif text-xl text-cream">Cancel this visit</h3>
           </div>
           <button

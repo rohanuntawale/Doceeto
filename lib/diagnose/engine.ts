@@ -28,6 +28,28 @@ export type Specialty =
   | "Psychiatrist"
   | "Neurologist";
 
+/** How strongly the answers point at a cause. Deliberately three coarse
+ *  buckets — a percentage would imply precision a triage funnel doesn't have. */
+export type Likelihood = "likely" | "possible" | "less-likely";
+
+/**
+ * One entry in the differential: a plain-language possibility plus the
+ * specialty that treats it. This is the point of the checker — a symptom
+ * rarely maps to a single doctor. Back pain can be a muscle strain (Orthopedic)
+ * or a pinched nerve (Neurologist); chest tightness can be the heart
+ * (Cardiologist) or reflux (General Physician). The patient should see the
+ * candidates and who handles each, not just one specialty handed down.
+ */
+export interface DCause {
+  /** plain-language possibility — never phrased as a settled diagnosis */
+  name: string;
+  likelihood: Likelihood;
+  /** one short line: why this fits what they told us */
+  why?: string;
+  /** who treats it — must be bookable */
+  specialty: Specialty;
+}
+
 export interface DOption {
   /** stable value used to record the answer */
   value: string;
@@ -37,6 +59,8 @@ export interface DOption {
   score?: Partial<Record<Specialty, number>>;
   /** plain-language possibilities this answer suggests (not a diagnosis) */
   conditions?: string[];
+  /** candidate causes this answer opens up, each with its own specialty */
+  causes?: DCause[];
   /** bump the running urgency */
   urgency?: Urgency;
   /** a red-flag → jumps straight to an emergency conclusion */
@@ -72,6 +96,8 @@ export interface DState {
   seed: string;
   scores: Record<string, number>;
   conditions: string[];
+  /** running differential, deduped by name */
+  causes: DCause[];
   tags: string[];
   urgency: Urgency;
   flags: { label: string; sos: SosCategory }[];
@@ -88,6 +114,15 @@ export interface DConclusion {
   advice: string;
   emergency: boolean;
   sosCategory?: SosCategory;
+  /** plain-language read of what's most likely going on */
+  summary?: string;
+  /** ranked differential. Optional because sessions saved before this existed
+   *  are replayed from localStorage and have no causes — the UI falls back to
+   *  showing `conditions` for those. */
+  causes?: DCause[];
+  /** Extra specialties the advice recommends that no cause covers, so the UI
+   *  can still offer a booking button for them. */
+  alsoSee?: Specialty[];
 }
 
 export type DStep =
@@ -96,6 +131,8 @@ export type DStep =
 
 const RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency: 2 };
 const bump = (a: Urgency, b: Urgency): Urgency => (RANK[b] > RANK[a] ? b : a);
+
+const LIK_RANK: Record<Likelihood, number> = { likely: 2, possible: 1, "less-likely": 0 };
 
 const has = (s: DState, tag: string) => s.tags.includes(tag);
 const scoreOf = (s: DState, sp: Specialty) => s.scores[sp] ?? 0;
@@ -142,10 +179,53 @@ const Q_CHEST: DQuestion = {
   prompt: "What does the chest feel like?",
   when: (s) => has(s, "area:chest"),
   options: [
-    { value: "pressure", label: "Tight, heavy or pressure", emoji: "🫀", score: { Cardiologist: 4 }, conditions: ["Possible heart-related problem"], urgency: "urgent" },
-    { value: "cough", label: "Cough, cold or wheeze", emoji: "😮‍💨", score: { "General Physician": 4 }, conditions: ["Chest infection / breathing issue"] },
-    { value: "sharp", label: "Sharp, worse on breathing in", emoji: "📌", score: { "General Physician": 3, Cardiologist: 1 }, urgency: "urgent" },
-    { value: "palp", label: "Racing or skipping heartbeat", emoji: "💓", score: { Cardiologist: 4 }, conditions: ["Palpitations"], urgency: "urgent" },
+    {
+      value: "pressure",
+      label: "Tight, heavy or pressure",
+      emoji: "🫀",
+      score: { Cardiologist: 4 },
+      conditions: ["Possible heart-related problem"],
+      urgency: "urgent",
+      causes: [
+        { name: "Reduced blood flow to the heart", likelihood: "possible", why: "Tight, heavy chest pressure is the classic pattern.", specialty: "Cardiologist" },
+        { name: "Acid reflux mimicking heart pain", likelihood: "possible", why: "Reflux causes very similar pressure behind the breastbone.", specialty: "General Physician" },
+        { name: "Chest wall or muscle strain", likelihood: "less-likely", why: "Possible if it followed lifting or coughing.", specialty: "Orthopedic" },
+      ],
+    },
+    {
+      value: "cough",
+      label: "Cough, cold or wheeze",
+      emoji: "😮‍💨",
+      score: { "General Physician": 4 },
+      conditions: ["Chest infection / breathing issue"],
+      causes: [
+        { name: "Chest infection or bronchitis", likelihood: "likely", why: "Cough with chest discomfort usually means an airway infection.", specialty: "General Physician" },
+        { name: "Asthma or allergic airway narrowing", likelihood: "possible", why: "Wheeze points at the airways tightening.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "sharp",
+      label: "Sharp, worse on breathing in",
+      emoji: "📌",
+      score: { "General Physician": 3, Cardiologist: 1 },
+      urgency: "urgent",
+      causes: [
+        { name: "Inflammation of the lung lining", likelihood: "possible", why: "Pain that sharpens when you breathe in fits the lung lining.", specialty: "General Physician" },
+        { name: "Rib or muscle strain", likelihood: "possible", why: "Movement-linked sharp pain is often muscular.", specialty: "Orthopedic" },
+      ],
+    },
+    {
+      value: "palp",
+      label: "Racing or skipping heartbeat",
+      emoji: "💓",
+      score: { Cardiologist: 4 },
+      conditions: ["Palpitations"],
+      urgency: "urgent",
+      causes: [
+        { name: "Irregular heart rhythm", likelihood: "possible", why: "A racing or skipping beat needs a rhythm check.", specialty: "Cardiologist" },
+        { name: "Anxiety or an overactive thyroid", likelihood: "possible", why: "Both commonly cause palpitations with a normal heart.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -154,13 +234,67 @@ const Q_HEAD: DQuestion = {
   prompt: "Which fits best?",
   when: (s) => has(s, "area:head"),
   options: [
-    { value: "throat", label: "Sore throat or ear pain", emoji: "👂", score: { ENT: 4 }, conditions: ["Ear / nose / throat issue"] },
-    { value: "sinus", label: "Blocked nose or sinus", emoji: "👃", score: { ENT: 3, "General Physician": 1 }, conditions: ["Sinus / cold"] },
-    { value: "headache", label: "Headache or migraine", emoji: "🤯", score: { "General Physician": 2, Neurologist: 2 }, conditions: ["Headache / migraine"] },
+    {
+      value: "throat",
+      label: "Sore throat or ear pain",
+      emoji: "👂",
+      score: { ENT: 4 },
+      conditions: ["Ear / nose / throat issue"],
+      causes: [
+        { name: "Throat or tonsil infection", likelihood: "likely", why: "Sore throat with pain on swallowing.", specialty: "ENT" },
+        { name: "Middle-ear infection", likelihood: "possible", why: "Ear pain often travels with a throat infection.", specialty: "ENT" },
+      ],
+    },
+    {
+      value: "sinus",
+      label: "Blocked nose or sinus",
+      emoji: "👃",
+      score: { ENT: 3, "General Physician": 1 },
+      conditions: ["Sinus / cold"],
+      causes: [
+        { name: "Sinus infection", likelihood: "likely", why: "Blockage with facial pressure fits the sinuses.", specialty: "ENT" },
+        { name: "Allergic rhinitis", likelihood: "possible", why: "Common if it comes and goes with dust or weather.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "headache",
+      label: "Headache or migraine",
+      emoji: "🤯",
+      score: { "General Physician": 2, Neurologist: 2 },
+      conditions: ["Headache / migraine"],
+      causes: [
+        { name: "Tension headache", likelihood: "likely", why: "The commonest cause — tight band-like head pain.", specialty: "General Physician" },
+        { name: "Migraine", likelihood: "possible", why: "Fits if it throbs, or light and sound make it worse.", specialty: "Neurologist" },
+        { name: "Sinus-related headache", likelihood: "possible", why: "Fits if the pain sits over the forehead or cheeks.", specialty: "ENT" },
+      ],
+    },
     // Balance sits between the inner ear and the nerves, so it stays a tie
     // until the duration and severity answers break it.
-    { value: "dizzy", label: "Dizziness or balance", emoji: "🌀", score: { ENT: 2, Neurologist: 2, "General Physician": 1 }, conditions: ["Dizziness"] },
-    { value: "nerve", label: "Numbness, tremor or fits", emoji: "⚡", score: { Neurologist: 4 }, conditions: ["Nerve / brain-related symptom"], urgency: "urgent" },
+    {
+      value: "dizzy",
+      label: "Dizziness or balance",
+      emoji: "🌀",
+      score: { ENT: 2, Neurologist: 2, "General Physician": 1 },
+      conditions: ["Dizziness"],
+      causes: [
+        { name: "Inner-ear vertigo", likelihood: "possible", why: "Spinning that changes with head position starts in the ear.", specialty: "ENT" },
+        { name: "Low blood pressure or low haemoglobin", likelihood: "possible", why: "Light-headedness on standing points here.", specialty: "General Physician" },
+        { name: "A nerve or brain-related cause", likelihood: "less-likely", why: "Considered when balance is off even while sitting still.", specialty: "Neurologist" },
+      ],
+    },
+    {
+      value: "nerve",
+      label: "Numbness, tremor or fits",
+      emoji: "⚡",
+      score: { Neurologist: 4 },
+      conditions: ["Nerve / brain-related symptom"],
+      urgency: "urgent",
+      causes: [
+        { name: "Nerve compression or damage", likelihood: "possible", why: "Numbness and tingling follow a squeezed nerve.", specialty: "Neurologist" },
+        { name: "A seizure or tremor disorder", likelihood: "possible", why: "Fits and tremors need a nerve specialist's read.", specialty: "Neurologist" },
+        { name: "Low vitamin B12 or thyroid problem", likelihood: "possible", why: "Both cause numbness and are simple to test for.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -169,10 +303,51 @@ const Q_TUMMY: DQuestion = {
   prompt: "What's the stomach trouble?",
   when: (s) => has(s, "area:tummy"),
   options: [
-    { value: "vomit", label: "Vomiting or loose motions", emoji: "🤢", score: { "General Physician": 4 }, conditions: ["Stomach infection"], urgency: "urgent" },
-    { value: "acidity", label: "Burning or acidity", emoji: "🔥", score: { "General Physician": 3 }, conditions: ["Acidity / indigestion"] },
-    { value: "lowerpain", label: "Lower belly pain", emoji: "😖", score: { "General Physician": 2, Gynecologist: 1 } },
-    { value: "constip", label: "Constipation or gas", emoji: "🫧", score: { "General Physician": 3 } },
+    {
+      value: "vomit",
+      label: "Vomiting or loose motions",
+      emoji: "🤢",
+      score: { "General Physician": 4 },
+      conditions: ["Stomach infection"],
+      urgency: "urgent",
+      causes: [
+        { name: "Stomach infection or food poisoning", likelihood: "likely", why: "Vomiting with loose motions is the classic pattern.", specialty: "General Physician" },
+        { name: "Dehydration from fluid loss", likelihood: "possible", why: "Follows quickly once vomiting and motions set in.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "acidity",
+      label: "Burning or acidity",
+      emoji: "🔥",
+      score: { "General Physician": 3 },
+      conditions: ["Acidity / indigestion"],
+      causes: [
+        { name: "Acid reflux or gastritis", likelihood: "likely", why: "Burning that's worse after meals or lying down.", specialty: "General Physician" },
+        { name: "Stomach ulcer", likelihood: "possible", why: "Considered when the burning keeps coming back.", specialty: "General Physician" },
+        { name: "Heart-related pain mistaken for acidity", likelihood: "less-likely", why: "Worth ruling out if it comes on with exertion.", specialty: "Cardiologist" },
+      ],
+    },
+    {
+      value: "lowerpain",
+      label: "Lower belly pain",
+      emoji: "😖",
+      score: { "General Physician": 2, Gynecologist: 1 },
+      causes: [
+        { name: "Urine infection", likelihood: "possible", why: "Common cause of lower belly pain, especially with burning.", specialty: "General Physician" },
+        { name: "Period or ovary-related cause", likelihood: "possible", why: "Fits if it tracks with the monthly cycle.", specialty: "Gynecologist" },
+        { name: "Appendicitis", likelihood: "less-likely", why: "Needs ruling out if pain settles low on the right and worsens.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "constip",
+      label: "Constipation or gas",
+      emoji: "🫧",
+      score: { "General Physician": 3 },
+      causes: [
+        { name: "Constipation from diet or low fluids", likelihood: "likely", why: "The usual cause, and the easiest to correct.", specialty: "General Physician" },
+        { name: "Irritable bowel syndrome", likelihood: "possible", why: "Fits when bloating and habit changes keep recurring.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -181,10 +356,49 @@ const Q_SKIN: DQuestion = {
   prompt: "What does the skin issue look like?",
   when: (s) => has(s, "area:skin"),
   options: [
-    { value: "rash", label: "Rash or itching", emoji: "🌡️", score: { Dermatologist: 3 } },
-    { value: "acne", label: "Acne or pimples", emoji: "🔴", score: { Dermatologist: 3 } },
-    { value: "hair", label: "Hair fall", emoji: "💇", score: { Dermatologist: 3 } },
-    { value: "infection", label: "Fungal or spreading", emoji: "🍄", score: { Dermatologist: 3 }, urgency: "urgent" },
+    {
+      value: "rash",
+      label: "Rash or itching",
+      emoji: "🌡️",
+      score: { Dermatologist: 3 },
+      causes: [
+        { name: "Eczema or an allergic rash", likelihood: "likely", why: "Itchy rashes are most often allergic or eczema.", specialty: "Dermatologist" },
+        { name: "Contact reaction to soap, metal or plants", likelihood: "possible", why: "Fits if it appeared where something touched the skin.", specialty: "Dermatologist" },
+        { name: "Rash from an infection like dengue", likelihood: "less-likely", why: "Considered when a fever came with it.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "acne",
+      label: "Acne or pimples",
+      emoji: "🔴",
+      score: { Dermatologist: 3 },
+      causes: [
+        { name: "Acne", likelihood: "likely", why: "Blocked oil glands — the standard cause.", specialty: "Dermatologist" },
+        { name: "A hormonal cause such as PCOS", likelihood: "possible", why: "Considered with irregular periods or jawline acne.", specialty: "Gynecologist" },
+      ],
+    },
+    {
+      value: "hair",
+      label: "Hair fall",
+      emoji: "💇",
+      score: { Dermatologist: 3 },
+      causes: [
+        { name: "Pattern hair loss", likelihood: "likely", why: "The commonest cause, often runs in the family.", specialty: "Dermatologist" },
+        { name: "Low iron, thyroid or vitamin problem", likelihood: "possible", why: "Very common and reversible — worth a blood test.", specialty: "General Physician" },
+        { name: "Scalp fungal infection", likelihood: "possible", why: "Fits with flaking, itching or patchy loss.", specialty: "Dermatologist" },
+      ],
+    },
+    {
+      value: "infection",
+      label: "Fungal or spreading",
+      emoji: "🍄",
+      score: { Dermatologist: 3 },
+      urgency: "urgent",
+      causes: [
+        { name: "Fungal skin infection", likelihood: "likely", why: "Spreading, ring-like itchy patches.", specialty: "Dermatologist" },
+        { name: "Bacterial skin infection", likelihood: "possible", why: "Considered when the skin is hot, painful or oozing.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -193,10 +407,51 @@ const Q_BONES: DQuestion = {
   prompt: "What happened?",
   when: (s) => has(s, "area:bones"),
   options: [
-    { value: "injury", label: "A fall or injury", emoji: "🩹", score: { Orthopedic: 4 }, urgency: "urgent" },
-    { value: "joint", label: "Joint or knee pain", emoji: "🦵", score: { Orthopedic: 3 } },
-    { value: "back", label: "Back or neck pain", emoji: "🔙", score: { Orthopedic: 3 } },
-    { value: "swelling", label: "Swelling in a limb", emoji: "🫃", score: { Orthopedic: 3 }, urgency: "urgent" },
+    {
+      value: "injury",
+      label: "A fall or injury",
+      emoji: "🩹",
+      score: { Orthopedic: 4 },
+      urgency: "urgent",
+      causes: [
+        { name: "Fracture or sprain", likelihood: "likely", why: "Pain straight after a fall usually means bone or ligament.", specialty: "Orthopedic" },
+        { name: "Torn ligament or cartilage", likelihood: "possible", why: "Fits if the joint feels loose or locks up.", specialty: "Orthopedic" },
+        { name: "Nerve bruised in the injury", likelihood: "less-likely", why: "Considered if there's numbness or weakness past the injury.", specialty: "Neurologist" },
+      ],
+    },
+    {
+      value: "joint",
+      label: "Joint or knee pain",
+      emoji: "🦵",
+      score: { Orthopedic: 3 },
+      causes: [
+        { name: "Joint wear (osteoarthritis)", likelihood: "likely", why: "Gradual joint pain that's worse on movement.", specialty: "Orthopedic" },
+        { name: "Inflammatory arthritis or gout", likelihood: "possible", why: "Fits if the joint is hot, red and swollen in attacks.", specialty: "Orthopedic" },
+        { name: "Vitamin D or calcium deficiency", likelihood: "possible", why: "A very common cause of aching joints, easily tested.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "back",
+      label: "Back or neck pain",
+      emoji: "🔙",
+      score: { Orthopedic: 3 },
+      causes: [
+        { name: "Muscle strain", likelihood: "likely", why: "The commonest cause of back and neck pain.", specialty: "Orthopedic" },
+        { name: "Slipped disc pressing on a nerve", likelihood: "possible", why: "Fits if pain shoots down an arm or leg.", specialty: "Orthopedic" },
+        { name: "Pinched nerve (sciatica)", likelihood: "possible", why: "Fits with tingling, numbness or weakness in a limb.", specialty: "Neurologist" },
+      ],
+    },
+    {
+      value: "swelling",
+      label: "Swelling in a limb",
+      emoji: "🫃",
+      score: { Orthopedic: 3 },
+      urgency: "urgent",
+      causes: [
+        { name: "Swelling from injury or infection", likelihood: "possible", why: "The usual cause when one limb swells.", specialty: "Orthopedic" },
+        { name: "A clot in a deep vein", likelihood: "possible", why: "Needs ruling out when one leg swells and aches.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -205,10 +460,47 @@ const Q_MIND: DQuestion = {
   prompt: "What's been hardest?",
   when: (s) => has(s, "area:mind"),
   options: [
-    { value: "anxiety", label: "Anxiety or panic", emoji: "😰", score: { Psychiatrist: 4 } },
-    { value: "low", label: "Feeling low or hopeless", emoji: "😔", score: { Psychiatrist: 4 }, urgency: "urgent" },
-    { value: "sleep", label: "Can't sleep", emoji: "🌙", score: { Psychiatrist: 3 } },
-    { value: "stress", label: "Stress or burnout", emoji: "😵", score: { Psychiatrist: 3 } },
+    {
+      value: "anxiety",
+      label: "Anxiety or panic",
+      emoji: "😰",
+      score: { Psychiatrist: 4 },
+      causes: [
+        { name: "Anxiety or panic disorder", likelihood: "likely", why: "Racing worry with physical symptoms fits anxiety.", specialty: "Psychiatrist" },
+        { name: "An overactive thyroid", likelihood: "possible", why: "Mimics anxiety closely and shows up on a blood test.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "low",
+      label: "Feeling low or hopeless",
+      emoji: "😔",
+      score: { Psychiatrist: 4 },
+      urgency: "urgent",
+      causes: [
+        { name: "Depression", likelihood: "likely", why: "Persistent low mood and loss of interest.", specialty: "Psychiatrist" },
+        { name: "Thyroid or vitamin deficiency", likelihood: "possible", why: "Both can flatten mood and energy.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "sleep",
+      label: "Can't sleep",
+      emoji: "🌙",
+      score: { Psychiatrist: 3 },
+      causes: [
+        { name: "Insomnia, often driven by stress", likelihood: "likely", why: "Trouble falling or staying asleep.", specialty: "Psychiatrist" },
+        { name: "Sleep apnoea", likelihood: "possible", why: "Considered with loud snoring and daytime sleepiness.", specialty: "ENT" },
+      ],
+    },
+    {
+      value: "stress",
+      label: "Stress or burnout",
+      emoji: "😵",
+      score: { Psychiatrist: 3 },
+      causes: [
+        { name: "Stress reaction or burnout", likelihood: "likely", why: "Exhaustion tied to ongoing pressure.", specialty: "Psychiatrist" },
+        { name: "Low haemoglobin or thyroid problem", likelihood: "possible", why: "Physical causes of constant tiredness are worth excluding.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -217,10 +509,45 @@ const Q_WOMEN: DQuestion = {
   prompt: "Which is it about?",
   when: (s) => has(s, "area:women"),
   options: [
-    { value: "pregnancy", label: "Pregnancy care", emoji: "🤰", score: { Gynecologist: 4 } },
-    { value: "period", label: "Period problems", emoji: "🩸", score: { Gynecologist: 4 } },
-    { value: "pcos", label: "PCOS / hormonal", emoji: "⚖️", score: { Gynecologist: 3 } },
-    { value: "other", label: "Something else", emoji: "💬", score: { Gynecologist: 2, "General Physician": 1 } },
+    {
+      value: "pregnancy",
+      label: "Pregnancy care",
+      emoji: "🤰",
+      score: { Gynecologist: 4 },
+      causes: [
+        { name: "Routine pregnancy care", likelihood: "likely", why: "Checks and scans through the pregnancy.", specialty: "Gynecologist" },
+      ],
+    },
+    {
+      value: "period",
+      label: "Period problems",
+      emoji: "🩸",
+      score: { Gynecologist: 4 },
+      causes: [
+        { name: "Hormonal imbalance", likelihood: "likely", why: "The usual reason periods turn irregular.", specialty: "Gynecologist" },
+        { name: "Fibroids or a growth in the womb", likelihood: "possible", why: "Considered with heavy or prolonged bleeding.", specialty: "Gynecologist" },
+        { name: "Low haemoglobin from heavy periods", likelihood: "possible", why: "Explains tiredness alongside heavy bleeding.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "pcos",
+      label: "PCOS / hormonal",
+      emoji: "⚖️",
+      score: { Gynecologist: 3 },
+      causes: [
+        { name: "PCOS", likelihood: "likely", why: "Irregular cycles with weight or skin changes.", specialty: "Gynecologist" },
+        { name: "Thyroid problem", likelihood: "possible", why: "Also disturbs cycles and weight.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "other",
+      label: "Something else",
+      emoji: "💬",
+      score: { Gynecologist: 2, "General Physician": 1 },
+      causes: [
+        { name: "Needs a gynaecologist's assessment", likelihood: "possible", why: "Best narrowed down in person.", specialty: "Gynecologist" },
+      ],
+    },
   ],
 };
 
@@ -229,11 +556,60 @@ const Q_FEVER: DQuestion = {
   prompt: "What comes with the fever?",
   when: (s) => has(s, "area:fever"),
   options: [
-    { value: "cough", label: "Cough, cold or sore throat", emoji: "🤧", score: { "General Physician": 3 }, conditions: ["Likely a viral infection"] },
-    { value: "tummy", label: "Vomiting or loose motions", emoji: "🤢", score: { "General Physician": 3 }, conditions: ["Stomach infection"], urgency: "urgent" },
-    { value: "rash", label: "A rash or spots", emoji: "🔴", score: { "General Physician": 3, Dermatologist: 1 }, urgency: "urgent" },
-    { value: "long", label: "High fever for 3+ days", emoji: "🌡️", score: { "General Physician": 4 }, urgency: "urgent" },
-    { value: "ache", label: "Just body ache and weakness", emoji: "💤", score: { "General Physician": 3 } },
+    {
+      value: "cough",
+      label: "Cough, cold or sore throat",
+      emoji: "🤧",
+      score: { "General Physician": 3 },
+      conditions: ["Likely a viral infection"],
+      causes: [
+        { name: "Viral fever or flu", likelihood: "likely", why: "Fever with cold and cough is usually viral.", specialty: "General Physician" },
+        { name: "Throat or tonsil infection", likelihood: "possible", why: "Fits if swallowing hurts most.", specialty: "ENT" },
+      ],
+    },
+    {
+      value: "tummy",
+      label: "Vomiting or loose motions",
+      emoji: "🤢",
+      score: { "General Physician": 3 },
+      conditions: ["Stomach infection"],
+      urgency: "urgent",
+      causes: [
+        { name: "Stomach infection", likelihood: "likely", why: "Fever with vomiting or motions.", specialty: "General Physician" },
+        { name: "Typhoid", likelihood: "possible", why: "Considered with sustained fever and belly upset.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "rash",
+      label: "A rash or spots",
+      emoji: "🔴",
+      score: { "General Physician": 3, Dermatologist: 1 },
+      urgency: "urgent",
+      causes: [
+        { name: "Dengue or another viral fever", likelihood: "possible", why: "Fever with a rash needs dengue excluded.", specialty: "General Physician" },
+        { name: "A drug or allergic reaction", likelihood: "possible", why: "Considered if a new medicine was started.", specialty: "Dermatologist" },
+      ],
+    },
+    {
+      value: "long",
+      label: "High fever for 3+ days",
+      emoji: "🌡️",
+      score: { "General Physician": 4 },
+      urgency: "urgent",
+      causes: [
+        { name: "Dengue, malaria or typhoid", likelihood: "possible", why: "Fever past three days needs blood tests.", specialty: "General Physician" },
+        { name: "A bacterial infection needing antibiotics", likelihood: "possible", why: "Considered when fever won't settle on its own.", specialty: "General Physician" },
+      ],
+    },
+    {
+      value: "ache",
+      label: "Just body ache and weakness",
+      emoji: "💤",
+      score: { "General Physician": 3 },
+      causes: [
+        { name: "Viral fever", likelihood: "likely", why: "Body ache and weakness without other clues.", specialty: "General Physician" },
+      ],
+    },
   ],
 };
 
@@ -242,11 +618,65 @@ const Q_CHILD: DQuestion = {
   prompt: "What's troubling your child?",
   when: (s) => has(s, "area:child"),
   options: [
-    { value: "fever", label: "Fever or infection", emoji: "🤒", score: { Pediatrician: 4 }, conditions: ["Childhood fever / infection"] },
-    { value: "breath", label: "Cough, cold or breathing", emoji: "😮‍💨", score: { Pediatrician: 4 }, conditions: ["Child breathing / chest issue"], urgency: "urgent" },
-    { value: "tummy", label: "Vomiting or loose motions", emoji: "🤢", score: { Pediatrician: 4 }, conditions: ["Child stomach infection"], urgency: "urgent" },
-    { value: "skin", label: "Rash or skin problem", emoji: "🧴", score: { Pediatrician: 3, Dermatologist: 1 }, conditions: ["Child skin condition"] },
-    { value: "growth", label: "Feeding, growth or vaccination", emoji: "🍼", score: { Pediatrician: 4 }, conditions: ["Child growth / immunisation"] },
+    {
+      value: "fever",
+      label: "Fever or infection",
+      emoji: "🤒",
+      score: { Pediatrician: 4 },
+      conditions: ["Childhood fever / infection"],
+      causes: [
+        { name: "Childhood viral infection", likelihood: "likely", why: "Most childhood fevers are viral and settle on their own.", specialty: "Pediatrician" },
+        { name: "Ear or throat infection", likelihood: "possible", why: "A very common source of fever in children.", specialty: "Pediatrician" },
+        { name: "Dengue or typhoid", likelihood: "possible", why: "Considered if the fever runs past three days.", specialty: "Pediatrician" },
+      ],
+    },
+    {
+      value: "breath",
+      label: "Cough, cold or breathing",
+      emoji: "😮‍💨",
+      score: { Pediatrician: 4 },
+      conditions: ["Child breathing / chest issue"],
+      urgency: "urgent",
+      causes: [
+        { name: "Chest infection", likelihood: "likely", why: "Cough with fast or laboured breathing.", specialty: "Pediatrician" },
+        { name: "Childhood asthma", likelihood: "possible", why: "Fits if wheezing keeps coming back.", specialty: "Pediatrician" },
+      ],
+    },
+    {
+      value: "tummy",
+      label: "Vomiting or loose motions",
+      emoji: "🤢",
+      score: { Pediatrician: 4 },
+      conditions: ["Child stomach infection"],
+      urgency: "urgent",
+      causes: [
+        { name: "Stomach infection", likelihood: "likely", why: "The usual cause of vomiting and motions in children.", specialty: "Pediatrician" },
+        { name: "Dehydration", likelihood: "possible", why: "The main risk in small children — watch for dry mouth and less urine.", specialty: "Pediatrician" },
+      ],
+    },
+    {
+      value: "skin",
+      label: "Rash or skin problem",
+      emoji: "🧴",
+      score: { Pediatrician: 3, Dermatologist: 1 },
+      conditions: ["Child skin condition"],
+      causes: [
+        { name: "Childhood eczema", likelihood: "likely", why: "Dry itchy patches are common in children.", specialty: "Pediatrician" },
+        { name: "A viral rash", likelihood: "possible", why: "Fits if a fever came with it.", specialty: "Pediatrician" },
+        { name: "Fungal or allergic skin reaction", likelihood: "possible", why: "Considered for spreading or well-defined patches.", specialty: "Dermatologist" },
+      ],
+    },
+    {
+      value: "growth",
+      label: "Feeding, growth or vaccination",
+      emoji: "🍼",
+      score: { Pediatrician: 4 },
+      conditions: ["Child growth / immunisation"],
+      causes: [
+        { name: "Growth and immunisation review", likelihood: "likely", why: "A routine check against the growth chart and schedule.", specialty: "Pediatrician" },
+        { name: "Iron or vitamin deficiency", likelihood: "possible", why: "A common reason for poor feeding and slow growth.", specialty: "Pediatrician" },
+      ],
+    },
   ],
 };
 
@@ -296,6 +726,7 @@ export function initState(seed = "", historyConditions: string[] = []): DState {
     seed: seed.trim(),
     scores: {},
     conditions: [],
+    causes: [],
     tags: [],
     urgency: "routine",
     flags: [],
@@ -339,10 +770,25 @@ function addCondition(s: DState, c: string) {
   if (!s.conditions.includes(c)) s.conditions.push(c);
 }
 
+/** Add a candidate cause, keeping the strongest likelihood seen for it. */
+function addCause(s: DState, c: DCause) {
+  const key = c.name.trim().toLowerCase();
+  const existing = s.causes.find((x) => x.name.trim().toLowerCase() === key);
+  if (!existing) {
+    s.causes.push({ ...c });
+    return;
+  }
+  if (LIK_RANK[c.likelihood] > LIK_RANK[existing.likelihood]) {
+    existing.likelihood = c.likelihood;
+    existing.why = c.why ?? existing.why;
+  }
+}
+
 /** Fold one option's effects into a state being built. */
 function foldOption(s: DState, opt: DOption) {
   if (opt.score) for (const k in opt.score) addScore(s, k as Specialty, opt.score[k as Specialty]!);
   if (opt.conditions) opt.conditions.forEach((c) => addCondition(s, c));
+  if (opt.causes) opt.causes.forEach((c) => addCause(s, c));
   if (opt.urgency) s.urgency = bump(s.urgency, opt.urgency);
   if (opt.tags) opt.tags.forEach((t) => !s.tags.includes(t) && s.tags.push(t));
   if (opt.flag) s.flags.push(opt.flag);
@@ -354,6 +800,9 @@ export function applyAnswer(prev: DState, q: DQuestion, opt: DOption): DState {
     ...prev,
     scores: { ...prev.scores },
     conditions: [...prev.conditions],
+    // Deep-copied: addCause mutates an existing entry's likelihood in place,
+    // which would otherwise reach back into the previous state.
+    causes: prev.causes.map((c) => ({ ...c })),
     tags: [...prev.tags],
     flags: [...prev.flags],
     answers: [...prev.answers, { questionId: q.id, prompt: q.prompt, value: opt.value, label: opt.label }],
@@ -443,6 +892,7 @@ export function applyText(prev: DState, text: string): DState {
     ...prev,
     scores: { ...prev.scores },
     conditions: [...prev.conditions],
+    causes: prev.causes.map((c) => ({ ...c })),
     tags: [...prev.tags],
     flags: [...prev.flags],
     answers: [
@@ -510,11 +960,56 @@ export function nextStep(s: DState): DStep {
   return conclude(s);
 }
 
+/**
+ * Rank the differential: strongest likelihood first, then by how much the
+ * answers pointed at that cause's specialty. Falls back to deriving causes
+ * from the collected `conditions` when a branch had none of its own, so the
+ * result card always has something to explain rather than a bare specialty.
+ */
+export function rankedCauses(s: DState): DCause[] {
+  const pool = s.causes.length
+    ? s.causes
+    : s.conditions.map<DCause>((c) => ({
+        name: c,
+        likelihood: "possible",
+        specialty: conditionToSpecialty(c) ?? "General Physician",
+      }));
+
+  return [...pool].sort((a, b) => {
+    const byLikelihood = LIK_RANK[b.likelihood] - LIK_RANK[a.likelihood];
+    if (byLikelihood !== 0) return byLikelihood;
+    return scoreOf(s, b.specialty) - scoreOf(s, a.specialty);
+  });
+}
+
+/** One plain-language line naming the leading possibility (never a verdict). */
+function summarise(causes: DCause[]): string | undefined {
+  const top = causes[0];
+  if (!top) return undefined;
+  const lead =
+    top.likelihood === "likely"
+      ? `This most likely points to ${top.name.toLowerCase()}`
+      : `The most likely explanation is ${top.name.toLowerCase()}`;
+  const others = causes.slice(1, 3).map((c) => c.name.toLowerCase());
+  if (others.length === 0) return `${lead}. A doctor still needs to confirm it.`;
+  return `${lead}, though ${others.join(" or ")} could also explain it. Only a doctor can confirm which.`;
+}
+
 function conclude(s: DState, emergency = false): DConclusion {
   const order = ranked(s);
-  const specialty = (order[0]?.specialty ?? "General Physician") as Specialty;
-  const alt = order[1]?.specialty as Specialty | undefined;
-  const conditions = s.conditions.length ? s.conditions : ["General consultation"];
+  const causes = rankedCauses(s);
+  // The differential leads, so the headline doctor is whoever treats the top
+  // candidate — otherwise the card could name a specialty that no listed cause
+  // actually points at. Scores still break ties inside `rankedCauses`.
+  const specialty = (causes[0]?.specialty ?? order[0]?.specialty ?? "General Physician") as Specialty;
+  const alt =
+    causes.find((c) => c.specialty !== specialty)?.specialty ??
+    (order.find((o) => o.specialty !== specialty)?.specialty as Specialty | undefined);
+  const conditions = s.conditions.length
+    ? s.conditions
+    : causes.length
+      ? causes.map((c) => c.name)
+      : ["General consultation"];
 
   if (emergency) {
     const flag = s.flags[0];
@@ -526,6 +1021,19 @@ function conclude(s: DState, emergency = false): DConclusion {
       conditions: [flag?.label ?? "Emergency", ...conditions],
       emergency: true,
       sosCategory: flag?.sos ?? "other",
+      // Phrased so the flag label is never the grammatical subject — labels are
+      // a mix of singular and plural ("Severe bleeding", "Heart-attack signs")
+      // and interpolating them before a verb gets the agreement wrong.
+      summary: `This needs emergency assessment right now, not an appointment${flag?.label ? ` — ${flag.label.toLowerCase()}` : ""}.`,
+      causes: [
+        {
+          name: flag?.label ?? "Possible emergency",
+          likelihood: "likely",
+          why: "Reported as happening right now.",
+          specialty,
+        },
+        ...causes.filter((c) => c.name !== flag?.label),
+      ],
       advice:
         "This looks like it could be an emergency. Get help immediately — call your local emergency number or go to the nearest hospital.",
     };
@@ -543,6 +1051,8 @@ function conclude(s: DState, emergency = false): DConclusion {
     alt,
     conditions,
     emergency: false,
+    summary: summarise(causes),
+    causes,
     advice,
   };
 }

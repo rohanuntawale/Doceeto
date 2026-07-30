@@ -47,6 +47,22 @@ export function CareStatus({
         kanji="癒"
         title="No active care"
         desc="Book a doctor or order medicine. It shows up here and updates live."
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link
+              href="/patient/doctors"
+              className="flex items-center gap-1.5 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-on-accent"
+            >
+              <Stethoscope className="h-4 w-4" /> Find a doctor
+            </Link>
+            <Link
+              href="/patient/medicine"
+              className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-cream"
+            >
+              <Pill className="h-4 w-4" /> Order medicine
+            </Link>
+          </div>
+        }
       />
     );
   }

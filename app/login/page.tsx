@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { homeFor, surfaceFromPath } from "@/lib/auth/constants";
+import { googleConfigured } from "@/lib/auth/google";
 import { LoginForm } from "@/app/login/login-form";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function LoginPage({
     // Signed in for that surface already (e.g. from another tab)? Let them
     // through, without dragging ?next= along.
     if (await getSession(wanted)) redirect(next);
-    return <LoginForm />;
+    return <LoginForm googleEnabled={googleConfigured()} />;
   }
 
   // No destination in mind — land whichever role this browser holds at home.

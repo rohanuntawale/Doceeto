@@ -138,7 +138,10 @@ function useGigsDemo(doctorId?: string): Gig[] {
   const s = useDemoState();
   if (!doctorId) return s.gigs;
   // Patient view of one doctor's shelf: nothing is hireable while that
-  // doctor is committed to a gig — same rule the live /api/data applies.
+  // doctor is committed to a gig or offline — same rules the live
+  // /api/data applies. Offline takes the whole shelf off the platform.
+  const doc = s.doctors.find((d) => d.id === doctorId);
+  if (!doc || doc.status === "offline") return [];
   if (isOnGig(s.requests, doctorId)) return [];
   return s.gigs.filter((g) => g.doctorId === doctorId);
 }
@@ -253,6 +256,8 @@ export interface Actions {
   createGig: (input: CreateGigInput) => Promise<void>;
   updateGig: (id: string, patch: Partial<Gig>) => Promise<void>;
   setGigStatus: (id: string, status: GigStatus) => Promise<void>;
+  /** Remove a listing for good. Rejects while a hire is still waiting on it. */
+  deleteGig: (id: string) => Promise<void>;
   /** Move an accepted visit one step along its rail. */
   advanceTrip: (id: string) => Promise<void>;
   requestPayout: (doctorId: string) => void;
@@ -325,6 +330,7 @@ export function useActions(): Actions {
         },
         updateGig: async (id, patch) => demoStore.updateGig(id, patch),
         setGigStatus: async (id, status) => demoStore.setGigStatus(id, status),
+        deleteGig: async (id) => demoStore.deleteGig(id),
         advanceTrip: async (id) => void demoStore.advanceTrip(id),
         requestPayout: demoStore.requestPayout,
         advanceOrder: (id) => demoStore.advanceOrder(id),
@@ -351,6 +357,7 @@ export function useActions(): Actions {
       updateGig: async (id, patch) => void (await callAction(qc, "updateGig", { id, patch })),
       setGigStatus: async (id, status) =>
         void (await callAction(qc, "setGigStatus", { id, status })),
+      deleteGig: async (id) => void (await callAction(qc, "deleteGig", { id })),
       advanceTrip: async (id) => void (await callAction(qc, "advanceTrip", { id })),
       requestPayout: () => callAction(qc, "requestPayout", {}),
       advanceOrder: (orderId, current) =>

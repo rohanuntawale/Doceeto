@@ -76,13 +76,13 @@ export default function SchedulePage() {
 
   return (
     <>
-      <PageHeader kanji="暦" label="ZUMI · SCHEDULE" title="Your schedule" />
+      <PageHeader kanji="暦" label="DOCEETO · SCHEDULE" title="Your schedule" />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         {/* ── Upcoming ────────────────────────────────── */}
         <Card>
           <CardHeader
-            label="ZUMI · UPCOMING"
+            label="DOCEETO · UPCOMING"
             title="Booked appointments"
             action={
               toConfirm > 0 ? (
@@ -97,7 +97,7 @@ export default function SchedulePage() {
               <EmptyState
                 kanji="暦"
                 title="Nothing booked yet"
-                desc="Set your hours on the right and patients can pick a slot."
+                desc="Set your weekly hours below and patients can pick a slot."
               />
             </div>
           ) : (
@@ -198,7 +198,7 @@ export default function SchedulePage() {
         {/* ── Availability ────────────────────────────── */}
         <Card>
           <CardHeader
-            label="ZUMI · AVAILABILITY"
+            label="DOCEETO · AVAILABILITY"
             title="When you can be booked"
             action={<CalendarDays className="h-4 w-4 text-[var(--text-faint)]" />}
           />

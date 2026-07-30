@@ -19,7 +19,8 @@ export interface Near {
 export interface UserRecord {
   id: string;
   email: string;
-  passwordHash: string;
+  /** Null when the account was created through Google and has no password. */
+  passwordHash: string | null;
   role: "patient" | "doctor" | "ops";
   name: string;
 }

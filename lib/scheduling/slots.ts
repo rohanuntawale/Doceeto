@@ -432,6 +432,10 @@ export function bookableState(
   const onGig = gig !== undefined;
   const onConsult = doctorId ? hasOngoingConsult(requests, doctorId, nowMs) : false;
   const appointments = takesAppointments(availability);
+  // Offline means OFF the platform, not "greyed out": nothing about an
+  // offline doctor is bookable — no slots, no gigs, no emergencies. "busy"
+  // still books appointments (confirming next Tuesday costs nothing now).
+  const offline = doctor?.status === "offline";
 
   return {
     availability,
@@ -443,8 +447,8 @@ export function bookableState(
       availability.acceptsEmergency && doctor?.status === "online" && !onConsult && !onGig,
     // A long gig locking the whole calendar may be too strict; the constant in
     // lib/gigs/rules.ts is the single switch for that product call.
-    appointmentsOpen: appointments && !(onGig && GIG_LOCKS_APPOINTMENTS),
-    gigsHireable: !onGig && !onConsult,
+    appointmentsOpen: appointments && !offline && !(onGig && GIG_LOCKS_APPOINTMENTS),
+    gigsHireable: !offline && !onGig && !onConsult,
   };
 }
 

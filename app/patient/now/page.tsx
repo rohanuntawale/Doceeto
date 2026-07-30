@@ -253,7 +253,9 @@ export default function CareNowPage() {
         />
 
         <div className="label mt-5">How should they see you?</div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        {/* Stacks on the narrowest phones — three-up leaves ~60px per tile
+            at 320px, too little for the helper line. */}
+        <div className="mt-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           {WHERE.map((w) => {
             const active = type === w.type;
             return (

@@ -186,6 +186,19 @@
   --elev-shadow-strong: 0 4px 10px rgb(15 23 42 / 0.06), 0 20px 50px rgb(15 23 42 / 0.10);
   --card-fill: rgb(var(--c-espresso-800) / 0.7);
   --card-blur: blur(20px) saturate(1.2);
+
+  /* Shell chrome lanes — the single source of truth for anything that sizes
+     itself against the viewport (map canvases, chat floors). Pages must use
+     these instead of hard-coding the bar heights, so a chrome tweak can never
+     silently push content under the floating dock again. */
+  --chrome-top: 3.5rem; /* sticky brand bar (h-14, hairline included) */
+  --chrome-dock: 5.25rem; /* floating tab pill + its bottom clearance */
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --chrome-dock: 8.5rem; /* macOS-style dock is taller than the tab pill */
+  }
 }
 
 /* Fresh Health (light) — solid white cards + soft shadows instead of frost. */

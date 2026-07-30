@@ -26,7 +26,7 @@ export default function DoctorsNetwork() {
 
   return (
     <>
-      <PageHeader kanji="医" label="ZUMI · NETWORK" title="Doctor network" />
+      <PageHeader kanji="医" label="DOCEETO · NETWORK" title="Doctor network" />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard value={`${online}/${doctors.length}`} label="Online now" accent />
@@ -35,7 +35,8 @@ export default function DoctorsNetwork() {
         <StatCard value={avgRating} label="Avg rating" />
       </div>
 
-      <Card className="mt-5">
+      {/* overflow-hidden keeps the scrolling roster clipped to the card radius */}
+      <Card className="mt-5 overflow-hidden">
         <CardHeader label="ROSTER" title={`${doctors.length} doctors`} />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">

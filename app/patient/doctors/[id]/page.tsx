@@ -49,8 +49,16 @@ export default function DoctorProfilePage() {
     return (
       <div className="space-y-4">
         <BackLink />
-        <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-10 text-center text-sm text-[var(--text-muted)]">
-          Loading this doctor… if nothing appears, they may be off the network.
+        <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center sm:p-10">
+          <p className="text-sm text-[var(--text-muted)]">
+            Loading this doctor… if nothing appears, they may be off the network.
+          </p>
+          <Link
+            href="/patient/doctors"
+            className="mt-4 inline-block rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-on-accent"
+          >
+            Browse all doctors
+          </Link>
         </div>
       </div>
     );

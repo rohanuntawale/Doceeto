@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Clock, Send } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Clock, Send, ArrowRight } from "lucide-react";
 import { SiteHeader } from "@/components/site/site-header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -117,12 +118,28 @@ export default function ContactPage() {
               title="Response time"
               lines={["Within 24 hours,", "every day."]}
             />
+            {/* A faster channel than the form — the page had no mailto at all. */}
+            <a
+              href="mailto:hello@doceeto.health"
+              className="block rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card transition-colors hover:border-terracotta/40"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-cream">
+                <Send className="h-4 w-4 text-salmon" /> Email us directly
+              </div>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">hello@doceeto.health</p>
+            </a>
             <div className="rounded-card border border-terracotta/25 bg-terracotta/10 p-5">
               <div className="font-jp text-lg text-salmon">癒し</div>
               <p className="mt-2 text-sm text-cream">Healing, on demand.</p>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 Building the single front door to care in India.
               </p>
+              <Link
+                href="/"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-salmon hover:underline"
+              >
+                Open Doceeto <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Palette, Check } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { THEMES, THEME_KEY, DEFAULT_THEME, type ThemeId } from "@/lib/theme";
@@ -10,6 +10,18 @@ import { THEMES, THEME_KEY, DEFAULT_THEME, type ThemeId } from "@/lib/theme";
 export function ThemeSwitcher({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>(DEFAULT_THEME);
+  const root = useRef<HTMLDivElement>(null);
+
+  // Close on any press outside — a shield element trapped in the top bar's
+  // stacking context sat below the nav pill and missed dismiss taps.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
 
   useEffect(() => {
     const current = (document.documentElement.dataset.theme as ThemeId) || null;
@@ -42,7 +54,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
   const active = THEMES.find((t) => t.id === theme) ?? THEMES[0];
 
   return (
-    <div className={cn("relative", className)}>
+    <div ref={root} className={cn("relative", className)}>
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Change color theme"
@@ -57,12 +69,6 @@ export function ThemeSwitcher({ className }: { className?: string }) {
 
       {open && (
         <>
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
           <div className="absolute right-0 z-50 mt-2 w-56 animate-fade-up overflow-hidden rounded-[14px] border border-[var(--border)] bg-espresso-800 p-1.5 shadow-card">
             <div className="label px-2.5 py-1.5">Color theme</div>
             {THEMES.map((t) => (

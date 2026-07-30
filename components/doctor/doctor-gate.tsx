@@ -22,7 +22,7 @@ export function DoctorGate({ children }: { children: React.ReactNode }) {
   if (!isDemoMode) return <>{children}</>; // live: session-guaranteed
   if (!mounted) {
     return (
-      <div className="grid min-h-[60vh] place-items-center">
+      <div className="grid min-h-[60dvh] place-items-center">
         <span className="font-jp text-2xl text-[var(--text-faint)] animate-pulse">医</span>
       </div>
     );
@@ -52,7 +52,7 @@ function DoctorOnboarding() {
   }
 
   return (
-    <div className="grid min-h-[70vh] place-items-center px-4">
+    <div className="grid min-h-[70dvh] place-items-center px-4">
       <div className="w-full max-w-md rounded-card border border-[var(--border)] bg-espresso-800 p-7 text-center shadow-card">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-white/8 font-jp text-2xl text-salmon ring-1 ring-inset ring-white/12">
           医

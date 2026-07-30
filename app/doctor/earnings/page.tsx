@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Wallet, ArrowDownToLine, TrendingUp, Banknote } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -59,18 +60,21 @@ export default function EarningsPage() {
         </div>
       </Card>
 
+      {/* dense: the poster-size variant clips ₹-values at 3-up on a phone */}
       <div className="mt-4 grid grid-cols-3 gap-3">
         <StatCard
+          dense
           value={formatINRCompact(earned)}
           label="Total earned"
           icon={<TrendingUp className="h-4 w-4" />}
         />
         <StatCard
+          dense
           value={formatINRCompact(paidOut)}
           label="Paid out"
           icon={<Banknote className="h-4 w-4" />}
         />
-        <StatCard value={`${Math.round(COMMISSION_RATE * 100)}%`} label="Platform fee" />
+        <StatCard dense value={`${Math.round(COMMISSION_RATE * 100)}%`} label="Platform fee" />
       </div>
 
       <Card className="mt-5">
@@ -81,6 +85,14 @@ export default function EarningsPage() {
               kanji="円"
               title="No transactions yet"
               desc="Completed visits credit your wallet here."
+              action={
+                <Link
+                  href="/doctor/requests"
+                  className="rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-on-accent"
+                >
+                  Open requests
+                </Link>
+              }
             />
           </div>
         ) : (

@@ -11,7 +11,8 @@ import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
-import { isDemoMode } from "@/lib/config";
+import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
+import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
 import { cn } from "@/lib/utils/cn";
 
 type Role = "patient" | "doctor";
@@ -47,7 +48,8 @@ export default function Landing() {
 
 function LandingShell() {
   return (
-    <main className="relative grid min-h-screen place-items-center px-4 py-6 sm:px-6">
+    // pt-16 below lg keeps the card clear of the floating theme switcher.
+    <main className="relative grid min-h-screen place-items-center px-4 pb-6 pt-16 sm:px-6 lg:pt-6">
       <div className="absolute right-5 top-5 z-20">
         <ThemeSwitcher />
       </div>
@@ -188,7 +190,7 @@ function OnboardingPanel() {
   }
 
   return (
-    <section className="relative flex flex-col justify-center overflow-hidden bg-espresso-800 px-7 py-14 sm:px-10 md:px-14">
+    <section className="relative flex flex-col justify-center overflow-hidden bg-espresso-800 px-5 py-12 sm:px-10 sm:py-14 md:px-14">
       {/* soft ambient glow, like the rest of the app */}
       <div
         aria-hidden
@@ -210,7 +212,7 @@ function OnboardingPanel() {
 
         {/* headline */}
         <h1
-          className="animate-rise mt-8 font-serif text-[2.6rem] leading-[1.03] tracking-tight text-cream sm:text-[3rem]"
+          className="animate-rise mt-8 font-serif text-4xl leading-[1.03] tracking-tight text-cream min-[380px]:text-[2.6rem] sm:text-[3rem]"
           style={{ animationDelay: "40ms" }}
         >
           {step === 2 ? (
@@ -522,6 +524,22 @@ function OnboardingPanel() {
                 ? "Next: your specialty, credentials & fees"
                 : "as a patient — no card, no wait"}
           </p>
+
+          {/* Google only on step 1: it replaces the email + password fields,
+              not the doctor's practice profile. A doctor who signs up this way
+              lands in the cockpit with sensible defaults and fills the rest in
+              from their profile page, which they can already do. */}
+          {googleEnabled && step === 1 && !isDemoMode && (
+            <>
+              <AuthDivider />
+              <GoogleButton
+                role={role}
+                label={
+                  role === "doctor" ? "Continue with Google as a doctor" : "Continue with Google"
+                }
+              />
+            </>
+          )}
         </form>
 
         {/* sign-in + brand line */}
@@ -531,8 +549,23 @@ function OnboardingPanel() {
             Log in
           </Link>
         </p>
-        <div className="animate-rise mt-8 text-[11px] text-[var(--text-faint)]" style={{ animationDelay: "280ms" }}>
-          © 2026 Doceeto · Care that reaches you
+        {/* Footer links — /about and /contact were unreachable islands
+            before this: nothing in the app linked to them. */}
+        <div className="animate-rise mt-8 space-y-2 text-[11px] text-[var(--text-faint)]" style={{ animationDelay: "280ms" }}>
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/about" className="transition-colors hover:text-cream">
+              About
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/contact" className="transition-colors hover:text-cream">
+              Contact
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/ops-signin" className="transition-colors hover:text-cream">
+              Ops sign in
+            </Link>
+          </div>
+          <div>© 2026 Doceeto · Care that reaches you</div>
         </div>
       </div>
     </section>

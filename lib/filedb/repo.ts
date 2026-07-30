@@ -122,16 +122,41 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
   return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
 }
 
+// ── Google sign-in ───────────────────────────────────────────
+export async function findUserByGoogleId(googleId: string): Promise<UserRecord | null> {
+  if (!googleId) return null;
+  const u = data().users.find((x) => x.googleId === googleId);
+  return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
+}
+
+/** Attach a Google identity to an existing account (verified addresses only). */
+export async function linkGoogleAccount(
+  userId: string,
+  googleId: string,
+  avatarUrl?: string,
+): Promise<void> {
+  const u = data().users.find((x) => x.id === userId);
+  if (!u) return;
+  u.googleId = googleId;
+  if (avatarUrl) u.avatarUrl = avatarUrl;
+  persist();
+}
+
 export async function createPatientUser(input: {
   email: string;
-  passwordHash: string;
+  /** Null for a Google account — there is no password to store. */
+  passwordHash: string | null;
   name: string;
   address: string;
+  googleId?: string;
+  avatarUrl?: string;
 }): Promise<UserRecord> {
   const u: StoredUser = {
     id: uid("patient"),
     email: input.email.toLowerCase(),
     passwordHash: input.passwordHash,
+    googleId: input.googleId,
+    avatarUrl: input.avatarUrl,
     role: "patient",
     name: input.name,
     address: input.address,
@@ -145,7 +170,10 @@ export async function createPatientUser(input: {
 
 export async function createDoctorUser(input: {
   email: string;
-  passwordHash: string;
+  /** Null for a Google account — there is no password to store. */
+  passwordHash: string | null;
+  googleId?: string;
+  avatarUrl?: string;
   fullName: string;
   specialty: string;
   kind: string;
@@ -169,6 +197,8 @@ export async function createDoctorUser(input: {
     id,
     email: input.email.toLowerCase(),
     passwordHash: input.passwordHash,
+    googleId: input.googleId,
+    avatarUrl: input.avatarUrl,
     role: "doctor",
     name: fullName,
   };
@@ -546,6 +576,16 @@ export async function acceptRequest(id: string, doctorId: string): Promise<boole
   // The trip rail starts the moment someone claims it.
   req.tripStage = "accepted";
   req.tripStageAt = req.acceptedAt;
+  // A hired gig leaves the shelf the moment it's accepted: the doctor is
+  // committed to this one, so the listing pauses itself instead of inviting
+  // a second booking on the same package. Resume it from the shelf later.
+  if (req.gigId) {
+    const gig = d.gigs.find((g) => g.id === req.gigId && g.doctorId === doctorId);
+    if (gig && gig.status === "active") {
+      gig.status = "paused";
+      gig.updatedAt = now();
+    }
+  }
   persist();
   return true;
 }
@@ -715,6 +755,30 @@ export async function setGigStatus(id: string, doctorId: string, status: GigStat
   }
   gig.status = status;
   gig.updatedAt = now();
+  persist();
+}
+
+/**
+ * Remove a listing for good.
+ *
+ * Unlike archiving, this leaves nothing on the shelf. Hires already ANSWERED
+ * against it survive: a request snapshots `gigTitle` at hire time, so past
+ * visits stay readable. What is refused is deleting a gig somebody is still
+ * waiting on — the doctor owes that patient an answer or a visit.
+ */
+export async function deleteGig(id: string, doctorId: string): Promise<void> {
+  const d = data();
+  const gig = ownGig(id, doctorId);
+  const owed = d.requests.some(
+    (r) => r.gigId === gig.id && (r.status === "pending" || r.status === "accepted"),
+  );
+  if (owed) {
+    throw new DomainError(
+      "Someone is still waiting on this gig. Answer or finish that hire first.",
+      409,
+    );
+  }
+  d.gigs = d.gigs.filter((g) => g.id !== id);
   persist();
 }
 

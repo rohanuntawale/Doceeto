@@ -37,6 +37,9 @@ export const viewport: Viewport = {
   themeColor: "#7C8B5E",
   width: "device-width",
   initialScale: 1,
+  // Without this, env(safe-area-inset-*) is always 0 and the floating tab
+  // pill sits behind the iPhone home-indicator bar.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

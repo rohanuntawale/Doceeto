@@ -67,7 +67,7 @@ export default function RequestsPage() {
 
   return (
     <>
-      <PageHeader kanji="頼" label="ZUMI · FREELANCE DOCTOR" title="Requests" />
+      <PageHeader kanji="頼" label="DOCEETO · FREELANCE DOCTOR" title="Requests" />
 
       {liveGig ? (
         <div className="mb-6 flex items-start gap-2 rounded-card border border-terracotta/40 bg-terracotta/[0.07] p-3.5 text-sm text-tan">
@@ -103,7 +103,15 @@ export default function RequestsPage() {
           <EmptyState
             kanji="仕"
             title="No one waiting to hire you"
-            desc="Patients who pick one of your gigs land here. Manage your gigs from the Gigs tab."
+            desc="Patients who pick one of your gigs land here."
+            action={
+              <Link
+                href="/doctor/gigs"
+                className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
+              >
+                Manage your gigs
+              </Link>
+            }
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

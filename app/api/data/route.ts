@@ -55,18 +55,31 @@ export async function GET(req: Request) {
           };
         });
         if (role === "ops") return NextResponse.json(decorated);
-        // A doctor's live position is public ONLY while they're not
-        // offline; hide stale coordinates from patients/doctors. A doctor
-        // mid-gig has no hireable shelf, so their gig teasers vanish with it.
+        // Offline means OFF the platform: an offline doctor is not
+        // discoverable at all — no pin, no list row, no gig teasers, no
+        // profile. Two carve-outs keep existing relationships intact:
+        //   • a doctor always receives their own row (the cockpit needs it
+        //     to render the dashboard and flip back online), and
+        //   • a patient keeps a doctor tied to any of THEIR OWN requests,
+        //     so live trackers and consult history never lose the name.
+        const mine = new Set(
+          role === "patient"
+            ? requests.filter((r) => r.patientId === me).map((r) => r.doctorId)
+            : [],
+        );
         return NextResponse.json(
-          decorated.map((d) => {
-            const out = d.status === "offline" ? { ...d, lat: 0, lng: 0 } : { ...d };
-            if (d.onGig) {
-              out.gigCount = 0;
-              out.gigFromPrice = null;
-            }
-            return out;
-          }),
+          decorated
+            .filter((d) => d.status !== "offline" || d.id === me || mine.has(d.id))
+            .map((d) => {
+              // Stale coordinates never leave the server; a doctor mid-gig
+              // has no hireable shelf, so their gig teasers vanish with it.
+              const out = d.status === "offline" ? { ...d, lat: 0, lng: 0 } : { ...d };
+              if (d.onGig || d.status === "offline") {
+                out.gigCount = 0;
+                out.gigFromPrice = null;
+              }
+              return out;
+            }),
         );
       }
 
@@ -93,8 +106,18 @@ export async function GET(req: Request) {
         if (role === "doctor" && !forDoctor)
           return NextResponse.json(gigs.filter((g) => g.doctorId === me));
         const active = gigs.filter((g) => g.status === "active");
-        const requests = await repo.getRequests();
-        return NextResponse.json(active.filter((g) => !isOnGig(requests, g.doctorId)));
+        const [requests, doctors] = await Promise.all([
+          repo.getRequests(),
+          repo.getDoctors(),
+        ]);
+        // An offline doctor's shelf goes offline with them — going offline
+        // takes the doctor off the platform as a whole, gigs included.
+        const offline = new Set(
+          doctors.filter((d) => d.status === "offline").map((d) => d.id),
+        );
+        return NextResponse.json(
+          active.filter((g) => !offline.has(g.doctorId) && !isOnGig(requests, g.doctorId)),
+        );
       }
 
       case "requests": {

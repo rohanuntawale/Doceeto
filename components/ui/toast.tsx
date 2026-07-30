@@ -41,7 +41,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[100] flex w-[min(92vw,360px)] flex-col gap-2">
+      {/* On phones the floating tab pill owns the bottom edge, so toasts
+          stack above it; from sm: they sit in the classic bottom-right spot. */}
+      <div className="pointer-events-none fixed inset-x-3 bottom-[calc(var(--chrome-dock)+0.5rem)] z-[100] flex flex-col gap-2 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(92vw,360px)]">
         {toasts.map((t) => (
           <div
             key={t.id}

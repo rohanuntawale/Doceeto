@@ -28,6 +28,8 @@ import {
 } from "@/components/dashboard/cards";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useMedicalHistory } from "@/lib/hooks/use-medical-history";
+import { useConsultRequests, useOrders } from "@/lib/hooks/data";
+import { weeklyCareActivity, healthScore } from "@/lib/health/metrics";
 import { useT } from "@/lib/i18n";
 
 export default function PatientHome() {
@@ -37,6 +39,11 @@ export default function PatientHome() {
   const router = useRouter();
   const [symptoms, setSymptoms] = useState("");
 
+  // Real care events, scoped to this patient — these drive the activity
+  // bars and the health score below (no decorative numbers).
+  const myRequests = useConsultRequests().filter((r) => r.patientId === patient.id);
+  const myOrders = useOrders().filter((o) => o.patientId === patient.id);
+
   const historyItems = sessions.slice(0, 4).map((s) => ({
     id: s.id,
     title: s.title,
@@ -45,19 +52,41 @@ export default function PatientHome() {
   }));
 
   const located = Boolean(patient.address);
+
+  // "Care activity": every real care event this week — symptom checks run,
+  // consults booked, medicine ordered — bucketed per day, with the trend
+  // measured against last week.
+  const activity = weeklyCareActivity([
+    ...sessions.map((s) => s.startedAt),
+    ...myRequests.map((r) => Date.parse(r.createdAt)),
+    ...myOrders.map((o) => Date.parse(o.createdAt)),
+  ]);
+
+  // "Health score": an engagement score with a documented formula
+  // (lib/health/metrics.ts) — profile completeness, recent checks, recent
+  // completed consults, recent medicine. The spark is the score recomputed
+  // for each of the last 7 days, and the trend is the change over that week.
+  const score = healthScore({
+    profileComplete: located,
+    checkTimes: sessions.map((s) => s.startedAt),
+    completedConsultTimes: myRequests
+      .filter((r) => r.status === "completed")
+      .map((r) => Date.parse(r.completedAt ?? r.createdAt)),
+    orderTimes: myOrders.map((o) => Date.parse(o.createdAt)),
+  });
+
   const progressItems = [
     { label: "Profile", value: located ? 100 : 45 },
     { label: "Verified", value: 100, display: "Done" },
     { label: "Records", value: Math.min(100, sessions.length * 25), display: `${sessions.length}` },
-    { label: "Care score", value: 78 },
+    { label: "Care score", value: score.value },
   ];
-  const activityData = [20, 45, 30, 65, 40, 85, 55];
   const goals = [
-    { id: "profile", label: "Complete your profile", sub: "Add your details", done: located },
-    { id: "contact", label: "Add an emergency contact", sub: "Someone we can reach for you" },
-    { id: "checkup", label: "Book a yearly check-up", sub: "Stay ahead with preventive care" },
-    { id: "meds", label: "Set medication reminders", sub: "Never miss a dose" },
-    { id: "verify", label: "Verify your phone number" },
+    { id: "profile", label: "Complete your profile", sub: "Add your details", done: located, href: "/patient/account" },
+    { id: "contact", label: "Add an emergency contact", sub: "Someone we can reach for you", href: "/patient/account" },
+    { id: "checkup", label: "Book a yearly check-up", sub: "Stay ahead with preventive care", href: "/patient/doctors" },
+    { id: "meds", label: "Set medication reminders", sub: "Never miss a dose", href: "/patient/medicine" },
+    { id: "verify", label: "Verify your phone number", href: "/patient/account" },
   ];
 
   const greetingKey =
@@ -94,7 +123,9 @@ export default function PatientHome() {
             {patient.address || t("home.setLocation")}
           </p>
         </div>
-        <div className="flex items-end gap-6">
+        {/* Full-width row below sm so the stats and avatar share one line
+            instead of the avatar wrapping onto its own. */}
+        <div className="flex w-full flex-wrap items-end justify-between gap-x-4 gap-y-2 sm:w-auto sm:justify-start sm:gap-6">
           <HeaderStat n={sessions.length} label="Checks" trend={12} />
           <HeaderStat n="1.2k+" label="Doctors" trend={8} />
           <HeaderStat n="24/7" label="Care" />
@@ -158,10 +189,21 @@ export default function PatientHome() {
 
       {/* Care activity + health score + goals */}
       <div className="lg:col-span-4">
-        <ActivityCard title="Care activity" caption="Visits & checks this week" data={activityData} trend={18} />
+        <ActivityCard
+          title="Care activity"
+          caption="Visits & checks this week"
+          data={activity.data}
+          trend={activity.trend}
+        />
       </div>
       <div className="lg:col-span-4">
-        <GaugeCard title="Health score" value={78} caption="Looking good" trend={4} spark={[62, 64, 63, 68, 70, 74, 78]} />
+        <GaugeCard
+          title="Health score"
+          value={score.value}
+          caption={score.caption}
+          trend={score.trend}
+          spark={score.spark}
+        />
       </div>
       <div className="lg:col-span-4">
         <GoalsCard title="Health goals" goals={goals} />
@@ -192,7 +234,7 @@ export default function PatientHome() {
         <HistoryCard
           title="Your health history"
           items={historyItems}
-          href="/patient/care"
+          href="/patient/care?history=1"
           emptyText="Your symptom checks and visits will show here"
         />
       </div>

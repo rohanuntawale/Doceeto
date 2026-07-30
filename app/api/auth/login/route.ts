@@ -21,6 +21,15 @@ export async function POST(req: Request) {
     if (email && !rateLimit(`login:email:${email}`, 8, 15 * 60_000)) return tooMany();
 
     const user = await db.findUserByEmail(email);
+    // A Google account has no password hash. Say so plainly rather than
+    // "wrong password" — the person has no password to get right, and would
+    // otherwise be stuck guessing at one that never existed.
+    if (user && !user.passwordHash) {
+      return NextResponse.json(
+        { error: "This account uses Google sign-in. Use the Continue with Google button." },
+        { status: 401 },
+      );
+    }
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return NextResponse.json({ error: "Wrong email or password." }, { status: 401 });
     }

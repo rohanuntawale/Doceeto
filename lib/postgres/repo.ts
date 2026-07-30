@@ -343,15 +343,51 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
   return r ? mapUser(r) : null;
 }
 
+// ── Google sign-in ───────────────────────────────────────────
+// Matching is on `sub`, Google's permanent id for the person, not on their
+// address — someone who changes their Gmail keeps their account here.
+
+export async function findUserByGoogleId(googleId: string): Promise<UserRecord | null> {
+  if (!googleId) return null;
+  const r = await one(
+    `SELECT id, email, password_hash, role, name FROM users WHERE google_id = $1`,
+    [googleId],
+  );
+  return r ? mapUser(r) : null;
+}
+
+/**
+ * Attach a Google identity to an account that already exists, so someone who
+ * signed up with a password can later use the button. Only ever called after
+ * Google reports the address VERIFIED — otherwise anyone able to set an
+ * arbitrary email on a Google account could take over a password account.
+ */
+export async function linkGoogleAccount(
+  userId: string,
+  googleId: string,
+  avatarUrl?: string,
+): Promise<void> {
+  await sql(
+    `UPDATE users
+        SET google_id = $2,
+            avatar_url = COALESCE($3, avatar_url)
+      WHERE id = $1`,
+    [userId, googleId, avatarUrl ?? null],
+  );
+}
+
 export async function createPatientUser(input: {
   email: string;
-  passwordHash: string;
+  /** Null for a Google account — there is no password to store. */
+  passwordHash: string | null;
   name: string;
   address: string;
+  googleId?: string;
+  avatarUrl?: string;
 }): Promise<UserRecord> {
   const r = await one(
-    `INSERT INTO users (id, email, password_hash, role, name, address, lat, lng)
-     VALUES ($1, $2, $3, 'patient', $4, $5, $6, $7)
+    `INSERT INTO users (id, email, password_hash, role, name, address, lat, lng, google_id, avatar_url)
+     VALUES ($1, $2, $3, 'patient', $4, $5, $6, $7, $8, $9)
      RETURNING id, email, password_hash, role, name`,
     [
       uid("patient"),
@@ -361,6 +397,8 @@ export async function createPatientUser(input: {
       input.address,
       MAP_CENTER.lat,
       MAP_CENTER.lng,
+      input.googleId ?? null,
+      input.avatarUrl ?? null,
     ],
   );
   return mapUser(r!);
@@ -368,7 +406,10 @@ export async function createPatientUser(input: {
 
 export async function createDoctorUser(input: {
   email: string;
-  passwordHash: string;
+  /** Null for a Google account — there is no password to store. */
+  passwordHash: string | null;
+  googleId?: string;
+  avatarUrl?: string;
   fullName: string;
   specialty: string;
   kind: string;
@@ -391,10 +432,17 @@ export async function createDoctorUser(input: {
 
   return tx(async (c) => {
     const u = await c.query(
-      `INSERT INTO users (id, email, password_hash, role, name)
-       VALUES ($1, $2, $3, 'doctor', $4)
+      `INSERT INTO users (id, email, password_hash, role, name, google_id, avatar_url)
+       VALUES ($1, $2, $3, 'doctor', $4, $5, $6)
        RETURNING id, email, password_hash, role, name`,
-      [id, input.email.toLowerCase(), input.passwordHash, fullName],
+      [
+        id,
+        input.email.toLowerCase(),
+        input.passwordHash,
+        fullName,
+        input.googleId ?? null,
+        input.avatarUrl ?? null,
+      ],
     );
     // Deterministic accent, picked by how many doctors exist — matches the
     // other backends so an avatar chip doesn't change colour on migration.
@@ -847,6 +895,16 @@ export async function acceptRequest(id: string, doctorId: string): Promise<boole
        WHERE id = $1`,
       [id, doctorId],
     );
+    // A hired gig leaves the shelf the moment it's accepted: the doctor is
+    // committed to this one, so the listing pauses itself instead of inviting
+    // a second booking on the same package. Resume it from the shelf later.
+    if (req.gigId) {
+      await c.query(
+        `UPDATE gigs SET status = 'paused', updated_at = now()
+         WHERE id = $1 AND doctor_id = $2 AND status = 'active'`,
+        [req.gigId, doctorId],
+      );
+    }
     return true;
   });
 }
@@ -1057,6 +1115,36 @@ export async function setGigStatus(id: string, doctorId: string, status: GigStat
       await assertUnderGigCap(c, doctorId, id);
     }
     await c.query(`UPDATE gigs SET status = $2, updated_at = now() WHERE id = $1`, [id, status]);
+  });
+}
+
+/**
+ * Remove a listing for good.
+ *
+ * Unlike archiving, this leaves nothing on the shelf. Hires already ANSWERED
+ * against it survive: a request snapshots `gigTitle` at hire time and the
+ * gig_id column carries no foreign key, so past visits stay readable. What is
+ * refused is deleting a gig somebody is still waiting on — the doctor owes
+ * that patient an answer or a visit, and the row is their record of it.
+ */
+export async function deleteGig(id: string, doctorId: string): Promise<void> {
+  await tx(async (c) => {
+    const g = await c.query(`SELECT * FROM gigs WHERE id = $1 FOR UPDATE`, [id]);
+    if (!g.rows[0]) throw new DomainError("That gig no longer exists.", 404);
+    if (g.rows[0].doctor_id !== doctorId) throw new DomainError("That isn't your gig.", 403);
+
+    const owed = await c.query(
+      `SELECT 1 FROM consult_requests
+       WHERE gig_id = $1 AND status IN ('pending', 'accepted') LIMIT 1`,
+      [id],
+    );
+    if (owed.rows.length > 0) {
+      throw new DomainError(
+        "Someone is still waiting on this gig. Answer or finish that hire first.",
+        409,
+      );
+    }
+    await c.query(`DELETE FROM gigs WHERE id = $1`, [id]);
   });
 }
 

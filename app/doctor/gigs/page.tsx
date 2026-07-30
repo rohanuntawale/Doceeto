@@ -15,6 +15,8 @@ import {
   Pause,
   Play,
   Archive,
+  Trash2,
+  PowerOff,
   Video,
   Home,
   Building2,
@@ -53,8 +55,17 @@ export default function DoctorGigsPage() {
 
   const [editing, setEditing] = useState<Gig | undefined>(undefined);
   const [open, setOpen] = useState(false);
+  /** Which gig is one tap from being deleted. Deleting is irreversible, so the
+   *  button asks once rather than acting on the first click. */
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const doctorId = me?.id ?? "";
+  /**
+   * Offline is off the platform: no new listings, no going live, no taking
+   * work. The server enforces the same rule — this only keeps the cockpit
+   * honest about it instead of failing the tap.
+   */
+  const offline = me?.status === "offline";
   const pending = useMemo(
     () => (doctorId ? pendingGigHires(requests, doctorId) : []),
     [requests, doctorId],
@@ -82,11 +93,13 @@ export default function DoctorGigsPage() {
     <>
       <PageHeader
         kanji="仕"
-        label="ZUMI · GIGS"
+        label="DOCEETO · GIGS"
         title="Your gigs"
         action={
           <Button
             size="sm"
+            disabled={offline}
+            title={offline ? "Go online to publish a gig." : undefined}
             onClick={() => {
               setEditing(undefined);
               setOpen(true);
@@ -97,6 +110,19 @@ export default function DoctorGigsPage() {
         }
       />
 
+      {/* Say it once, at the top, rather than leaving every disabled button to
+          explain itself. */}
+      {offline && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-card border border-[var(--border)] bg-espresso-800 px-4 py-3">
+          <PowerOff className="mt-0.5 h-4 w-4 shrink-0 text-tan" />
+          <p className="text-xs leading-relaxed text-[var(--text-muted)]">
+            <span className="font-medium text-cream">You&rsquo;re offline.</span> Your gigs
+            are hidden from patients, and you can&rsquo;t publish a new one or take a hire
+            until you go back online. Pausing, archiving and deleting still work.
+          </p>
+        </div>
+      )}
+
       {/* The live gig comes first: it is the only thing that unpauses them. */}
       {live && <OnGigBanner request={live} className="mb-5" />}
 
@@ -104,7 +130,7 @@ export default function DoctorGigsPage() {
         {/* ── Hires waiting on an answer ──────────────── */}
         <Card>
           <CardHeader
-            label="ZUMI · GIG REQUESTS"
+            label="DOCEETO · GIG REQUESTS"
             title="Patients who want to hire you"
             action={
               pending.length > 0 ? (
@@ -121,8 +147,23 @@ export default function DoctorGigsPage() {
                 title="No gig requests yet"
                 desc={
                   activeCount === 0
-                    ? "Publish a gig on the right and patients can hire you from your profile."
+                    ? "Publish a gig and patients can hire you from your profile."
                     : "Your gigs are live on your profile. Hires will land here."
+                }
+                action={
+                  activeCount === 0 ? (
+                    <Button
+                      size="sm"
+                      disabled={offline}
+                      title={offline ? "Go online to publish a gig." : undefined}
+                      onClick={() => {
+                        setEditing(undefined);
+                        setOpen(true);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Create your first gig
+                    </Button>
+                  ) : undefined
                 }
               />
             </div>
@@ -133,8 +174,12 @@ export default function DoctorGigsPage() {
                   key={r.id}
                   request={r}
                   note="Chose your gig"
-                  canAccept={!busy}
-                  blockedReason="Finish your current gig before taking another."
+                  canAccept={!busy && !offline}
+                  blockedReason={
+                    offline
+                      ? "You're offline. Go online to take this hire."
+                      : "Finish your current gig before taking another."
+                  }
                   onAccept={() =>
                     run("Gig accepted", () => actions.acceptRequest(r.id, doctorId))
                   }
@@ -150,7 +195,7 @@ export default function DoctorGigsPage() {
         {/* ── The shelf ───────────────────────────────── */}
         <Card>
           <CardHeader
-            label="ZUMI · YOUR SHELF"
+            label="DOCEETO · YOUR SHELF"
             title="What you offer"
             action={
               <span className="text-[11px] font-medium text-[var(--text-faint)]">
@@ -164,6 +209,19 @@ export default function DoctorGigsPage() {
                 kanji="仕"
                 title="No gigs yet"
                 desc="A gig is a package patients hire outright — say what you do, how long it takes, and what it costs."
+                action={
+                  <Button
+                    size="sm"
+                    disabled={offline}
+                    title={offline ? "Go online to publish a gig." : undefined}
+                    onClick={() => {
+                      setEditing(undefined);
+                      setOpen(true);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Create a gig
+                  </Button>
+                }
               />
             </div>
           ) : (
@@ -226,6 +284,8 @@ export default function DoctorGigsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          disabled={offline}
+                          title={offline ? "Go online to publish a gig." : undefined}
                           onClick={() =>
                             run("Gig published", () => actions.setGigStatus(g.id, "active"))
                           }
@@ -244,6 +304,35 @@ export default function DoctorGigsPage() {
                           <Archive className="h-3.5 w-3.5" /> Archive
                         </Button>
                       )}
+
+                      {/* Delete is the only irreversible one here, so it asks
+                          first and sits apart from the rest. */}
+                      {confirming === g.id ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => {
+                              setConfirming(null);
+                              void run("Gig deleted", () => actions.deleteGig(g.id));
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete for good
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-terracotta-300 hover:text-terracotta-300"
+                          onClick={() => setConfirming(g.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -255,7 +344,8 @@ export default function DoctorGigsPage() {
             <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--text-faint)]">
               <Briefcase className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               Pausing keeps a gig for later but hides it from patients. Archiving retires
-              it — requests already made against it still reach you.
+              it — requests already made against it still reach you. Deleting removes it
+              for good, and is refused while someone is still waiting on a hire.
             </p>
           </div>
         </Card>

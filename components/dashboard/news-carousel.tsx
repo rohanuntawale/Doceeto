@@ -97,7 +97,8 @@ export function NewsCarousel({ role }: { role: Role }) {
                 {n.source} · {n.time}
               </span>
             </span>
-            <ArrowUpRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
+            {/* This row swaps the hero above — no external page opens, so no
+                external-link arrow. */}
           </button>
         ))}
       </div>

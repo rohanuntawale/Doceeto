@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -32,13 +33,21 @@ export default function ConsultsPage() {
 
   return (
     <>
-      <PageHeader kanji="診" label="ZUMI · CONSULTS" title="Your consults" />
+      <PageHeader kanji="診" label="DOCEETO · CONSULTS" title="Your consults" />
 
       {mine.length === 0 ? (
         <EmptyState
           kanji="診"
           title="No consults yet"
           desc="Accept a request to start your first consult."
+          action={
+            <Link
+              href="/doctor/requests"
+              className="rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-on-accent"
+            >
+              Open requests
+            </Link>
+          }
         />
       ) : (
         <Card>
@@ -51,8 +60,8 @@ export default function ConsultsPage() {
                   className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
                   <div className="min-w-[140px] flex-1">
-                    <p className="font-medium text-cream">{r.patientName}</p>
-                    <p className="text-xs text-[var(--text-muted)]">
+                    <p className="truncate font-medium text-cream">{r.patientName}</p>
+                    <p className="line-clamp-2 text-xs text-[var(--text-muted)]">
                       {consultTypeOf(r.type).label} · {r.symptoms}
                     </p>
                   </div>

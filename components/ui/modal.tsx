@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils/cn";
 
 /** Shared panel styling, so every dialog is the same object. */
 export const modalPanelCls =
-  "max-h-[90vh] w-full max-w-lg animate-fade-up overflow-y-auto rounded-t-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card sm:rounded-card";
+  "max-h-[90dvh] w-full max-w-lg animate-fade-up overflow-y-auto rounded-t-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card sm:rounded-card";
 
 export function Modal({
   open,

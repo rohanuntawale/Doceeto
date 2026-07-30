@@ -16,7 +16,10 @@
 CREATE TABLE IF NOT EXISTS users (
   id             TEXT PRIMARY KEY,
   email          TEXT NOT NULL UNIQUE,
-  password_hash  TEXT NOT NULL,
+  -- Nullable: an account created through Google has no password to store.
+  -- The login route refuses a password sign-in when this is null, so a
+  -- Google-only account can never be entered with a guessed empty password.
+  password_hash  TEXT,
   role           TEXT NOT NULL CHECK (role IN ('patient','doctor','ops')),
   name           TEXT NOT NULL,
   address        TEXT,
@@ -27,6 +30,17 @@ CREATE TABLE IF NOT EXISTS users (
   rating_count   INTEGER,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Google sign-in, added after the first deploys — so these run as ALTERs for a
+-- database that already has a users table, and are no-ops on a fresh one.
+--   google_id  the "sub" claim, Google's stable id for the person. Matching on
+--              it rather than the address survives a Google email change.
+--   avatar_url their Google picture, used when they have no uploaded one.
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id  TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_key ON users (google_id)
+  WHERE google_id IS NOT NULL;
 
 -- Sessions are rows, not signed cookies: the browser holds only `id`, so the
 -- database decides who you are and deleting the row ends the session at once.

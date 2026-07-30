@@ -91,7 +91,7 @@ export function EditProfileDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="label">ZUMI · EDIT</div>
+            <div className="label">DOCEETO · EDIT</div>
             <h3 className="font-serif text-xl text-cream">Edit profile</h3>
           </div>
           <button
@@ -165,7 +165,7 @@ export function EditProfileDialog({
             />
           </Field>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field label="Experience (yrs)">
               <input
                 type="number"
@@ -191,14 +191,16 @@ export function EditProfileDialog({
                 placeholder="34"
               />
             </Field>
-            <Field label="Med. reg. no.">
-              <input
-                value={form.registrationNo}
-                onChange={(e) => setForm({ ...form, registrationNo: e.target.value })}
-                className={inputCls}
-                placeholder="MH-12345"
-              />
-            </Field>
+            <div className="col-span-2 sm:col-span-1">
+              <Field label="Med. reg. no.">
+                <input
+                  value={form.registrationNo}
+                  onChange={(e) => setForm({ ...form, registrationNo: e.target.value })}
+                  className={inputCls}
+                  placeholder="MH-12345"
+                />
+              </Field>
+            </div>
           </div>
 
           <Field label="Languages (comma-separated)">

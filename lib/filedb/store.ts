@@ -31,6 +31,9 @@ export interface StoredUser extends UserRecord {
   address?: string;
   lat?: number;
   lng?: number;
+  /** Google's `sub` once this account has been linked to a Google identity. */
+  googleId?: string;
+  avatarUrl?: string;
   /** Aggregate rating this patient received from doctors (mutual ratings). */
   rating?: number;
   ratingCount?: number;

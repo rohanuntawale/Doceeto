@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ import {
   type DStep,
   type DConclusion,
   type DOption,
+  type DCause,
   type Urgency,
 } from "@/lib/diagnose/engine";
 import { cn } from "@/lib/utils/cn";
@@ -56,6 +58,20 @@ function urgencyTone(u: string) {
   if (u === "emergency") return "bg-status-critical/15 text-status-critical";
   if (u === "urgent") return "bg-tan/15 text-tan";
   return "bg-status-ok/15 text-status-ok";
+}
+
+function likelihoodTone(l: DCause["likelihood"]) {
+  if (l === "likely") return "bg-[rgb(var(--c-terracotta))]/15 text-[rgb(var(--c-terracotta))]";
+  if (l === "possible") return "bg-[rgb(var(--c-tan))]/15 text-[rgb(var(--c-tan))]";
+  return "fh-tile text-[var(--text-faint)]";
+}
+
+/** "less-likely" would read as a dismissal on a chip; soften the wording
+ *  without softening the ranking. */
+function likelihoodLabel(l: DCause["likelihood"]) {
+  if (l === "likely") return "Most likely";
+  if (l === "possible") return "Possible";
+  return "Worth ruling out";
 }
 
 /** Normalise a raw AI step into our DStep shape. */
@@ -78,12 +94,23 @@ function fromAiStep(s: Record<string, unknown>): DStep {
   }
   const conditions = Array.isArray(s.conditions) ? (s.conditions as string[]) : [];
   const urgency = (s.urgency as Urgency) ?? "routine";
+  const causes: DCause[] = (Array.isArray(s.causes) ? (s.causes as Record<string, unknown>[]) : []).map(
+    (c) => ({
+      name: String(c.name ?? "Possible cause"),
+      likelihood: (c.likelihood as DCause["likelihood"]) ?? "possible",
+      why: c.why ? String(c.why) : undefined,
+      specialty: String(c.specialty ?? "General Physician") as DConclusion["specialty"],
+    }),
+  );
   return {
     kind: "conclusion",
     urgency,
     specialty: String(s.specialty ?? "General Physician") as DConclusion["specialty"],
     alt: s.alt ? (String(s.alt) as DConclusion["specialty"]) : undefined,
-    conditions: conditions.length ? conditions : ["General consultation"],
+    conditions: conditions.length ? conditions : causes.length ? causes.map((c) => c.name) : ["General consultation"],
+    summary: s.summary ? String(s.summary) : undefined,
+    causes,
+    alsoSee: (Array.isArray(s.alsoSee) ? (s.alsoSee as string[]) : []) as DConclusion["alsoSee"],
     advice: String(s.advice ?? "A doctor is a good fit for this. Book whenever you're ready."),
     emergency: Boolean(s.emergency) || urgency === "emergency",
   };
@@ -105,7 +132,9 @@ function CareInner() {
   const [aiOn, setAiOn] = useState(false);
   const [aiModel, setAiModel] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // ?history=1 deep-links straight into the past-chats drawer — it's where
+  // "See all" on the home screen's health history lands.
+  const [drawerOpen, setDrawerOpen] = useState(params.get("history") === "1");
   const [viewed, setViewed] = useState<CheckSession | null>(null);
   const sessionId = useRef(`care-${Date.now().toString(36)}`);
   /** Whether the AI has driven any turn this session — decides how we recover
@@ -197,10 +226,16 @@ function CareInner() {
   }, [state, conclusion, viewed]);
 
   useEffect(() => {
-    [scrollRef, scrollRef2].forEach((r) =>
-      r.current?.scrollTo({ top: r.current.scrollHeight, behavior: "smooth" }),
-    );
-  }, [state.answers.length, step, thinking]);
+    // Measure a frame later so the conclusion card is at its final height;
+    // scrolling in the same tick under-shot and left its CTAs cut off
+    // behind the composer.
+    const id = requestAnimationFrame(() => {
+      [scrollRef, scrollRef2].forEach((r) =>
+        r.current?.scrollTo({ top: r.current.scrollHeight, behavior: "smooth" }),
+      );
+    });
+    return () => cancelAnimationFrame(id);
+  }, [state.answers.length, step, thinking, viewed]);
 
   function newCheck() {
     sessionId.current = `care-${Date.now().toString(36)}`;
@@ -253,7 +288,7 @@ function CareInner() {
       />
 
       {/* ── Mobile / tablet — ChatGPT-style compose ── */}
-      <div className="flex h-[calc(100dvh-8.5rem)] min-h-[480px] flex-col lg:hidden">
+      <div className="-mt-4 -mb-[calc(var(--chrome-dock)+1.75rem)] flex h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[480px] flex-col pt-4 lg:hidden">
         {/* Header */}
         <div className="flex items-center gap-3 pb-3">
           <button
@@ -398,10 +433,10 @@ function CareInner() {
       </div>
 
       {/* ── Desktop — immersive symptom checker ── */}
-      {/* The floor stays under the shell's own 10.5rem chrome so a short
-          laptop window can't push the composer down under the dock; the
-          transcript absorbs the loss since it scrolls. */}
-      <div className="relative left-1/2 hidden h-[calc(100dvh-10.5rem)] min-h-[420px] w-screen -translate-x-1/2 flex-col overflow-hidden lg:flex">
+      {/* The floor is sized by the shell's chrome vars so a short laptop
+          window can't push the composer down under the dock; the transcript
+          absorbs the loss since it scrolls. */}
+      <div className="relative left-1/2 hidden h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[420px] w-screen -translate-x-1/2 flex-col overflow-hidden lg:-mb-[calc(var(--chrome-dock)+1.75rem)] lg:flex">
         {/* floating scene */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className="absolute left-[12%] top-[16%] h-56 w-56 animate-float rounded-full bg-[rgb(var(--c-terracotta))] opacity-10 blur-3xl" />
@@ -453,7 +488,7 @@ function CareInner() {
           <ImmersiveRail icon={Plus} title="New check" onClick={newCheck} />
           <ImmersiveRail icon={History} title="History" onClick={() => setDrawerOpen(true)} />
           <ImmersiveRail icon={FileText} title="Reports" onClick={() => setDrawerOpen(true)} />
-          <ImmersiveRail icon={AlertTriangle} title="Emergency" onClick={() => router.push("/patient")} />
+          <ImmersiveRail icon={AlertTriangle} title="Emergency" onClick={() => router.push("/patient/now")} />
         </div>
 
         {/* Transcript + composer share one flex column. They used to be two
@@ -633,7 +668,16 @@ function ResultCard({
   onRestart: () => void;
   readOnly?: boolean;
 }) {
-  const { specialty, alt, conditions, advice, urgency, emergency } = conclusion;
+  const { specialty, alt, conditions, advice, urgency, emergency, summary, causes, alsoSee } = conclusion;
+  // Sessions saved before the differential existed replay from localStorage
+  // with no `causes` — those fall back to the old condition chips.
+  const differential = causes ?? [];
+  // One booking row per distinct specialty across the differential, so a case
+  // that spans orthopaedics and neurology offers both rather than burying one.
+  const specialties = Array.from(
+    new Set([specialty, ...differential.map((c) => c.specialty), ...(alsoSee ?? [])]),
+  );
+
   return (
     <div
       className={cn(
@@ -648,62 +692,119 @@ function ResultCard({
         {emergency && <AlertTriangle className="h-4 w-4 text-status-critical" />}
       </div>
 
-      <p className="mt-3 text-sm text-cream">{advice}</p>
+      {summary && <p className="mt-3 text-[15px] font-medium leading-snug text-cream">{summary}</p>}
 
-      <div className="mt-3">
-        <p className="text-xs font-medium text-[var(--text-muted)]">Best fit</p>
-        <p className="text-base font-semibold text-cream">
-          {specialty}
-          {alt ? <span className="text-[var(--text-faint)]"> · or {alt}</span> : null}
-        </p>
-      </div>
+      {differential.length > 0 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-faint)]">
+            What this could be
+          </p>
+          <ol className="space-y-2">
+            {differential.map((c, i) => (
+              <li key={`${c.name}-${i}`} className="rounded-2xl fh-tile p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold leading-snug text-cream">{c.name}</p>
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", likelihoodTone(c.likelihood))}>
+                    {likelihoodLabel(c.likelihood)}
+                  </span>
+                </div>
+                {c.why && <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{c.why}</p>}
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[rgb(var(--c-terracotta))]">
+                  <Stethoscope className="h-3 w-3 shrink-0" />
+                  Treated by {c.specialty}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        conditions.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {conditions.map((c) => (
+              <span key={c} className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]">
+                {c}
+              </span>
+            ))}
+          </div>
+        )
+      )}
 
-      {conditions.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {conditions.map((c) => (
-            <span key={c} className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]">
-              {c}
-            </span>
-          ))}
+      <p className="mt-3 text-sm text-[var(--text-muted)]">{advice}</p>
+
+      {differential.length === 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-medium text-[var(--text-muted)]">Best fit</p>
+          <p className="text-base font-semibold text-cream">
+            {specialty}
+            {alt ? <span className="text-[var(--text-faint)]"> · or {alt}</span> : null}
+          </p>
         </div>
       )}
 
       {/* Red-flag wording still escalates the urgency and says so plainly —
           it just routes to a doctor now rather than raising an alert. */}
       {emergency && (
-        <p className="mt-3 flex items-start gap-2 rounded-2xl bg-status-critical/10 p-3 text-sm font-medium text-status-critical">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          This needs medical help straight away. Call your local emergency
-          number or get to the nearest hospital now.
-        </p>
+        <div className="mt-3 rounded-2xl bg-status-critical/10 p-3">
+          <p className="flex items-start gap-2 text-sm font-medium text-status-critical">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            This needs medical help straight away. Call your local emergency
+            number or get to the nearest hospital now.
+          </p>
+          {/* The words must come with the actions — a warning with no dial
+              button is a dead end at the worst possible moment. */}
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <a
+              href="tel:112"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-status-critical py-2.5 text-sm font-semibold text-white"
+            >
+              Call 112 now
+            </a>
+            <Link
+              href="/patient/now"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-status-critical/40 py-2.5 text-sm font-semibold text-status-critical"
+            >
+              Get emergency care
+            </Link>
+          </div>
+        </div>
       )}
 
-      {!readOnly ? (
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <button
-            onClick={() => onBook(specialty)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
-          >
-            Find a {specialty} <ArrowRight className="h-4 w-4" />
-          </button>
-          <button
-            onClick={onRestart}
-            className="rounded-2xl fh-tile px-4 py-3 text-sm font-medium text-[var(--text-muted)]"
-          >
-            Start over
-          </button>
-        </div>
-      ) : (
+      <div className="mt-4 space-y-2">
         <button
           onClick={() => onBook(specialty)}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
         >
           Find a {specialty} <ArrowRight className="h-4 w-4" />
         </button>
-      )}
+
+        {/* Secondary specialties from the differential — the whole point is
+            that the patient can choose which line to pursue. */}
+        {specialties.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {specialties.slice(1).map((sp) => (
+              <button
+                key={sp}
+                onClick={() => onBook(sp)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl fh-tile px-3 py-2.5 text-xs font-medium text-cream transition-colors hover:border-primary/40"
+              >
+                Or a {sp} <ArrowRight className="h-3 w-3 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!readOnly && (
+          <button
+            onClick={onRestart}
+            className="w-full rounded-2xl px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-cream"
+          >
+            Start over
+          </button>
+        )}
+      </div>
 
       <p className="mt-2 text-[10px] text-[var(--text-faint)]">
-        A guide to the right doctor, not a medical diagnosis.
+        Possibilities to check with a doctor — not a diagnosis.
       </p>
     </div>
   );
@@ -730,6 +831,27 @@ function ChatSidebar({
   reports: { id: string; type: string; status: string }[];
   t: (k: string) => string;
 }) {
+  // Portal to <body> — the patient shell wraps pages in `<main class="relative
+  // z-10">`, a stacking context that would pin this drawer *below* the shell's
+  // z-20 top bar (the wordmark painted over the drawer header) no matter what
+  // z-index it asks for. Same escape hatch as components/ui/modal.tsx.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
+
   const body = (
     <div className="flex h-full flex-col gap-5">
       <button
@@ -795,9 +917,9 @@ function ChatSidebar({
   );
 
   // Drawer usable on all sizes (mobile compose + desktop immersive both open it).
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[60]">
+  if (!open || !mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[90]">
       <button aria-hidden onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="absolute inset-y-0 left-0 w-[82%] max-w-sm animate-fade-up overflow-y-auto border-r border-[var(--border)] bg-[var(--glass-bg-strong)] p-4 shadow-soft-lg backdrop-blur-2xl">
         <div className="mb-3 flex items-center justify-between">
@@ -808,7 +930,8 @@ function ChatSidebar({
         </div>
         {body}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

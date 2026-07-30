@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import Link from "next/link";
+import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 /* ── Trend badge + sparkline ── */
@@ -192,6 +193,9 @@ export interface Goal {
   label: string;
   sub?: string;
   done?: boolean;
+  /** Where this goal is completed. A goal with a destination navigates there
+   *  instead of being a self-tick checkbox that goes nowhere. */
+  href?: string;
 }
 
 export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
@@ -220,21 +224,8 @@ export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
           const checked = isDone(g);
           // A goal the app already knows is complete isn't yours to untick.
           const owned = Boolean(g.done);
-          return (
-            <button
-              key={g.id}
-              disabled={owned}
-              aria-pressed={checked}
-              onClick={() =>
-                setTicked((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(g.id)) next.delete(g.id);
-                  else next.add(g.id);
-                  return next;
-                })
-              }
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-default disabled:hover:bg-transparent"
-            >
+          const body = (
+            <>
               <span
                 className={cn(
                   "grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-colors",
@@ -251,6 +242,35 @@ export function GoalsCard({ title, goals }: { title: string; goals: Goal[] }) {
                 </span>
                 {g.sub && <span className="block truncate text-[11px] text-[var(--text-muted)]">{g.sub}</span>}
               </span>
+            </>
+          );
+          const rowCls =
+            "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-default disabled:hover:bg-transparent";
+          // An unfinished goal with a destination takes you where it's done.
+          if (g.href && !checked) {
+            return (
+              <Link key={g.id} href={g.href} className={rowCls}>
+                {body}
+                <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
+              </Link>
+            );
+          }
+          return (
+            <button
+              key={g.id}
+              disabled={owned}
+              aria-pressed={checked}
+              onClick={() =>
+                setTicked((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(g.id)) next.delete(g.id);
+                  else next.add(g.id);
+                  return next;
+                })
+              }
+              className={rowCls}
+            >
+              {body}
             </button>
           );
         })}

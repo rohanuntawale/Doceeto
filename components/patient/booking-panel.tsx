@@ -270,7 +270,9 @@ export function BookingPanel({
       {/* ── Kind of visit ─────────────────────────────── */}
       <div className="mt-4">
         <div className="label mb-2">Visit type</div>
-        <div className="grid grid-cols-3 gap-2">
+        {/* Stacks on the narrowest phones — three-up leaves ~60px per tile
+            at 320px, too little for the price + helper line. */}
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           {MODES.map((m) => {
             const active = type === m.type;
             return (

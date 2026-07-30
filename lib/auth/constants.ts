@@ -34,6 +34,13 @@ export const RETIRED_COOKIES = [
 ];
 
 /**
+ * Holds the in-flight Google sign-in: the state to echo back, the PKCE
+ * verifier, and which role the person set out to create. Short-lived, httpOnly,
+ * and deleted the moment the callback runs.
+ */
+export const OAUTH_STATE_COOKIE = "iyashi_oauth";
+
+/**
  * Which surface an API call is acting as. Page requests carry the surface in
  * their path; fetches don't, so the client tags them with this header (and
  * `?surface=` for EventSource, which cannot set headers).

@@ -148,15 +148,16 @@ export default function DoctorHome() {
       : 0;
 
   const doctorGoals = [
-    { id: "profile", label: "Complete your profile", sub: "Add qualifications & about", done: Boolean(me?.about) },
-    { id: "license", label: "Upload your medical license", sub: "Required for verification", done: Boolean(me?.verified) },
+    { id: "profile", label: "Complete your profile", sub: "Add qualifications & about", done: Boolean(me?.about), href: "/doctor/profile" },
+    { id: "license", label: "Upload your medical license", sub: "Required for verification", done: Boolean(me?.verified), href: "/doctor/profile" },
     {
       id: "avail",
       label: "Set your availability",
       sub: "Weekly hours patients can book",
       done: Boolean(me?.availability),
+      href: "/doctor/schedule",
     },
-    { id: "bank", label: "Add bank for instant payouts", sub: "Withdraw earnings anytime" },
+    { id: "bank", label: "Add bank for instant payouts", sub: "Withdraw earnings anytime", href: "/doctor/earnings" },
     { id: "online", label: "Go online to receive gigs", done: online },
   ];
 
@@ -308,7 +309,7 @@ export default function DoctorHome() {
 
       {/* Patients around you — live positions of incoming requests */}
       <Card className="overflow-hidden lg:col-span-7">
-        <CardHeader label="ZUMI · AROUND YOU" title="Patients near you" action={<MapLegend />} />
+        <CardHeader label="DOCEETO · AROUND YOU" title="Patients near you" action={<MapLegend />} />
         <div className="p-4">
           <LiveMap
             self={me ? { lat: me.lat, lng: me.lng, label: "You (visible to patients)" } : null}
@@ -325,13 +326,21 @@ export default function DoctorHome() {
           lives on Gigs; letting it run long here pushed everything below it
           off the screen on a busy day. */}
       <Card className="flex flex-col lg:col-span-5">
-        <CardHeader label="ZUMI · INCOMING" title={`Requests (${pending.length})`} />
+        <CardHeader label="DOCEETO · INCOMING" title={`Requests (${pending.length})`} />
         <div className="max-h-[24rem] flex-1 space-y-3 overflow-y-auto p-4">
           {pending.length === 0 ? (
             <EmptyState
               kanji="頼"
               title="No open requests"
               desc="New consults will appear here the moment they come in."
+              action={
+                <Link
+                  href="/doctor/requests"
+                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
+                >
+                  Open the full inbox
+                </Link>
+              }
             />
           ) : (
             pending.slice(0, INBOX_PREVIEW).map((r) => (

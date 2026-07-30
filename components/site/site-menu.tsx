@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Info, Mail, Lock, LogIn, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -14,6 +14,7 @@ const LINKS = [
 
 export function SiteMenu({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -21,8 +22,19 @@ export function SiteMenu({ className }: { className?: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Close on any press outside — replaces a full-screen shield that other
+  // fixed chrome could sit above, swallowing the dismiss tap.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
   return (
-    <div className={cn("relative", className)}>
+    <div ref={root} className={cn("relative", className)}>
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Menu"
@@ -34,13 +46,6 @@ export function SiteMenu({ className }: { className?: string }) {
 
       {open && (
         <>
-          {/* click-away backdrop */}
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
           <div className="absolute right-0 z-50 mt-2 w-60 animate-fade-up overflow-hidden rounded-card border border-[var(--border)] bg-espresso-800 p-1.5 shadow-card">
             {LINKS.map((l) => (
               <Link

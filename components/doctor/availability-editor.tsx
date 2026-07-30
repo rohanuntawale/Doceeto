@@ -223,7 +223,10 @@ export function AvailabilityEditor({ doctor }: { doctor: Doctor }) {
                         parseHm(w.end) === null ||
                         (parseHm(w.end) ?? 0) <= (parseHm(w.start) ?? 0);
                       return (
-                        <div key={i} className="flex items-center gap-2">
+                        // flex-wrap: two native time inputs + the delete button
+                        // exceed a 360px phone's column; the row must break
+                        // instead of overflowing the card.
+                        <div key={i} className="flex flex-wrap items-center gap-2">
                           <input
                             type="time"
                             value={w.start}
@@ -258,7 +261,7 @@ export function AvailabilityEditor({ doctor }: { doctor: Doctor }) {
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                           {bad && (
-                            <span className="text-[11px] text-status-critical">
+                            <span className="w-full text-[11px] text-status-critical">
                               End must be after start
                             </span>
                           )}

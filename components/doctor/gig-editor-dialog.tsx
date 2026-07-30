@@ -114,7 +114,7 @@ export function GigEditorDialog({
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="label">ZUMI · {gig ? "EDIT GIG" : "NEW GIG"}</div>
+            <div className="label">DOCEETO · {gig ? "EDIT GIG" : "NEW GIG"}</div>
             <h3 className="font-serif text-xl text-cream">
               {gig ? "Edit your gig" : "Put up a gig"}
             </h3>
@@ -147,7 +147,9 @@ export function GigEditorDialog({
           )}
 
           <Field label="Where does it happen?">
-            <div className="grid grid-cols-3 gap-2">
+            {/* Stacks on the narrowest phones — three-up leaves ~60px per
+                tile at 320px, too little for the helper line. */}
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
               {WHERE.map((w) => {
                 const active = form.type === w.type;
                 return (

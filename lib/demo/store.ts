@@ -359,6 +359,22 @@ export const demoStore = {
     commit();
   },
 
+  /** Remove a listing for good. Refused while a hire is still waiting on it —
+   *  answered hires survive, since the request snapshots the gig's title. */
+  deleteGig(id: string) {
+    const s = getState();
+    const gig = s.gigs.find((g) => g.id === id);
+    if (!gig) throw new Error("That gig no longer exists.");
+    const owed = s.requests.some(
+      (r) => r.gigId === id && (r.status === "pending" || r.status === "accepted"),
+    );
+    if (owed) {
+      throw new Error("Someone is still waiting on this gig. Answer or finish that hire first.");
+    }
+    s.gigs = s.gigs.filter((g) => g.id !== id);
+    commit();
+  },
+
   /** Move a visit one step along its rail. Null when there is nowhere left. */
   advanceTrip(id: string): string | null {
     const s = getState();
@@ -557,6 +573,16 @@ export const demoStore = {
           }
         : r,
     );
+    // A hired gig leaves the shelf the moment it's accepted: the doctor is
+    // committed to this one, so the listing pauses itself instead of inviting
+    // a second booking on the same package. Resume it from the shelf later.
+    if (target.gigId) {
+      s.gigs = s.gigs.map((g) =>
+        g.id === target.gigId && g.doctorId === doctorId && g.status === "active"
+          ? { ...g, status: "paused" as const, updatedAt: at }
+          : g,
+      );
+    }
     commit();
   },
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Minus, ShoppingBag, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -57,7 +58,7 @@ export default function PatientMedicine() {
   }
 
   return (
-    <div className="space-y-5 pb-20">
+    <div className="space-y-5 pb-24">
       <div>
         <div className="font-jp text-sm text-salmon">薬 · AURAMED</div>
         <h1 className="mt-1 font-serif text-3xl text-cream">Order medicine</h1>
@@ -107,22 +108,27 @@ export default function PatientMedicine() {
         })}
       </div>
 
-      {/* Sticky checkout bar */}
-      {count > 0 && (
-        <div className="fixed inset-x-0 bottom-[57px] z-20 border-t border-[var(--border)] bg-espresso/95 backdrop-blur">
-          <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-            <div className="flex-1">
-              <div className="metric text-lg text-cream">{formatINR(total)}</div>
-              <div className="label">
-                {count} item{count > 1 ? "s" : ""}
+      {/* Sticky checkout bar. Portalled to <body>: inside <main>'s z-10
+          stacking context it was pinned below the shell's bottom scrim, and
+          its old bottom-[57px] was a leftover from a nav bar that no longer
+          exists — it now rides just above the floating dock. */}
+      {count > 0 &&
+        createPortal(
+          <div className="fixed inset-x-3 bottom-[calc(var(--chrome-dock)+0.5rem)] z-[80] mx-auto max-w-2xl rounded-2xl border border-[var(--border)] bg-espresso/95 shadow-[var(--elev-shadow-strong)] backdrop-blur">
+            <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+              <div className="flex-1">
+                <div className="metric text-lg text-cream">{formatINR(total)}</div>
+                <div className="label">
+                  {count} item{count > 1 ? "s" : ""}
+                </div>
               </div>
+              <Button onClick={placeOrder}>
+                <ShoppingBag className="h-4 w-4" /> Place order
+              </Button>
             </div>
-            <Button onClick={placeOrder}>
-              <ShoppingBag className="h-4 w-4" /> Place order
-            </Button>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -108,6 +108,27 @@ export async function POST(req: Request) {
     return NextResponse.json(body);
   };
 
+  /**
+   * Going offline takes a doctor off the platform, not just off the map: while
+   * offline they cannot put anything new in front of patients or claim new
+   * work. Enforced HERE rather than only in the cockpit, because the toggle is
+   * the doctor's own promise of availability and a stale tab (or a hand-rolled
+   * request) must not be able to publish around it.
+   *
+   * Withdrawing is deliberately still allowed — pausing, archiving, deleting
+   * and finishing what they already took. Blocking those would trap a doctor
+   * who went offline mid-shelf.
+   *
+   * Returns an error response to hand straight back, or null when they're on.
+   */
+  const blockedWhenOffline = async (msg: string) => {
+    const doc = await repo.getDoctorById(me);
+    if (doc && doc.status !== "offline") return null;
+    return NextResponse.json({ error: msg }, { status: 409 });
+  };
+  const OFFLINE_PUBLISH = "You're offline. Go online to publish a gig.";
+  const OFFLINE_WORK = "You're offline. Go online to take new work.";
+
   try {
     switch (action) {
       // ── Patient creates (identity is taken from the session) ──
@@ -171,6 +192,14 @@ export async function POST(req: Request) {
         if (mode === "gig") {
           if (!doctorId) return bad("Pick a doctor before hiring a gig.");
           if (!gigId) return bad("Pick a gig to hire.");
+        }
+        // Offline means off the platform: nothing may be booked against an
+        // offline doctor — not a gig, not a slot, not a directed emergency.
+        // (Broadcasts carry no doctorId and reach whoever is online.)
+        if (doctorId) {
+          const target = await repo.getDoctorById(doctorId);
+          if (!target || target.status === "offline")
+            return bad("That doctor is offline right now. Pick another doctor.");
         }
         return done(
           await repo.createRequest({
@@ -309,6 +338,8 @@ export async function POST(req: Request) {
       // ── Gig listings (a doctor's own shelf) ──
       case "createGig": {
         if (role !== "doctor") return needs("doctors");
+        const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
+        if (offline) return offline;
         const title = String(payload.title ?? "").trim();
         if (!title) return bad("Give the gig a title.");
         const type = String(payload.type ?? "");
@@ -333,6 +364,12 @@ export async function POST(req: Request) {
         if (role !== "doctor") return needs("doctors");
         const patch = sanitizeGigPatch(payload.patch);
         if (Object.keys(patch).length === 0) return bad("Nothing to update.");
+        // Editing a paused listing while offline is fine — it isn't on show.
+        // Re-publishing through the patch is the same act as tapping Publish.
+        if (patch.status === "active") {
+          const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
+          if (offline) return offline;
+        }
         // The repo re-checks ownership, so a doctor can only edit their own.
         await repo.updateGig(String(payload.id), me, patch);
         return done({ ok: true }, ["gigs"]);
@@ -341,11 +378,27 @@ export async function POST(req: Request) {
         if (role !== "doctor") return needs("doctors");
         const status = String(payload.status ?? "");
         if (!GIG_STATUSES.has(status)) return bad("Unknown gig status.");
+        // Pausing and archiving stay open while offline; only going live is
+        // barred, since that is what puts the gig in front of patients.
+        if (status === "active") {
+          const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
+          if (offline) return offline;
+        }
         await repo.setGigStatus(String(payload.id), me, status as "active");
+        return done({ ok: true }, ["gigs"]);
+      }
+      case "deleteGig": {
+        if (role !== "doctor") return needs("doctors");
+        // The repo re-checks ownership and refuses while a hire is waiting.
+        await repo.deleteGig(String(payload.id), me);
         return done({ ok: true }, ["gigs"]);
       }
       case "acceptRequest": {
         if (role !== "doctor") return needs("doctors");
+        // Claiming a patient is a promise to show up; an offline doctor has
+        // just said they can't.
+        const offline = await blockedWhenOffline(OFFLINE_WORK);
+        if (offline) return offline;
         const won = await repo.acceptRequest(String(payload.id), me);
         // Losing the race used to return 200, so the loser still saw
         // "Consult accepted". Say what actually happened instead.
@@ -354,7 +407,9 @@ export async function POST(req: Request) {
             { error: "Another doctor just took that one." },
             { status: 409 },
           );
-        return done({ ok: true }, ["requests"]);
+        // "gigs" too: accepting a gig hire auto-pauses that listing, and the
+        // shelf + patient profiles must reflect it immediately.
+        return done({ ok: true }, ["requests", "gigs"]);
       }
       case "declineRequest":
         if (role !== "doctor") return needs("doctors");
