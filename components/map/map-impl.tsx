@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { InteractiveZoom } from "@/components/map/interactive-zoom";
 import { MAP_CENTER, MAP_ZOOM } from "@/lib/config";
 import { consultTypeOf } from "@/lib/labels";
 import type { ConsultRequest, Doctor, LatLng } from "@/lib/types/domain";
@@ -68,6 +69,7 @@ export default function MapImpl({
       style={{ height, width: "100%", borderRadius: 14 }}
       preferCanvas
     >
+      <InteractiveZoom />
       <Recenter center={c} />
       <TileLayer
         attribution="&copy; OpenStreetMap"

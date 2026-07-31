@@ -10,6 +10,7 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { InteractiveZoom } from "@/components/map/interactive-zoom";
 import type { LatLng } from "@/lib/types/domain";
 
 export interface TrackMapProps {
@@ -61,6 +62,7 @@ export default function TrackMapImpl({ self, other, height = 300 }: TrackMapProp
       style={{ height, width: "100%", borderRadius: 14 }}
       preferCanvas
     >
+      <InteractiveZoom />
       <Fit a={self} b={other} />
       <TileLayer
         attribution="&copy; OpenStreetMap"

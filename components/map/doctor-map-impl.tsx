@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { InteractiveZoom } from "@/components/map/interactive-zoom";
 import type { Doctor, LatLng } from "@/lib/types/domain";
 
 export interface DoctorMapProps {
@@ -83,6 +84,8 @@ export default function DoctorMapImpl({
       style={{ height: fill ? "100%" : height, width: "100%", borderRadius: fill ? 0 : 14 }}
       preferCanvas
     >
+      {/* A full-bleed map owns the screen, so the wheel can zoom right away. */}
+      <InteractiveZoom immediate={fill} />
       <Recenter center={center} />
       <ResizeSync />
       <TileLayer
