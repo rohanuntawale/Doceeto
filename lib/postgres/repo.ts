@@ -87,6 +87,7 @@ const mapDoctor = (r: Row): Doctor => ({
   consultFee: num(r.consult_fee),
   homeVisitFee: num(r.home_visit_fee),
   avatarColor: r.avatar_color ?? AVATAR_COLORS[0],
+  avatarUrl: r.avatar_url ?? undefined,
   lat: num(r.lat),
   lng: num(r.lng),
   lastSeen: iso(r.last_seen),
@@ -212,7 +213,7 @@ const mapUser = (r: Row): UserRecord => ({
 });
 
 const DOCTOR_COLS = `id, full_name, specialty, kind, gender, age, experience_years, languages,
-  status, verified, rating, consult_fee, home_visit_fee, avatar_color, lat, lng, last_seen,
+  status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url, lat, lng, last_seen,
   qualifications, education, about, registration_no, clinic_address, availability`;
 
 /**
@@ -450,9 +451,9 @@ export async function createDoctorUser(input: {
     const color = AVATAR_COLORS[num(countRows[0].n) % AVATAR_COLORS.length];
     const d = await c.query(
       `INSERT INTO doctors (id, full_name, specialty, kind, gender, age, experience_years,
-         languages, status, verified, rating, consult_fee, home_visit_fee, avatar_color,
+         languages, status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url,
          lat, lng, last_seen, qualifications, education, about, registration_no, clinic_address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'online',false,0,$9,$10,$11,$12,$13,now(),$14,$15,$16,$17,$18)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false,0,$10,$11,$12,$13,$14,$15,now(),$16,$17,$18,$19,$20)
        RETURNING ${DOCTOR_COLS}`,
       [
         id,
@@ -463,9 +464,14 @@ export async function createDoctorUser(input: {
         input.age ?? null,
         Number(input.experienceYears) || 0,
         input.languages?.length ? input.languages : ["English", "Hindi"],
+        // A doctor without a profile photo is not shown to patients: they
+        // start offline and the photo requirement is enforced when they try
+        // to go online. A Google signup brings its picture and starts live.
+        input.avatarUrl ? "online" : "offline",
         Number(input.consultFee) || 0,
         Number(input.homeVisitFee) || 0,
         color,
+        input.avatarUrl ?? null,
         input.lat ?? MAP_CENTER.lat + (Math.random() - 0.5) * 0.02,
         input.lng ?? MAP_CENTER.lng + (Math.random() - 0.5) * 0.02,
         input.qualifications ?? null,
@@ -480,7 +486,7 @@ export async function createDoctorUser(input: {
 }
 
 export async function getPatientProfile(id: string) {
-  const r = await one(`SELECT id, name, address, lat, lng FROM users WHERE id = $1`, [id]);
+  const r = await one(`SELECT id, name, address, lat, lng, avatar_url FROM users WHERE id = $1`, [id]);
   if (!r) return null;
   return {
     id: r.id,
@@ -488,7 +494,24 @@ export async function getPatientProfile(id: string) {
     address: r.address ?? "",
     lat: num(r.lat, MAP_CENTER.lat),
     lng: num(r.lng, MAP_CENTER.lng),
+    avatarUrl: r.avatar_url ?? undefined,
   };
+}
+
+/**
+ * The one write for profile photos, both roles. The photo lives on the users
+ * row (the account) AND, for a doctor, on the doctors row — because every
+ * patient-facing read goes through doctors and must not need a join.
+ */
+export async function setUserAvatar(
+  userId: string,
+  role: UserRecord["role"],
+  dataUrl: string,
+): Promise<void> {
+  await sql(`UPDATE users SET avatar_url = $2 WHERE id = $1`, [userId, dataUrl]);
+  if (role === "doctor") {
+    await sql(`UPDATE doctors SET avatar_url = $2, last_seen = now() WHERE id = $1`, [userId, dataUrl]);
+  }
 }
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {

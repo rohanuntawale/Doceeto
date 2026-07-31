@@ -28,7 +28,7 @@ import {
 } from "@/components/dashboard/cards";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useMedicalHistory } from "@/lib/hooks/use-medical-history";
-import { useConsultRequests, useOrders } from "@/lib/hooks/data";
+import { useConsultRequests, useDoctors, useOrders } from "@/lib/hooks/data";
 import { weeklyCareActivity, healthScore } from "@/lib/health/metrics";
 import { useT } from "@/lib/i18n";
 
@@ -43,6 +43,13 @@ export default function PatientHome() {
   // bars and the health score below (no decorative numbers).
   const myRequests = useConsultRequests().filter((r) => r.patientId === patient.id);
   const myOrders = useOrders().filter((o) => o.patientId === patient.id);
+
+  // Header stats, all live: the same doctors list the map renders (so the
+  // count agrees with what the patient can actually reach), and the checks
+  // trend measured the same way as the activity card — this week vs last.
+  const doctors = useDoctors();
+  const doctorsOnline = doctors.filter((d) => d.status === "online").length;
+  const checksTrend = weeklyCareActivity(sessions.map((s) => s.startedAt)).trend;
 
   const historyItems = sessions.slice(0, 4).map((s) => ({
     id: s.id,
@@ -126,15 +133,48 @@ export default function PatientHome() {
         {/* Full-width row below sm so the stats and avatar share one line
             instead of the avatar wrapping onto its own. */}
         <div className="flex w-full flex-wrap items-end justify-between gap-x-4 gap-y-2 sm:w-auto sm:justify-start sm:gap-6">
-          <HeaderStat n={sessions.length} label="Checks" trend={12} />
-          <HeaderStat n="1.2k+" label="Doctors" trend={8} />
+          {/* Live numbers, not decoration: checks are this patient's own
+              symptom checks (trend = this week vs last, shown only once there
+              is one to compare); doctors is the platform roster with how many
+              are online right now. "24/7" stays — a promise, not a metric. */}
+          <HeaderStat
+            n={sessions.length}
+            label="Checks"
+            trend={checksTrend !== 0 ? checksTrend : undefined}
+          />
+          <HeaderStat
+            n={formatCount(doctors.length)}
+            label="Doctors"
+            badge={
+              doctorsOnline > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--c-status-ok))]/15 px-2 py-0.5 text-[11px] font-bold text-[rgb(var(--c-status-ok))]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-status-ok))] animate-pulse" />
+                  {doctorsOnline} online
+                </span>
+              ) : undefined
+            }
+          />
           <HeaderStat n="24/7" label="Care" />
+          {/* The avatar IS the door to their profile — dressed like one:
+              brand-coloured, ringed, labelled. A photo replaces the initial
+              once they add one on the account page. */}
           <Link
             href="/patient/account"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 text-base font-semibold text-cream"
+            className="group flex shrink-0 flex-col items-center gap-1"
             aria-label={t("nav.account")}
+            title="My profile"
           >
-            {firstName.charAt(0).toUpperCase()}
+            <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-terracotta to-salmon text-base font-semibold text-on-accent ring-2 ring-terracotta/40 ring-offset-2 ring-offset-transparent transition-transform group-hover:scale-105">
+              {patient.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={patient.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                firstName.charAt(0).toUpperCase()
+              )}
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)] transition-colors group-hover:text-cream">
+              Profile
+            </span>
           </Link>
         </div>
       </header>
@@ -250,12 +290,29 @@ export default function PatientHome() {
   );
 }
 
-function HeaderStat({ n, label, trend }: { n: React.ReactNode; label: string; trend?: number }) {
+/** "1.2k" once a count outgrows four digits; the plain number until then. */
+function formatCount(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n);
+}
+
+function HeaderStat({
+  n,
+  label,
+  trend,
+  badge,
+}: {
+  n: React.ReactNode;
+  label: string;
+  trend?: number;
+  /** A custom chip next to the number (e.g. "3 online") instead of a trend. */
+  badge?: React.ReactNode;
+}) {
   return (
     <div className="text-right">
       <div className="flex items-center justify-end gap-1.5">
         <p className="text-2xl font-bold leading-none text-cream lg:text-3xl">{n}</p>
         {trend !== undefined && <TrendBadge value={trend} />}
+        {badge}
       </div>
       <p className="mt-1 text-[11px] uppercase tracking-wide text-[var(--text-faint)]">{label}</p>
     </div>

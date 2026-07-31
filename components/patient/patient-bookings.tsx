@@ -12,6 +12,7 @@ import { useMounted } from "@/lib/hooks/use-mounted";
 import { useConsultRequests, useDoctors, useActions } from "@/lib/hooks/data";
 import { isScheduled } from "@/lib/scheduling/slots";
 import { formatSlotRange } from "@/lib/scheduling/time";
+import { DoctorAvatar } from "@/components/ui/doctor-avatar";
 import type { ConsultRequest, Doctor } from "@/lib/types/domain";
 
 const typeIcon = {
@@ -120,12 +121,10 @@ function BookingRow({
 
   const head = (
     <>
-      <span
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-xs font-medium text-cream"
-        style={{ background: doctor?.avatarColor ?? "#6B615A" }}
-      >
-        {initials(name.replace("Dr. ", ""))}
-      </span>
+      <DoctorAvatar
+        doctor={doctor ?? { fullName: name }}
+        className="h-10 w-10 rounded-lg text-xs font-medium text-cream"
+      />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1 truncate text-sm font-medium text-cream group-hover:text-salmon">
           {name}

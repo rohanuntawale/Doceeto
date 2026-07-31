@@ -80,6 +80,16 @@ export async function POST(req: Request) {
     await setSession({ id: user.id, role: "patient", name: user.name });
     return NextResponse.json({ ok: true, role: "patient", id: user.id });
   } catch (err) {
+    // The email pre-check above races: two simultaneous signups can both pass
+    // it. The database's UNIQUE constraint is the real gate — when it fires
+    // (Postgres error 23505, mimicked by the file store), report it as the
+    // duplicate it is rather than a mystery failure.
+    if ((err as { code?: string })?.code === "23505") {
+      return NextResponse.json(
+        { error: "An account with this email already exists." },
+        { status: 409 },
+      );
+    }
     console.error("register failed:", err);
     return NextResponse.json({ error: "Could not create the account." }, { status: 500 });
   }

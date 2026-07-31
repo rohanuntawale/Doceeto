@@ -10,6 +10,8 @@ export interface PatientIdentity {
   address: string;
   lat: number;
   lng: number;
+  /** Profile photo (a small data-URL, or a Google picture URL). */
+  avatarUrl?: string;
   /** True once real device geolocation has been applied. */
   located?: boolean;
 }

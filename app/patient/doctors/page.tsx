@@ -34,6 +34,7 @@ import { formatINR, initials } from "@/lib/utils/format";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorAbout } from "@/lib/utils/doctor";
 import { cn } from "@/lib/utils/cn";
+import { DoctorAvatar } from "@/components/ui/doctor-avatar";
 import type { Doctor, DoctorKind, Gender } from "@/lib/types/domain";
 
 type Filters = {
@@ -554,12 +555,10 @@ function DoctorList({
               onClick={() => onSelect(d.id)}
               className="glass-inset flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors hover:border-primary/40"
             >
-              <span
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-semibold text-white"
-                style={{ background: d.avatarColor }}
-              >
-                {initials(d.fullName.replace("Dr. ", ""))}
-              </span>
+              <DoctorAvatar
+                doctor={d}
+                className="h-11 w-11 rounded-xl text-sm font-semibold text-white"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <p className="truncate text-sm font-semibold text-cream">{d.fullName}</p>
@@ -642,12 +641,10 @@ function DoctorDetail({
   return (
     <div className="animate-fade-up">
       <div className="mb-3 flex items-start gap-3">
-        <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-base font-semibold text-white"
-          style={{ background: d.avatarColor }}
-        >
-          {initials(d.fullName.replace("Dr. ", ""))}
-        </span>
+        <DoctorAvatar
+          doctor={d}
+          className="h-14 w-14 rounded-2xl text-base font-semibold text-white"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <h2 className="truncate text-lg font-semibold text-cream">{d.fullName}</h2>

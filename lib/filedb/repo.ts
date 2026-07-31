@@ -142,6 +142,19 @@ export async function linkGoogleAccount(
   persist();
 }
 
+/**
+ * The store's own uniqueness gate, mirroring Postgres's UNIQUE(email): one
+ * email is one account, whatever its role. Throws with the same error code pg
+ * raises (23505) so the register route's duplicate handling is backend-agnostic.
+ */
+function assertEmailFree(email: string): void {
+  if (data().users.some((x) => x.email === email.toLowerCase())) {
+    const err = new Error(`duplicate email: ${email}`) as Error & { code: string };
+    err.code = "23505";
+    throw err;
+  }
+}
+
 export async function createPatientUser(input: {
   email: string;
   /** Null for a Google account — there is no password to store. */
@@ -151,6 +164,7 @@ export async function createPatientUser(input: {
   googleId?: string;
   avatarUrl?: string;
 }): Promise<UserRecord> {
+  assertEmailFree(input.email);
   const u: StoredUser = {
     id: uid("patient"),
     email: input.email.toLowerCase(),
@@ -191,6 +205,7 @@ export async function createDoctorUser(input: {
   lat?: number | null;
   lng?: number | null;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
+  assertEmailFree(input.email);
   const id = uid("doc");
   const fullName = input.fullName.startsWith("Dr.") ? input.fullName : `Dr. ${input.fullName}`;
   const user: StoredUser = {
@@ -216,7 +231,10 @@ export async function createDoctorUser(input: {
     education: input.education,
     registrationNo: input.registrationNo,
     about: input.about,
-    status: "online",
+    avatarUrl: input.avatarUrl,
+    // No photo, no roster: starts offline until one is added (a Google
+    // signup brings its picture and starts live). Mirrors Postgres.
+    status: input.avatarUrl ? "online" : "offline",
     verified: false,
     rating: 0,
     consultFee: Number(input.consultFee) || 0,
@@ -242,7 +260,28 @@ export async function getPatientProfile(id: string) {
     address: u.address ?? "",
     lat: Number(u.lat ?? MAP_CENTER.lat),
     lng: Number(u.lng ?? MAP_CENTER.lng),
+    avatarUrl: u.avatarUrl,
   };
+}
+
+/**
+ * The one write for profile photos, both roles. Mirrors Postgres: the photo
+ * lives on the user (the account) AND, for a doctor, on the doctor row every
+ * patient-facing read goes through.
+ */
+export async function setUserAvatar(
+  userId: string,
+  role: UserRecord["role"],
+  dataUrl: string,
+): Promise<void> {
+  const d = data();
+  const u = d.users.find((x) => x.id === userId);
+  if (u) u.avatarUrl = dataUrl;
+  if (role === "doctor") {
+    const doc = d.doctors.find((x) => x.id === userId);
+    if (doc) doc.avatarUrl = dataUrl;
+  }
+  persist();
 }
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {

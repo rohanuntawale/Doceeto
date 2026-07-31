@@ -7,6 +7,7 @@ import {
   Languages,
 } from "lucide-react";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
+import { AvatarUploader } from "@/components/ui/avatar-uploader";
 import { useT, type LangCode } from "@/lib/i18n";
 import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
@@ -15,9 +16,26 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 
 export default function PatientAccount() {
-  const { patient } = useCurrentPatient();
+  const { patient, update } = useCurrentPatient();
   const { t, lang, setLang, languages } = useT();
   const toast = useToast();
+
+  /** Persist a new profile photo: the server for live accounts, the browser
+   *  store in demo mode. Either way the shared identity updates in place. */
+  async function setPhoto(dataUrl: string) {
+    if (!isDemoMode) {
+      const res = await apiFetch("/api/auth/avatar", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Couldn't save the photo.");
+      }
+    }
+    update({ avatarUrl: dataUrl });
+  }
 
   async function signOut() {
     try {
@@ -36,14 +54,24 @@ export default function PatientAccount() {
         {t("account.title")}
       </h1>
 
-      {/* Profile card */}
+      {/* Profile card — the avatar doubles as the photo upload control. */}
       <div className="flex items-center gap-4 rounded-3xl fh-card p-5 shadow-soft">
-        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/12 text-xl font-semibold text-primary">
-          {firstName.charAt(0).toUpperCase()}
-        </span>
+        <AvatarUploader onPhoto={setPhoto}>
+          <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-terracotta to-salmon text-xl font-semibold text-on-accent">
+            {patient.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={patient.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              firstName.charAt(0).toUpperCase()
+            )}
+          </span>
+        </AvatarUploader>
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold text-cream">{patient.name}</p>
           <p className="truncate text-sm text-[var(--text-muted)]">{patient.address}</p>
+          <p className="mt-0.5 text-xs text-[var(--text-faint)]">
+            {patient.avatarUrl ? "Tap the photo to change it" : "Tap the circle to add a photo"}
+          </p>
         </div>
       </div>
 

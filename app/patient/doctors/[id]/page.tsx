@@ -29,6 +29,7 @@ import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
 import { activeGigs } from "@/lib/gigs/rules";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { DoctorAvatar } from "@/components/ui/doctor-avatar";
 
 export default function DoctorProfilePage() {
   const params = useParams<{ id: string }>();
@@ -77,12 +78,10 @@ export default function DoctorProfilePage() {
       {/* ── Identity header ─────────────────────────────── */}
       <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card">
         <div className="flex items-start gap-4">
-          <span
-            className="grid h-16 w-16 shrink-0 place-items-center rounded-xl text-lg font-medium text-cream"
-            style={{ background: doctor.avatarColor }}
-          >
-            {initials(doctor.fullName.replace("Dr. ", ""))}
-          </span>
+          <DoctorAvatar
+            doctor={doctor}
+            className="h-16 w-16 rounded-xl text-lg font-medium text-cream"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h1 className="truncate font-serif text-2xl text-cream">{doctor.fullName}</h1>

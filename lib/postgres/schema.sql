@@ -88,6 +88,11 @@ CREATE TABLE IF NOT EXISTS doctors (
   clinic_address   TEXT,
   availability     JSONB
 );
+-- Profile photo, added later — an ALTER for databases that predate it. Stored
+-- on the doctor row (not just users) because every patient-facing read goes
+-- through doctors, and a photo is part of what patients see.
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
 CREATE INDEX IF NOT EXISTS doctors_status_idx ON doctors(status);
 -- Geo filtering (?near=lat,lng&km=10) sorts by distance from a point. Without
 -- PostGIS this is a plain lat/lng index plus a bounding-box prefilter in SQL.

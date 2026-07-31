@@ -19,16 +19,35 @@
  */
 const BASE = process.env.BASE || "http://localhost:3000";
 
+// Sessions are per-role opaque cookies (iyashi_sid_<role>); registering sets
+// exactly one non-empty one and clears the retired names.
 const cookieFrom = (res) => {
-  const sc = res.headers.getSetCookie ? res.headers.getSetCookie().join("; ") : res.headers.get("set-cookie");
-  const m = sc && sc.match(/iyashi_session=[^;]+/);
-  return m ? m[0] : "";
+  const list = res.headers.getSetCookie
+    ? res.headers.getSetCookie()
+    : [res.headers.get("set-cookie") || ""];
+  for (const sc of list) {
+    const m = sc.match(/(iyashi_sid_\w+)=([^;]+)/);
+    if (m && m[2]) return `${m[1]}=${m[2]}`;
+  }
+  return "";
 };
-/** Grab a real role session from the dev switcher (don't follow the redirect). */
+/** Register a fresh throwaway account and return its session cookie. */
 const sessionFor = async (role) => {
-  const res = await fetch(`${BASE}/api/dev/switch-role?role=${role}`, { redirect: "manual" });
+  const email = `e2e-${role}-${Math.random().toString(36).slice(2)}@t.test`;
+  const body =
+    role === "doctor"
+      ? { role: "doctor", fullName: "E2E Doctor", email, password: "e2epass123" }
+      : { role: "patient", name: "E2E Patient", email, password: "e2epass123" };
+  const res = await fetch(`${BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
   const cookie = cookieFrom(res);
-  if (!cookie) throw new Error(`Could not get a ${role} session (status ${res.status}). Is the dev server running in a non-production build?`);
+  if (!cookie) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Could not register a ${role} session (status ${res.status}): ${err.error ?? ""}. Is the dev server running?`);
+  }
   return cookie;
 };
 const me = async (cookie) => (await fetch(`${BASE}/api/auth/me`, { headers: { cookie }, cache: "no-store" })).json();

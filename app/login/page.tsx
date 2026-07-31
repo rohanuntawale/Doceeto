@@ -33,5 +33,5 @@ export default async function LoginPage({
   const session = await getSession();
   if (session) redirect(homeFor(session.role));
 
-  return <LoginForm />;
+  return <LoginForm googleEnabled={googleConfigured()} />;
 }

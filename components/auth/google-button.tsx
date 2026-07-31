@@ -32,7 +32,7 @@ export function GoogleButton({
       href={href}
       className={cn(
         "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-lg border border-[var(--border)]",
-        "bg-cream px-4 text-sm font-medium text-espresso transition-colors hover:brightness-95",
+        "bg-espresso/60 px-4 text-sm font-medium text-cream transition-colors hover:bg-espresso/80",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60",
         className,
       )}

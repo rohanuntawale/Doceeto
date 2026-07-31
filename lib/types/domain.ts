@@ -151,6 +151,9 @@ export interface Doctor {
   consultFee: number;
   homeVisitFee: number;
   avatarColor: string; // deterministic accent for avatar chips
+  /** Profile photo (a small data-URL). Required before going online or
+   *  publishing a gig — patients should see a face, not a monogram. */
+  avatarUrl?: string;
   lat: number;
   lng: number;
   lastSeen: string; // ISO

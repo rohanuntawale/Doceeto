@@ -11,7 +11,6 @@ import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
-import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
 import { cn } from "@/lib/utils/cn";
 
@@ -224,13 +223,22 @@ function OnboardingPanel() {
 
         {step === 1 && (
           <>
-            {/* social trio — styled, not yet wired to OAuth */}
+            {/* social sign-in. Google is live; the ROLE rides in the query
+                string because whichever toggle is active decides what kind of
+                account Google's identity creates. Apple stays a teaser. */}
             <div className="animate-rise mt-7 flex justify-center" style={{ animationDelay: "90ms" }}>
               <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
                 <SocialButton label="Continue with Apple">
                   <AppleGlyph />
                 </SocialButton>
-                <SocialButton label="Continue with Google">
+                <SocialButton
+                  label={role === "doctor" ? "Continue with Google as a doctor" : "Continue with Google"}
+                  href={
+                    googleEnabled && !isDemoMode
+                      ? `/api/auth/google/start?role=${role}`
+                      : undefined
+                  }
+                >
                   <GoogleGlyph />
                 </SocialButton>
               </div>
@@ -525,21 +533,6 @@ function OnboardingPanel() {
                 : "as a patient — no card, no wait"}
           </p>
 
-          {/* Google only on step 1: it replaces the email + password fields,
-              not the doctor's practice profile. A doctor who signs up this way
-              lands in the cockpit with sensible defaults and fills the rest in
-              from their profile page, which they can already do. */}
-          {googleEnabled && step === 1 && !isDemoMode && (
-            <>
-              <AuthDivider />
-              <GoogleButton
-                role={role}
-                label={
-                  role === "doctor" ? "Continue with Google as a doctor" : "Continue with Google"
-                }
-              />
-            </>
-          )}
         </form>
 
         {/* sign-in + brand line */}
@@ -586,18 +579,37 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-// Small circular social button. Non-functional until OAuth is wired — it just
-// nudges the user with a toast so the affordance never feels broken.
-function SocialButton({ label, children }: { label: string; children: React.ReactNode }) {
+// Small circular social button. With an href it is a real link (OAuth is a
+// full-page journey, so the browser must navigate); without one it nudges the
+// user with a toast so the affordance never feels broken.
+function SocialButton({
+  label,
+  href,
+  children,
+}: {
+  label: string;
+  href?: string;
+  children: React.ReactNode;
+}) {
   const toast = useToast();
+  const cls =
+    "grid h-11 w-11 place-items-center rounded-full text-cream/80 transition-colors hover:bg-white/8 hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50";
+  if (href) {
+    return (
+      <a href={href} aria-label={label} title={label} className={cls}>
+        {children}
+      </a>
+    );
+  }
   return (
     <button
       type="button"
       aria-label={label}
+      title={label}
       onClick={() =>
         toast.push({ tone: "info", title: "Coming soon", desc: "Social sign-in isn't wired up yet." })
       }
-      className="grid h-11 w-11 place-items-center rounded-full text-cream/80 transition-colors hover:bg-white/8 hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50"
+      className={cls}
     >
       {children}
     </button>

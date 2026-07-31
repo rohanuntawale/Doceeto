@@ -240,7 +240,10 @@ export interface Actions {
   /** Doctor → patient rating after a completed consult. */
   ratePatient: (input: RatePatientInput) => Promise<void>;
   updateDoctor: (id: string, patch: Partial<Doctor>) => void;
-  setDoctorStatus: (id: string, status: Doctor["status"]) => void;
+  /** Returns the server promise in live mode so callers can surface a
+   *  rejection (e.g. the profile-photo requirement) instead of assuming
+   *  success. Demo mode resolves immediately. */
+  setDoctorStatus: (id: string, status: Doctor["status"]) => void | Promise<unknown>;
   /** Doctor's bookable calendar. `id` is used in demo mode only — the live
    *  backend always scopes the write to the signed-in doctor. */
   setAvailability: (id: string, availability: DoctorAvailability) => Promise<void>;

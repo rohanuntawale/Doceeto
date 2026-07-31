@@ -32,6 +32,7 @@ import { bookingModeOf } from "@/lib/scheduling/slots";
 import { haversineKm } from "@/lib/utils/geo";
 import { formatINR, initials } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { DoctorAvatar } from "@/components/ui/doctor-avatar";
 import type { ConsultType } from "@/lib/types/domain";
 
 /** How far out a broadcast is considered "nearby", matching the server fan-out. */
@@ -168,12 +169,10 @@ export default function CareNowPage() {
 
           {accepted && claimedBy && (
             <div className="mx-auto mt-5 flex max-w-xs items-center gap-3 rounded-2xl fh-card p-3.5 text-left">
-              <span
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-semibold text-white"
-                style={{ background: claimedBy.avatarColor }}
-              >
-                {initials(claimedBy.fullName.replace("Dr. ", ""))}
-              </span>
+              <DoctorAvatar
+                doctor={claimedBy}
+                className="h-11 w-11 rounded-xl text-sm font-semibold text-white"
+              />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-cream">
                   {claimedBy.fullName}
@@ -192,17 +191,13 @@ export default function CareNowPage() {
             <>
               <div className="mx-auto mt-5 flex max-w-xs flex-wrap items-center justify-center gap-2">
                 {inRange.slice(0, 6).map((d, i) => (
-                  <span
+                  <DoctorAvatar
                     key={d.id}
-                    className="grid h-9 w-9 place-items-center rounded-xl text-[11px] font-semibold text-white opacity-90"
-                    style={{
-                      background: d.avatarColor,
-                      animation: `pulse 2s ${i * 0.2}s infinite`,
-                    }}
+                    doctor={d}
+                    className="h-9 w-9 rounded-xl text-[11px] font-semibold text-white opacity-90"
+                    style={{ animation: `pulse 2s ${i * 0.2}s infinite` }}
                     title={d.fullName}
-                  >
-                    {initials(d.fullName.replace("Dr. ", ""))}
-                  </span>
+                  />
                 ))}
                 {inRange.length === 0 && (
                   <p className="text-xs text-tan">

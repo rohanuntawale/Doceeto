@@ -129,6 +129,21 @@ export async function POST(req: Request) {
   const OFFLINE_PUBLISH = "You're offline. Go online to publish a gig.";
   const OFFLINE_WORK = "You're offline. Go online to take new work.";
 
+  /**
+   * Patients should see a face before they see a listing: a doctor without a
+   * profile photo cannot go online or put a gig in front of patients. Enforced
+   * HERE, not just in the cockpit UI, for the same reason as the offline rule —
+   * a stale tab or hand-rolled request must not publish around it.
+   */
+  const blockedWithoutPhoto = async () => {
+    const doc = await repo.getDoctorById(me);
+    if (doc?.avatarUrl) return null;
+    return NextResponse.json(
+      { error: "Add a profile photo first — patients need to see who's treating them. Add one from your profile page." },
+      { status: 409 },
+    );
+  };
+
   try {
     switch (action) {
       // ── Patient creates (identity is taken from the session) ──
@@ -297,6 +312,12 @@ export async function POST(req: Request) {
         // /api/data and break every status pill that indexes by it.
         const status = String(payload.status ?? "");
         if (!DOCTOR_STATUSES.has(status)) return bad("Unknown status.");
+        // Going online is going on show — the photo requirement bites here.
+        // Going offline is always allowed.
+        if (status !== "offline") {
+          const noPhoto = await blockedWithoutPhoto();
+          if (noPhoto) return noPhoto;
+        }
         await repo.setDoctorStatus(me, status);
         return done({ ok: true }, ["doctors"]);
       }
@@ -340,6 +361,10 @@ export async function POST(req: Request) {
         if (role !== "doctor") return needs("doctors");
         const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
         if (offline) return offline;
+        // Belt and braces: doctors who were online before the photo rule
+        // shipped still can't put a new listing up without one.
+        const noPhoto = await blockedWithoutPhoto();
+        if (noPhoto) return noPhoto;
         const title = String(payload.title ?? "").trim();
         if (!title) return bad("Give the gig a title.");
         const type = String(payload.type ?? "");
@@ -369,6 +394,8 @@ export async function POST(req: Request) {
         if (patch.status === "active") {
           const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
           if (offline) return offline;
+          const noPhoto = await blockedWithoutPhoto();
+          if (noPhoto) return noPhoto;
         }
         // The repo re-checks ownership, so a doctor can only edit their own.
         await repo.updateGig(String(payload.id), me, patch);
@@ -383,6 +410,8 @@ export async function POST(req: Request) {
         if (status === "active") {
           const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
           if (offline) return offline;
+          const noPhoto = await blockedWithoutPhoto();
+          if (noPhoto) return noPhoto;
         }
         await repo.setGigStatus(String(payload.id), me, status as "active");
         return done({ ok: true }, ["gigs"]);

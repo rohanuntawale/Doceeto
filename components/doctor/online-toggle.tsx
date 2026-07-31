@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
+import { isDemoMode } from "@/lib/config";
 import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import type { Doctor } from "@/lib/types/domain";
@@ -20,20 +22,43 @@ export function OnlineToggle({
 }) {
   const { setDoctorStatus } = useActions();
   const toast = useToast();
+  const router = useRouter();
   const online = doctor?.status === "online";
 
-  function toggle() {
+  async function toggle() {
     if (!doctor) return;
     const next = online ? "offline" : "online";
-    setDoctorStatus(doctor.id, next);
-    toast.push({
-      tone: next === "online" ? "success" : "info",
-      title: next === "online" ? "You're online" : "You're offline",
-      desc:
-        next === "online"
-          ? "Consult requests from nearby patients will reach you."
-          : "You won't receive new requests.",
-    });
+
+    // No photo, no roster (live mode; the server enforces it regardless).
+    // Caught here so the doctor lands on the fix, not just an error.
+    if (next === "online" && !isDemoMode && !doctor.avatarUrl) {
+      toast.push({
+        tone: "error",
+        title: "Add a profile photo first",
+        desc: "Patients need to see who's treating them. Add one on your profile page.",
+      });
+      router.push("/doctor/profile");
+      return;
+    }
+
+    try {
+      await setDoctorStatus(doctor.id, next);
+      toast.push({
+        tone: next === "online" ? "success" : "info",
+        title: next === "online" ? "You're online" : "You're offline",
+        desc:
+          next === "online"
+            ? "Consult requests from nearby patients will reach you."
+            : "You won't receive new requests.",
+      });
+    } catch (err) {
+      // The server owns the rules — show exactly what it said.
+      toast.push({
+        tone: "error",
+        title: next === "online" ? "Couldn't go online" : "Couldn't go offline",
+        desc: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
   }
 
   const swtch = (

@@ -20,7 +20,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { OnlineToggle } from "@/components/doctor/online-toggle";
 import { EditProfileDialog } from "@/components/doctor/edit-profile-dialog";
-import { useReviews } from "@/lib/hooks/data";
+import { AvatarUploader } from "@/components/ui/avatar-uploader";
+import { useQueryClient } from "@tanstack/react-query";
+import { isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
+import { useActions, useReviews } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { doctorStatusOf } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
@@ -32,6 +36,31 @@ export default function ProfilePage() {
   const reviews = useReviews(me?.id);
   const mounted = useMounted();
   const [editing, setEditing] = useState(false);
+  const qc = useQueryClient();
+  const { updateDoctor } = useActions();
+
+  /** Persist a new profile photo: the avatar endpoint for live accounts (it
+   *  writes both the account and the public doctor row), the in-browser store
+   *  in demo mode. */
+  async function setPhoto(dataUrl: string) {
+    if (!me) return;
+    if (isDemoMode) {
+      updateDoctor(me.id, { avatarUrl: dataUrl });
+      return;
+    }
+    const res = await apiFetch("/api/auth/avatar", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Couldn't save the photo.");
+    }
+    // Show the new photo now rather than on the next 5s poll.
+    qc.invalidateQueries();
+  }
+
   if (!me) return null;
 
   const mine = reviews; // scoped to this doctor via useReviews(me.id)
@@ -53,12 +82,19 @@ export default function ProfilePage() {
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
           <div className="flex items-start gap-4">
-            <span
-              className="grid h-16 w-16 shrink-0 place-items-center rounded-xl font-serif text-2xl text-cream"
-              style={{ background: me.avatarColor }}
-            >
-              {initials(me.fullName.replace("Dr. ", ""))}
-            </span>
+            <AvatarUploader onPhoto={setPhoto}>
+              <span
+                className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl font-serif text-2xl text-cream"
+                style={{ background: me.avatarColor }}
+              >
+                {me.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials(me.fullName.replace("Dr. ", ""))
+                )}
+              </span>
+            </AvatarUploader>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h2 className="truncate font-serif text-2xl text-cream">{me.fullName}</h2>
@@ -110,6 +146,14 @@ export default function ProfilePage() {
             <CredLine icon={<LanguagesIcon className="h-4 w-4 text-salmon" />} label="Languages" value={me.languages.join(", ") || "—"} />
             <CredLine icon={<ShieldCheck className="h-4 w-4 text-salmon" />} label="Medical reg. no." value={me.registrationNo || "Not added yet"} />
           </div>
+
+          {!me.avatarUrl && (
+            <p className="mt-4 rounded-xl border border-tan/30 bg-tan/10 px-3.5 py-2.5 text-xs leading-relaxed text-tan">
+              Add a profile photo (tap the avatar above) — it&apos;s required
+              before you can go online or publish a gig, so patients can see
+              who&apos;s treating them.
+            </p>
+          )}
 
           <div className="mt-5">
             <OnlineToggle doctor={me} />
