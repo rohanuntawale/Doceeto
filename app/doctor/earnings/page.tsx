@@ -44,7 +44,7 @@ export default function EarningsPage() {
 
   return (
     <>
-      <PageHeader kanji="円" label="DOCTOR · WALLET" title="Wallet" />
+      <PageHeader label="DOCTOR · WALLET" title="Wallet" />
 
       <Card className="border-terracotta/30 p-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -82,7 +82,6 @@ export default function EarningsPage() {
         {mine.length === 0 ? (
           <div className="p-4">
             <EmptyState
-              kanji="円"
               title="No transactions yet"
               desc="Completed visits credit your wallet here."
               action={

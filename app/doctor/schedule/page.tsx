@@ -76,7 +76,7 @@ export default function SchedulePage() {
 
   return (
     <>
-      <PageHeader kanji="暦" label="DOCEETO · SCHEDULE" title="Your schedule" />
+      <PageHeader label="DOCEETO · SCHEDULE" title="Your schedule" />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         {/* ── Upcoming ────────────────────────────────── */}
@@ -95,7 +95,6 @@ export default function SchedulePage() {
           {byDay.length === 0 ? (
             <div className="p-4">
               <EmptyState
-                kanji="暦"
                 title="Nothing booked yet"
                 desc="Set your weekly hours below and patients can pick a slot."
               />

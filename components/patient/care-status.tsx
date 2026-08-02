@@ -44,7 +44,6 @@ export function CareStatus({
   if (isEmpty) {
     return (
       <EmptyState
-        kanji="癒"
         title="No active care"
         desc="Book a doctor or order medicine. It shows up here and updates live."
         action={

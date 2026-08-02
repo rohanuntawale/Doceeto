@@ -69,7 +69,6 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader
-        kanji="私"
         label="DOCEETO · PROFILE"
         title="Your profile"
         action={
@@ -165,7 +164,7 @@ export default function ProfilePage() {
           <CardHeader label="DOCEETO · REVIEWS" title={`Patient reviews (${mine.length})`} />
           {mine.length === 0 ? (
             <div className="p-4">
-              <EmptyState kanji="星" title="No reviews yet" />
+              <EmptyState title="No reviews yet" />
             </div>
           ) : (
             <div className="divide-y divide-[var(--border)]">
