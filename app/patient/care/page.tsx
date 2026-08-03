@@ -28,7 +28,10 @@ import {
 import { apiFetch } from "@/lib/api/client";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useConsultRequests } from "@/lib/hooks/data";
-import { useMedicalHistory, type CheckSession } from "@/lib/hooks/use-medical-history";
+import {
+  useMedicalHistory,
+  type CheckSession,
+} from "@/lib/hooks/use-medical-history";
 import { useT } from "@/lib/i18n";
 import {
   initState,
@@ -48,7 +51,13 @@ import { cn } from "@/lib/utils/cn";
 
 export default function CarePage() {
   return (
-    <Suspense fallback={<div className="py-20 text-center text-sm text-[var(--text-muted)]">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm text-[var(--text-muted)]">
+          Loading…
+        </div>
+      }
+    >
       <CareInner />
     </Suspense>
   );
@@ -61,8 +70,10 @@ function urgencyTone(u: string) {
 }
 
 function likelihoodTone(l: DCause["likelihood"]) {
-  if (l === "likely") return "bg-[rgb(var(--c-terracotta))]/15 text-[rgb(var(--c-terracotta))]";
-  if (l === "possible") return "bg-[rgb(var(--c-tan))]/15 text-[rgb(var(--c-tan))]";
+  if (l === "likely")
+    return "bg-[rgb(var(--c-terracotta))]/15 text-[rgb(var(--c-terracotta))]";
+  if (l === "possible")
+    return "bg-[rgb(var(--c-tan))]/15 text-[rgb(var(--c-tan))]";
   return "fh-tile text-[var(--text-faint)]";
 }
 
@@ -92,26 +103,41 @@ function fromAiStep(s: Record<string, unknown>): DStep {
       },
     };
   }
-  const conditions = Array.isArray(s.conditions) ? (s.conditions as string[]) : [];
+  const conditions = Array.isArray(s.conditions)
+    ? (s.conditions as string[])
+    : [];
   const urgency = (s.urgency as Urgency) ?? "routine";
-  const causes: DCause[] = (Array.isArray(s.causes) ? (s.causes as Record<string, unknown>[]) : []).map(
-    (c) => ({
-      name: String(c.name ?? "Possible cause"),
-      likelihood: (c.likelihood as DCause["likelihood"]) ?? "possible",
-      why: c.why ? String(c.why) : undefined,
-      specialty: String(c.specialty ?? "General Physician") as DConclusion["specialty"],
-    }),
-  );
+  const causes: DCause[] = (
+    Array.isArray(s.causes) ? (s.causes as Record<string, unknown>[]) : []
+  ).map((c) => ({
+    name: String(c.name ?? "Possible cause"),
+    likelihood: (c.likelihood as DCause["likelihood"]) ?? "possible",
+    why: c.why ? String(c.why) : undefined,
+    specialty: String(
+      c.specialty ?? "General Physician",
+    ) as DConclusion["specialty"],
+  }));
   return {
     kind: "conclusion",
     urgency,
-    specialty: String(s.specialty ?? "General Physician") as DConclusion["specialty"],
+    specialty: String(
+      s.specialty ?? "General Physician",
+    ) as DConclusion["specialty"],
     alt: s.alt ? (String(s.alt) as DConclusion["specialty"]) : undefined,
-    conditions: conditions.length ? conditions : causes.length ? causes.map((c) => c.name) : ["General consultation"],
+    conditions: conditions.length
+      ? conditions
+      : causes.length
+        ? causes.map((c) => c.name)
+        : ["General consultation"],
     summary: s.summary ? String(s.summary) : undefined,
     causes,
-    alsoSee: (Array.isArray(s.alsoSee) ? (s.alsoSee as string[]) : []) as DConclusion["alsoSee"],
-    advice: String(s.advice ?? "A doctor is a good fit for this. Book whenever you're ready."),
+    alsoSee: (Array.isArray(s.alsoSee)
+      ? (s.alsoSee as string[])
+      : []) as DConclusion["alsoSee"],
+    advice: String(
+      s.advice ??
+        "A doctor is a good fit for this. Book whenever you're ready.",
+    ),
     emergency: Boolean(s.emergency) || urgency === "emergency",
   };
 }
@@ -126,7 +152,9 @@ function CareInner() {
   const { sessions, saveSession, recentConditions } = useMedicalHistory();
   const requests = useConsultRequests();
 
-  const [state, setState] = useState<DState>(() => initState(seed, recentConditions()));
+  const [state, setState] = useState<DState>(() =>
+    initState(seed, recentConditions()),
+  );
   const [step, setStep] = useState<DStep | null>(null);
   const [thinking, setThinking] = useState(false);
   const [aiOn, setAiOn] = useState(false);
@@ -170,7 +198,11 @@ function CareInner() {
          question — the patient would be asked to screen for emergencies again
          after five AI turns. Once we have enough to go on, wrap up instead. */
       const offline = () => {
-        setStep(aiDrove.current && state.answers.length >= 3 ? forceConclusion(state) : local);
+        setStep(
+          aiDrove.current && state.answers.length >= 3
+            ? forceConclusion(state)
+            : local,
+        );
         setAiOn(false);
       };
       try {
@@ -179,7 +211,10 @@ function CareInner() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             seed: state.seed,
-            answers: state.answers.map((a) => ({ prompt: a.prompt, label: a.label })),
+            answers: state.answers.map((a) => ({
+              prompt: a.prompt,
+              label: a.label,
+            })),
             history: recentConditions(),
           }),
         });
@@ -216,7 +251,11 @@ function CareInner() {
       "Symptom check";
     saveSession({
       id: sessionId.current,
-      startedAt: Number(sessionId.current.split("-")[1] ? parseInt(sessionId.current.split("-")[1], 36) : Date.now()),
+      startedAt: Number(
+        sessionId.current.split("-")[1]
+          ? parseInt(sessionId.current.split("-")[1], 36)
+          : Date.now(),
+      ),
       title,
       seed: state.seed,
       answers: state.answers,
@@ -231,7 +270,10 @@ function CareInner() {
     // behind the composer.
     const id = requestAnimationFrame(() => {
       [scrollRef, scrollRef2].forEach((r) =>
-        r.current?.scrollTo({ top: r.current.scrollHeight, behavior: "smooth" }),
+        r.current?.scrollTo({
+          top: r.current.scrollHeight,
+          behavior: "smooth",
+        }),
       );
     });
     return () => cancelAnimationFrame(id);
@@ -264,7 +306,11 @@ function CareInner() {
     setDraft("");
   }
 
-  const view = viewed ?? { seed: state.seed, answers: state.answers, conclusion };
+  const view = viewed ?? {
+    seed: state.seed,
+    answers: state.answers,
+    conclusion,
+  };
   const myBookings = requests.filter((r) => r.patientId === patient.id);
   const reports = myBookings.filter((r) => r.status === "completed");
   const activeConclusion = viewed ? view.conclusion : conclusion;
@@ -299,7 +345,9 @@ function CareInner() {
             <Menu className="h-[18px] w-[18px]" />
           </button>
           <div className="flex flex-1 items-center gap-2">
-            <h1 className="text-base font-semibold text-cream">{t("care.title")}</h1>
+            <h1 className="text-base font-semibold text-cream">
+              {t("care.title")}
+            </h1>
             {aiOn && (
               <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                 AI
@@ -322,8 +370,12 @@ function CareInner() {
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
                 <Sparkles className="h-7 w-7" />
               </span>
-              <h2 className="mt-4 text-lg font-semibold text-cream">{t("care.title")}</h2>
-              <p className="mt-1 max-w-xs text-sm text-[var(--text-muted)]">{t("care.subtitle")}</p>
+              <h2 className="mt-4 text-lg font-semibold text-cream">
+                {t("care.title")}
+              </h2>
+              <p className="mt-1 max-w-xs text-sm text-[var(--text-muted)]">
+                {t("care.subtitle")}
+              </p>
             </div>
           ) : (
             <>
@@ -331,7 +383,9 @@ function CareInner() {
               {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
               {view.answers.map((a, i) =>
                 a.questionId === "free" ? (
-                  <Bubble key={i} who="me">{a.label}</Bubble>
+                  <Bubble key={i} who="me">
+                    {a.label}
+                  </Bubble>
                 ) : (
                   <div key={i} className="space-y-3">
                     <Bubble who="bot">{a.prompt}</Bubble>
@@ -378,7 +432,9 @@ function CareInner() {
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[rgb(var(--c-terracotta))]/12">
                       <span className="h-2 w-2 rounded-full bg-[rgb(var(--c-terracotta))]" />
                     </span>
-                    <span className="flex-1 text-[15px] font-medium text-cream">{o.label}</span>
+                    <span className="flex-1 text-[15px] font-medium text-cream">
+                      {o.label}
+                    </span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
                   </button>
                 ))}
@@ -389,7 +445,11 @@ function CareInner() {
           {activeConclusion && (
             <ResultCard
               conclusion={activeConclusion}
-              onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
+              onBook={(spec) =>
+                router.push(
+                  `/patient/doctors?specialty=${encodeURIComponent(spec)}`,
+                )
+              }
               onRestart={newCheck}
               readOnly={!!viewed}
             />
@@ -451,20 +511,46 @@ function CareInner() {
         </div>
 
         {/* top bar */}
-        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between px-10 pt-6">
+        <div
+          className={cn(
+            "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-10 transition-all duration-300",
+            fresh ? "pt-6" : "pt-0",
+          )}
+        >
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-faint)]">
-              Symptom checker · Guided
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream">
-              {t(greetKey)}, <span className="text-[rgb(var(--c-terracotta))]">{firstName}</span>
-            </h1>
+            {fresh ? (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-faint)]">
+                  Symptom checker · Guided
+                </p>
+
+                <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream">
+                  {t(greetKey)},{" "}
+                  <span className="text-[rgb(var(--c-terracotta))]">
+                    {firstName}
+                  </span>
+                </h1>
+              </>
+            ) : (
+              <h1 className="text-lg font-semibold tracking-tight text-cream">
+                {t("care.title")}
+              </h1>
+            )}
           </div>
+
           <div
             title={aiModel ? `Model: ${aiModel}` : "Offline rule engine"}
-            className="flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]"
+            className={cn(
+              "flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]",
+              !fresh && "mt-[-2px]",
+            )}
           >
-            <span className={cn("h-2 w-2 rounded-full", aiOn ? "bg-status-ok" : "bg-[rgb(var(--c-tan))]")} />
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                aiOn ? "bg-status-ok" : "bg-[rgb(var(--c-tan))]",
+              )}
+            />
             {aiOn ? "AI ready" : "Guided mode"}
           </div>
         </div>
@@ -486,9 +572,21 @@ function CareInner() {
         {/* right rail — actions */}
         <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
           <ImmersiveRail icon={Plus} title="New check" onClick={newCheck} />
-          <ImmersiveRail icon={History} title="History" onClick={() => setDrawerOpen(true)} />
-          <ImmersiveRail icon={FileText} title="Reports" onClick={() => setDrawerOpen(true)} />
-          <ImmersiveRail icon={AlertTriangle} title="Emergency" onClick={() => router.push("/patient/now")} />
+          <ImmersiveRail
+            icon={History}
+            title="History"
+            onClick={() => setDrawerOpen(true)}
+          />
+          <ImmersiveRail
+            icon={FileText}
+            title="Reports"
+            onClick={() => setDrawerOpen(true)}
+          />
+          <ImmersiveRail
+            icon={AlertTriangle}
+            title="Emergency"
+            onClick={() => router.push("/patient/now")}
+          />
         </div>
 
         {/* Transcript + composer share one flex column. They used to be two
@@ -497,103 +595,118 @@ function CareInner() {
             the overflow then painted straight over the last message. As flex
             siblings the transcript simply gives up the height instead. The
             column is click-through so the side rails behind it stay usable. */}
-        <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col pb-6 pt-28">
+        <div
+          className={cn(
+            "pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col pb-1",
+            fresh ? "pt-24" : "pt-6",
+          )}
+        >
           <div
             ref={scrollRef2}
             className="pointer-events-auto mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-6"
           >
-            <div className="flex min-h-full flex-col justify-end gap-4 py-6">
-            {fresh ? (
-              <div className="flex flex-col items-center pb-6 text-center">
-                <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
-                  <Sparkles className="h-8 w-8" />
-                </span>
-                <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">{t("care.subtitle")}</p>
-              </div>
-            ) : (
-              <>
-                {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
-                {view.answers.map((a, i) =>
-                  a.questionId === "free" ? (
-                    <Bubble key={i} who="me">{a.label}</Bubble>
-                  ) : (
-                    <div key={i} className="space-y-3">
-                      <Bubble who="bot">{a.prompt}</Bubble>
-                      <Bubble who="me">{a.label}</Bubble>
-                    </div>
-                  ),
-                )}
-              </>
-            )}
-            {!viewed && thinking && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
-                  <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
+            <div className="flex min-h-full flex-col justify-end gap-3 py-3">
+              {fresh ? (
+                <div className="flex flex-col items-center pb-6 text-center">
+                  <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
+                    <Sparkles className="h-8 w-8" />
+                  </span>
+                  <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">
+                    {t("care.subtitle")}
+                  </p>
                 </div>
-              </div>
-            )}
-            {!viewed && !thinking && step?.kind === "question" && !fresh && (
-              <Bubble who="bot">{step.question.prompt}</Bubble>
-            )}
-            {activeConclusion && (
-              <ResultCard
-                conclusion={activeConclusion}
-                onBook={(spec) => router.push(`/patient/doctors?specialty=${encodeURIComponent(spec)}`)}
-                onRestart={newCheck}
-                readOnly={!!viewed}
-              />
-            )}
+              ) : (
+                <>
+                  {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
+                  {view.answers.map((a, i) =>
+                    a.questionId === "free" ? (
+                      <Bubble key={i} who="me">
+                        {a.label}
+                      </Bubble>
+                    ) : (
+                      <div key={i} className="space-y-3">
+                        <Bubble who="bot">{a.prompt}</Bubble>
+                        <Bubble who="me">{a.label}</Bubble>
+                      </div>
+                    ),
+                  )}
+                </>
+              )}
+              {!viewed && thinking && (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
+                    <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
+                  </div>
+                </div>
+              )}
+              {!viewed && !thinking && step?.kind === "question" && !fresh && (
+                <Bubble who="bot">{step.question.prompt}</Bubble>
+              )}
+              {activeConclusion && (
+                <ResultCard
+                  conclusion={activeConclusion}
+                  onBook={(spec) =>
+                    router.push(
+                      `/patient/doctors?specialty=${encodeURIComponent(spec)}`,
+                    )
+                  }
+                  onRestart={newCheck}
+                  readOnly={!!viewed}
+                />
+              )}
             </div>
           </div>
 
           {/* option chips + pill input */}
-          <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-3">
-          {fresh && step?.kind === "question" && (
-            <p className="mb-3 text-center text-[15px] font-medium text-cream">{step.question.prompt}</p>
-          )}
-          {!viewed && !thinking && step?.kind === "question" && (
-            <div className="mb-3 flex flex-wrap justify-center gap-2">
-              {step.question.options.map((o) => (
-                <button
-                  key={o.value}
-                  onClick={() => pick(o)}
-                  className="flex items-center gap-2 rounded-full fh-card px-4 py-2.5 text-sm font-medium text-cream transition-colors hover:border-primary/50 hover:text-[rgb(var(--c-terracotta))]"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-terracotta))]" />
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {viewed ? (
-            <button
-              onClick={newCheck}
-              className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
-            >
-              <Plus className="h-4 w-4" /> New check
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 rounded-full fh-card p-2 shadow-soft-lg">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-                <Sparkles className="h-[18px] w-[18px]" />
-              </span>
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendText()}
-                placeholder={t("chat.placeholder")}
-                className="flex-1 bg-transparent px-1 py-2 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
-              />
+          <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-0">
+            {fresh && step?.kind === "question" && (
+              <p className="mb-3 text-center text-[15px] font-medium text-cream">
+                {step.question.prompt}
+              </p>
+            )}
+            {!viewed && !thinking && step?.kind === "question" && (
+              <div className="mb-2 flex flex-wrap justify-center gap-2">
+                {step.question.options.map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() => pick(o)}
+                    className="flex items-center gap-2 rounded-full fh-card px-4 py-2.5 text-sm font-medium text-cream transition-colors hover:border-primary/50 hover:text-[rgb(var(--c-terracotta))]"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-terracotta))]" />
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {viewed ? (
               <button
-                onClick={sendText}
-                disabled={!draft.trim()}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-on-accent transition-opacity disabled:opacity-40"
-                aria-label="Send"
+                onClick={newCheck}
+                className="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
               >
-                <Send className="h-[18px] w-[18px]" />
+                <Plus className="h-4 w-4" /> New check
               </button>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center gap-2 rounded-full fh-card p-2 shadow-soft-lg">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                  <Sparkles className="h-[18px] w-[18px]" />
+                </span>
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendText()}
+                  placeholder={t("chat.placeholder")}
+                  className="flex-1 bg-transparent px-1 py-2 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
+                />
+                <button
+                  onClick={sendText}
+                  disabled={!draft.trim()}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-on-accent transition-opacity disabled:opacity-40"
+                  aria-label="Send"
+                >
+                  <Send className="h-[18px] w-[18px]" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -640,7 +753,13 @@ function Dot({ delay = "0s" }: { delay?: string }) {
   );
 }
 
-function Bubble({ who, children }: { who: "bot" | "me"; children: React.ReactNode }) {
+function Bubble({
+  who,
+  children,
+}: {
+  who: "bot" | "me";
+  children: React.ReactNode;
+}) {
   return (
     <div className={cn("flex", who === "me" ? "justify-end" : "justify-start")}>
       <div
@@ -668,14 +787,28 @@ function ResultCard({
   onRestart: () => void;
   readOnly?: boolean;
 }) {
-  const { specialty, alt, conditions, advice, urgency, emergency, summary, causes, alsoSee } = conclusion;
+  const {
+    specialty,
+    alt,
+    conditions,
+    advice,
+    urgency,
+    emergency,
+    summary,
+    causes,
+    alsoSee,
+  } = conclusion;
   // Sessions saved before the differential existed replay from localStorage
   // with no `causes` — those fall back to the old condition chips.
   const differential = causes ?? [];
   // One booking row per distinct specialty across the differential, so a case
   // that spans orthopaedics and neurology offers both rather than burying one.
   const specialties = Array.from(
-    new Set([specialty, ...differential.map((c) => c.specialty), ...(alsoSee ?? [])]),
+    new Set([
+      specialty,
+      ...differential.map((c) => c.specialty),
+      ...(alsoSee ?? []),
+    ]),
   );
 
   return (
@@ -686,13 +819,24 @@ function ResultCard({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide", urgencyTone(urgency))}>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+            urgencyTone(urgency),
+          )}
+        >
           {urgency}
         </span>
-        {emergency && <AlertTriangle className="h-4 w-4 text-status-critical" />}
+        {emergency && (
+          <AlertTriangle className="h-4 w-4 text-status-critical" />
+        )}
       </div>
 
-      {summary && <p className="mt-3 text-[15px] font-medium leading-snug text-cream">{summary}</p>}
+      {summary && (
+        <p className="mt-3 text-[15px] font-medium leading-snug text-cream">
+          {summary}
+        </p>
+      )}
 
       {differential.length > 0 ? (
         <div className="mt-4">
@@ -703,12 +847,23 @@ function ResultCard({
             {differential.map((c, i) => (
               <li key={`${c.name}-${i}`} className="rounded-2xl fh-tile p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold leading-snug text-cream">{c.name}</p>
-                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", likelihoodTone(c.likelihood))}>
+                  <p className="text-sm font-semibold leading-snug text-cream">
+                    {c.name}
+                  </p>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                      likelihoodTone(c.likelihood),
+                    )}
+                  >
                     {likelihoodLabel(c.likelihood)}
                   </span>
                 </div>
-                {c.why && <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{c.why}</p>}
+                {c.why && (
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                    {c.why}
+                  </p>
+                )}
                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[rgb(var(--c-terracotta))]">
                   <Stethoscope className="h-3 w-3 shrink-0" />
                   Treated by {c.specialty}
@@ -721,7 +876,10 @@ function ResultCard({
         conditions.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {conditions.map((c) => (
-              <span key={c} className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]">
+              <span
+                key={c}
+                className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]"
+              >
                 {c}
               </span>
             ))}
@@ -733,10 +891,14 @@ function ResultCard({
 
       {differential.length === 0 && (
         <div className="mt-3">
-          <p className="text-xs font-medium text-[var(--text-muted)]">Best fit</p>
+          <p className="text-xs font-medium text-[var(--text-muted)]">
+            Best fit
+          </p>
           <p className="text-base font-semibold text-cream">
             {specialty}
-            {alt ? <span className="text-[var(--text-faint)]"> · or {alt}</span> : null}
+            {alt ? (
+              <span className="text-[var(--text-faint)]"> · or {alt}</span>
+            ) : null}
           </p>
         </div>
       )}
@@ -861,7 +1023,10 @@ function ChatSidebar({
         <Plus className="h-4 w-4" /> {t("chat.newChat")}
       </button>
 
-      <SideSection icon={<Sparkles className="h-3.5 w-3.5" />} label={t("chat.history")}>
+      <SideSection
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        label={t("chat.history")}
+      >
         {sessions.length === 0 ? (
           <Empty>No checks yet</Empty>
         ) : (
@@ -877,27 +1042,42 @@ function ChatSidebar({
               )}
             >
               <span className="flex-1 truncate">{s.title}</span>
-              {s.conclusion ? <ChevronRight className="h-3.5 w-3.5 shrink-0" /> : null}
+              {s.conclusion ? (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+              ) : null}
             </button>
           ))
         )}
       </SideSection>
 
-      <SideSection icon={<CalendarClock className="h-3.5 w-3.5" />} label={t("chat.bookings")}>
+      <SideSection
+        icon={<CalendarClock className="h-3.5 w-3.5" />}
+        label={t("chat.bookings")}
+      >
         {bookings.length === 0 ? (
           <Empty>No bookings yet</Empty>
         ) : (
           bookings.slice(0, 5).map((b) => (
-            <div key={b.id} className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)]">
+            <div
+              key={b.id}
+              className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)]"
+            >
               <Stethoscope className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex-1 truncate capitalize">{b.type.replace("_", " ")}</span>
-              <span className="text-[10px] capitalize text-[var(--text-faint)]">{b.status}</span>
+              <span className="flex-1 truncate capitalize">
+                {b.type.replace("_", " ")}
+              </span>
+              <span className="text-[10px] capitalize text-[var(--text-faint)]">
+                {b.status}
+              </span>
             </div>
           ))
         )}
       </SideSection>
 
-      <SideSection icon={<FileText className="h-3.5 w-3.5" />} label={t("chat.reports")}>
+      <SideSection
+        icon={<FileText className="h-3.5 w-3.5" />}
+        label={t("chat.reports")}
+      >
         {reports.length === 0 ? (
           <Empty>Prescriptions from visits appear here</Empty>
         ) : (
@@ -908,7 +1088,9 @@ function ChatSidebar({
               className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)] hover:text-cream"
             >
               <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex-1 truncate capitalize">{r.type.replace("_", " ")} report</span>
+              <span className="flex-1 truncate capitalize">
+                {r.type.replace("_", " ")} report
+              </span>
             </Link>
           ))
         )}
@@ -920,11 +1102,21 @@ function ChatSidebar({
   if (!open || !mounted) return null;
   return createPortal(
     <div className="fixed inset-0 z-[90]">
-      <button aria-hidden onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <button
+        aria-hidden
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      />
       <div className="absolute inset-y-0 left-0 w-[82%] max-w-sm animate-fade-up overflow-y-auto border-r border-[var(--border)] bg-[var(--glass-bg-strong)] p-4 shadow-soft-lg backdrop-blur-2xl">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-cream">{t("care.title")}</span>
-          <button onClick={onClose} className="text-[var(--text-muted)]" aria-label="Close">
+          <span className="text-sm font-semibold text-cream">
+            {t("care.title")}
+          </span>
+          <button
+            onClick={onClose}
+            className="text-[var(--text-muted)]"
+            aria-label="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -956,5 +1148,7 @@ function SideSection({
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="px-2.5 py-1.5 text-xs text-[var(--text-faint)]">{children}</p>;
+  return (
+    <p className="px-2.5 py-1.5 text-xs text-[var(--text-faint)]">{children}</p>
+  );
 }

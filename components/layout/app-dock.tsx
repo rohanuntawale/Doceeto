@@ -20,7 +20,13 @@ export interface DockItem {
  * on the web). Each nav item becomes a glossy app squircle; the current
  * section shows the running-app indicator dot.
  */
-export function AppDock({ items, activeId }: { items: DockItem[]; activeId: string }) {
+export function AppDock({
+  items,
+  activeId,
+}: {
+  items: DockItem[];
+  activeId: string;
+}) {
   const router = useRouter();
   const [hover, setHover] = useState(false);
 
@@ -35,7 +41,7 @@ export function AppDock({ items, activeId }: { items: DockItem[]; activeId: stri
     // cards; lifts above everything only while hovered.
     <div
       className={cn(
-        "pointer-events-none fixed inset-x-0 bottom-6 z-40 hidden justify-center transition-opacity duration-300 lg:flex",
+        "pointer-events-none fixed inset-x-0 bottom-2 z-40 hidden justify-center transition-opacity duration-300 lg:flex",
         hover ? "opacity-100" : "opacity-50",
       )}
     >
@@ -64,7 +70,8 @@ function Squircle({ icon: Icon, color }: { icon: LucideIcon; color: string }) {
       className="grid h-full w-full place-items-center rounded-[24%] border border-white/15"
       style={{
         background: `linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 45%), ${color}`,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 8px rgba(0,0,0,0.28)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -3px 8px rgba(0,0,0,0.28)",
       }}
     >
       <Icon className="h-1/2 w-1/2 text-white" strokeWidth={2.2} />
