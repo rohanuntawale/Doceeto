@@ -34,6 +34,7 @@ import { weeklyCareActivity } from "@/lib/health/metrics";
 import { realHealthScore } from "@/lib/health/score";
 import { bmiBand, bmiOf } from "@/lib/health/profile";
 import { BmiAdvisor } from "@/components/patient/bmi-advisor";
+import { cn } from "@/lib/utils/cn";
 import { useT } from "@/lib/i18n";
 
 export default function PatientHome() {
@@ -58,7 +59,7 @@ export default function PatientHome() {
   const historyItems = sessions.slice(0, 4).map((s) => ({
     id: s.id,
     title: s.title,
-    sub: s.conclusion ? `Suggested: ${s.conclusion.specialty}` : "Check in progress",
+    sub: s.conclusion ? t("home.suggested", { x: s.conclusion.specialty }) : t("home.checkInProgress"),
     color: "#7C8B5E",
   }));
 
@@ -105,23 +106,23 @@ export default function PatientHome() {
   // BMI replaces the old decorative "Verified: Done" pill — a real number,
   // full when in the healthy range, visibly short when out of it or missing.
   const progressItems = [
-    { label: "Profile", value: located ? 100 : 45 },
+    { label: t("home.profile"), value: located ? 100 : 45 },
     {
-      label: "BMI",
+      label: t("health.bmi"),
       value: bmi === undefined ? 0 : bmiBand(bmi) === "healthy" ? 100 : 45,
-      display: bmi === undefined ? "Add" : `${bmi}`,
+      display: bmi === undefined ? t("home.add") : `${bmi}`,
     },
-    { label: "Records", value: Math.min(100, sessions.length * 25), display: `${sessions.length}` },
-    { label: "Health score", value: score?.value ?? 0, display: score ? undefined : "—" },
+    { label: t("home.records"), value: Math.min(100, sessions.length * 25), display: `${sessions.length}` },
+    { label: t("health.score"), value: score?.value ?? 0, display: score ? undefined : "—" },
   ];
   const goals = [
-    { id: "profile", label: "Complete your profile", sub: "Add your details", done: located, href: "/patient/account" },
-    { id: "contact", label: "Add an emergency contact", sub: "Someone we can reach for you", href: "/patient/account" },
-    { id: "checkup", label: "Book a yearly check-up", sub: "Stay ahead with preventive care", href: "/patient/doctors" },
+    { id: "profile", label: t("goal.profile"), sub: t("goal.profileSub"), done: located, href: "/patient/account" },
+    { id: "contact", label: t("goal.contact"), sub: t("goal.contactSub"), href: "/patient/account" },
+    { id: "checkup", label: t("goal.checkup"), sub: t("goal.checkupSub"), href: "/patient/doctors" },
     ...(MEDICINE_ENABLED
-      ? [{ id: "meds", label: "Set medication reminders", sub: "Never miss a dose", href: "/patient/medicine" }]
+      ? [{ id: "meds", label: t("goal.meds"), sub: t("goal.medsSub"), href: "/patient/medicine" }]
       : []),
-    { id: "verify", label: "Verify your phone number", href: "/patient/account" },
+    { id: "verify", label: t("goal.verify"), href: "/patient/account" },
   ];
 
   const greetingKey =
@@ -150,7 +151,7 @@ export default function PatientHome() {
       <header className="flex flex-wrap items-end justify-between gap-4 lg:col-span-12">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">
-            Dashboard
+            {t("home.dashboard")}
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream lg:text-4xl">
             {t(greetingKey)},{" "}
@@ -170,22 +171,22 @@ export default function PatientHome() {
               are online right now. "24/7" stays — a promise, not a metric. */}
           <HeaderStat
             n={sessions.length}
-            label="Checks"
+            label={t("home.checks")}
             trend={checksTrend !== 0 ? checksTrend : undefined}
           />
           <HeaderStat
             n={formatCount(doctors.length)}
-            label="Doctors"
+            label={t("home.doctors")}
             badge={
               doctorsOnline > 0 ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--c-status-ok))]/15 px-2 py-0.5 text-[11px] font-bold text-[rgb(var(--c-status-ok))]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-status-ok))] animate-pulse" />
-                  {doctorsOnline} online
+                  {t("home.online", { n: String(doctorsOnline) })}
                 </span>
               ) : undefined
             }
           />
-          <HeaderStat n="24/7" label="Care" />
+          <HeaderStat n="24/7" label={t("home.care247")} />
           {/* The avatar IS the door to their profile — dressed like one:
               brand-coloured, ringed, labelled. A photo replaces the initial
               once they add one on the account page. */}
@@ -204,7 +205,7 @@ export default function PatientHome() {
               )}
             </span>
             <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)] transition-colors group-hover:text-cream">
-              Profile
+              {t("home.profile")}
             </span>
           </Link>
         </div>
@@ -263,7 +264,7 @@ export default function PatientHome() {
       {/* Care activity + health score + goals */}
       <div className="lg:col-span-4">
         <ActivityCard
-          title="Care activity"
+          title={t("home.careActivity")}
           caption="Visits & checks this week"
           data={activity.data}
           trend={activity.trend}
@@ -272,13 +273,35 @@ export default function PatientHome() {
       <div className="lg:col-span-4">
         {score ? (
           <GaugeCard
-            title="Health score"
+            title={t("health.score")}
             value={score.value}
             caption={score.caption}
             trend={score.trend !== 0 ? score.trend : undefined}
             spark={score.spark}
             footer={
               <div className="space-y-1.5">
+                {/* BMI in the health card itself — the number patients look
+                    for, with the band that decides whether it's a concern. */}
+                <Link
+                  href="/patient/account"
+                  className={cn(
+                    "mb-2 flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-opacity hover:opacity-80",
+                    bmi === undefined
+                      ? "bg-white/5 text-[var(--text-muted)]"
+                      : bmiBand(bmi) === "healthy"
+                        ? "bg-[rgb(var(--c-status-ok))]/12 text-[rgb(var(--c-status-ok))]"
+                        : "bg-tan/12 text-tan",
+                  )}
+                >
+                  <span className="font-semibold">
+                    {t("health.bmi")} {bmi !== undefined ? bmi : "—"}
+                  </span>
+                  <span>
+                    {bmi !== undefined
+                      ? t(`bmi.${bmiBand(bmi)}`)
+                      : t("health.addHeightWeight")}
+                  </span>
+                </Link>
                 {score.pillars.map((pl) => (
                   <div key={pl.key} className="flex items-center gap-2" title={pl.note}>
                     <span className="w-[86px] shrink-0 text-[11px] text-[var(--text-muted)]">
@@ -300,8 +323,7 @@ export default function PatientHome() {
                     href="/patient/account"
                     className="block pt-1 text-[11px] text-salmon transition-colors hover:text-cream"
                   >
-                    Based on {score.coverage.known} of {score.coverage.total} areas —
-                    complete your health profile for a fuller picture
+                    {t("health.basedOn", { a: String(score.coverage.known), b: String(score.coverage.total) })}
                   </Link>
                 )}
               </div>
@@ -311,22 +333,21 @@ export default function PatientHome() {
           // No number is the honest answer until the profile can support one.
           <section className="fh-card relative flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl p-6 text-center">
             <div className="pattern-grid pointer-events-none absolute inset-0" aria-hidden />
-            <p className="relative text-sm font-semibold text-cream">Health score</p>
+            <p className="relative text-sm font-semibold text-cream">{t("health.noScoreTitle")}</p>
             <p className="relative mt-2 max-w-[220px] text-xs leading-relaxed text-[var(--text-muted)]">
-              Fill in your health profile — height, weight, habits — and your
-              real score appears here, computed from your own data.
+              {t("health.noScoreDesc")}
             </p>
             <Link
               href="/patient/account"
               className="relative mt-4 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-on-accent transition-transform active:scale-[0.98]"
             >
-              Add health details
+              {t("health.addDetails")}
             </Link>
           </section>
         )}
       </div>
       <div className="lg:col-span-4">
-        <GoalsCard title="Health goals" goals={goals} />
+        <GoalsCard title={t("home.healthGoals")} goals={goals} />
       </div>
 
       {/* Live tracking (only when active) */}

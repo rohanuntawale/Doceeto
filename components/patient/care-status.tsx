@@ -5,7 +5,8 @@ import { Stethoscope, Pill, ChevronRight, Briefcase } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RateDoctor } from "@/components/patient/rate-doctor";
-import { consultStatusOf, consultTypeOf, orderStatusOf, tripStageOf } from "@/lib/labels";
+import { labelsIn } from "@/lib/labels";
+import { useT } from "@/lib/i18n";
 import { isGig } from "@/lib/scheduling/slots";
 import { tripStageOfRequest } from "@/lib/scheduling/trip";
 import { timeAgo } from "@/lib/utils/format";
@@ -29,6 +30,8 @@ export function CareStatus({
   moreHref?: string;
 }) {
   const mounted = useMounted();
+  const { t } = useT();
+  const L = labelsIn(t);
   // A completed consult stays here only until the patient rates it — once
   // reviewed (persisted server-side), the doctor drops out of active care.
   const requests = useConsultRequests().filter(
@@ -50,11 +53,11 @@ export function CareStatus({
   if (isEmpty) {
     return (
       <EmptyState
-        title="No active care"
+        title={t("care.noActive")}
         desc={
           MEDICINE_ENABLED
             ? "Book a doctor or order medicine. It shows up here and updates live."
-            : "Book a doctor and your care shows up here, updating live."
+            : t("care.noActiveDesc")
         }
         action={
           <div className="flex flex-wrap justify-center gap-2">
@@ -62,7 +65,7 @@ export function CareStatus({
               href="/patient/doctors"
               className="flex items-center gap-1.5 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-on-accent"
             >
-              <Stethoscope className="h-4 w-4" /> Find a doctor
+              <Stethoscope className="h-4 w-4" /> {t("care.findDoctor")}
             </Link>
             {MEDICINE_ENABLED && (
               <Link
@@ -91,22 +94,22 @@ export function CareStatus({
           icon={
             isGig(r) ? <Briefcase className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />
           }
-          title={isGig(r) && r.gigTitle ? r.gigTitle : consultTypeOf(r.type).label}
+          title={isGig(r) && r.gigTitle ? r.gigTitle : L.consultType(r.type).label}
           sub={
             // A doctor who cancels owes an explanation, so it leads here.
             r.status === "cancelled" && r.cancelledBy === "doctor"
               ? `Cancelled by ${docName(r.doctorId) ?? "the doctor"}${r.cancelReason ? ` — ${r.cancelReason}` : ""}`
               : r.status === "completed"
-                ? `Consult with ${docName(r.doctorId)} completed`
+                ? t("care.completed", { x: docName(r.doctorId) ?? "" })
                 : r.doctorId
                   ? // Once accepted, the stage is more useful than "accepted".
-                    `${docName(r.doctorId)} · ${tripStageOf(tripStageOfRequest(r)).label.toLowerCase()}`
+                    `${docName(r.doctorId)} · ${L.tripStage(tripStageOfRequest(r)).label.toLowerCase()}`
                   : r.broadcast
-                    ? "Finding you a doctor nearby…"
-                    : "Waiting for a doctor to accept…"
+                    ? t("care.finding")
+                    : t("care.waiting")
           }
           time={mounted ? timeAgo(r.createdAt) : ""}
-          pill={<StatusPill tone={consultStatusOf(r.status).tone}>{consultStatusOf(r.status).label}</StatusPill>}
+          pill={<StatusPill tone={L.consultStatus(r.status).tone}>{L.consultStatus(r.status).label}</StatusPill>}
           footer={
             r.status === "completed" && r.doctorId ? (
               <RateDoctor req={r} doctorName={docName(r.doctorId) ?? undefined} />
@@ -130,7 +133,7 @@ export function CareStatus({
               : `${o.darkStore} · ETA ${o.etaMins}m`
           }
           time={mounted ? timeAgo(o.createdAt) : ""}
-          pill={<StatusPill tone={orderStatusOf(o.status).tone}>{orderStatusOf(o.status).label}</StatusPill>}
+          pill={<StatusPill tone={L.orderStatus(o.status).tone}>{L.orderStatus(o.status).label}</StatusPill>}
         />
       ),
     })),
@@ -152,7 +155,7 @@ export function CareStatus({
           href={moreHref}
           className="flex items-center justify-center gap-1 rounded-card border border-[var(--border)] py-2.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:text-cream"
         >
-          {hidden} more {hidden === 1 ? "item" : "items"} in your care
+          {t("care.moreItems", { n: String(hidden) })}
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       )}

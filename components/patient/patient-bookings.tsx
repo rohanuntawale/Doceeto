@@ -6,7 +6,8 @@ import { Video, Home, Building2, ChevronRight, CalendarDays, Zap } from "lucide-
 import { StatusPill } from "@/components/ui/status-pill";
 import { RateDoctor } from "@/components/patient/rate-doctor";
 import { useToast } from "@/components/ui/toast";
-import { consultStatusOf, consultTypeOf } from "@/lib/labels";
+import { labelsIn } from "@/lib/labels";
+import { useT } from "@/lib/i18n";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { useConsultRequests, useDoctors, useActions } from "@/lib/hooks/data";
@@ -90,9 +91,11 @@ function BookingRow({
   past?: boolean;
 }) {
   const toast = useToast();
+  const { t } = useT();
+  const L = labelsIn(t);
   const { cancelRequest } = useActions();
   const [cancelling, setCancelling] = useState(false);
-  const st = consultStatusOf(req.status);
+  const st = L.consultStatus(req.status);
   const name = doctor?.fullName ?? "Doceeto doctor";
   const waiting = req.status === "pending";
   const canRate = req.status === "completed" && !!req.doctorId && !req.reviewed;
@@ -134,7 +137,7 @@ function BookingRow({
         </p>
         <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
           {typeIcon[req.type]}
-          {consultTypeOf(req.type).label}
+          {L.consultType(req.type).label}
           {doctor?.specialty ? ` · ${doctor.specialty}` : ""}
         </p>
         {/* When it is — the detail the patient actually came back for. */}

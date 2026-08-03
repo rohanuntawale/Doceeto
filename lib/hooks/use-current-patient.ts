@@ -16,6 +16,12 @@ export interface PatientIdentity {
   healthProfile?: import("@/lib/health/profile").HealthProfile;
   /** True once real device geolocation has been applied. */
   located?: boolean;
+  /**
+   * True once the real account has been fetched (or the fetch has failed).
+   * Forms MUST wait for this before saving: writing a blank form over a
+   * record that simply hadn't arrived yet is silent data loss.
+   */
+  ready?: boolean;
 }
 
 const KEY = "iyashi:patient:v2";
@@ -60,13 +66,17 @@ function hydrateOnce() {
     apiFetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.role === "patient" && data.patient) {
-          current = { ...DEFAULT, ...data.patient };
-          emit();
-        }
+        current =
+          data?.role === "patient" && data.patient
+            ? { ...DEFAULT, ...data.patient, ready: true }
+            : { ...current, ready: true };
+        emit();
       })
       .catch(() => {
-        /* keep defaults */
+        // Even a failed fetch settles the question — forms must not hang
+        // disabled forever because the network blipped.
+        current = { ...current, ready: true };
+        emit();
       });
     return;
   }
@@ -75,14 +85,15 @@ function hydrateOnce() {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (raw) {
-      current = { ...DEFAULT, ...JSON.parse(raw) };
+      current = { ...DEFAULT, ...JSON.parse(raw), ready: true };
     } else {
-      current = { ...DEFAULT, id: `patient-${Date.now().toString(36)}` };
+      current = { ...DEFAULT, id: `patient-${Date.now().toString(36)}`, ready: true };
       persist();
     }
     emit();
   } catch {
-    /* ignore */
+    current = { ...current, ready: true };
+    emit();
   }
 }
 

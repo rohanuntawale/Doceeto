@@ -124,3 +124,59 @@ export const bookingModeOfLabel = (k?: string | null) =>
   of(bookingMode, k, { label: "Consult", tone: "idle" as Tone });
 export const tripStageOf = (k?: string | null) =>
   of(tripStage, k, { label: "Accepted", tone: "info" as Tone, step: 0 });
+
+// ── Translated labels ────────────────────────────────────────
+/**
+ * The English maps above are the source of truth for TONE and STEP; this maps
+ * each value onto a dictionary key so the same pills read in the patient's
+ * language. Kept as a separate layer so ops and doctor consoles — professional
+ * tools that stay in English — can keep using the plain getters.
+ */
+const KEY: Record<string, string> = {
+  pending: "st.pending", accepted: "st.accepted", declined: "st.declined",
+  completed: "st.completed", cancelled: "st.cancelled",
+  video: "st.video", home_visit: "st.home_visit", clinic: "st.clinic",
+  online: "st.online", busy: "st.busy", offline: "st.offline",
+  active: "st.live", paused: "st.paused", archived: "st.archived",
+  emergency: "st.urgent", scheduled: "st.appointment", gig: "st.gig",
+  enroute: "st.enroute", arrived: "st.arrived", in_progress: "st.inConsult",
+  placed: "st.placed", packed: "st.packed",
+  out_for_delivery: "st.outForDelivery", delivered: "st.delivered",
+  resident: "kind.resident", practising: "kind.practising",
+};
+
+type Translate = (key: string, vars?: Record<string, string>) => string;
+
+/**
+ * Wrap any getter so its `.label` comes from the dictionary. Tone/step pass
+ * through untouched. Unknown values keep the getter's own neutral fallback,
+ * translated where a key exists.
+ */
+function translated<T extends { label: string }>(
+  t: Translate,
+  entry: T,
+  raw?: string | null,
+): T {
+  const key = raw ? KEY[raw] : undefined;
+  return key ? { ...entry, label: t(key) } : entry;
+}
+
+/** Patient-facing label getters, in the active language. */
+export function labelsIn(t: Translate) {
+  return {
+    consultStatus: (k?: string | null) => translated(t, consultStatusOf(k), k),
+    consultType: (k?: string | null) => translated(t, consultTypeOf(k), k),
+    orderStatus: (k?: string | null) => translated(t, orderStatusOf(k), k),
+    doctorStatus: (k?: string | null) => translated(t, doctorStatusOf(k), k),
+    gigStatus: (k?: string | null) => translated(t, gigStatusOf(k), k),
+    bookingMode: (k?: string | null) => translated(t, bookingModeOfLabel(k), k),
+    tripStage: (k?: string | null) => translated(t, tripStageOf(k), k),
+    doctorKind: (k?: string | null) => {
+      const e = doctorKindOf(k);
+      if (k === "resident" || k === "practising") {
+        return { label: t(KEY[k]), blurb: t(`kind.${k}Blurb`) };
+      }
+      return e;
+    },
+  };
+}

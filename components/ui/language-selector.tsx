@@ -1,15 +1,44 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Globe, Check } from "lucide-react";
 import { useT, type LangCode } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
 
-/** Constant top-right language switcher. Glassy pill + popover. */
+/**
+ * Constant top-right language switcher. Glassy pill + popover.
+ *
+ * The popover is PORTALLED to <body> and positioned from the trigger's
+ * measured rect. Rendered inline it was trapped in the sticky top bar's
+ * stacking context (z-20), so its own z-50 meant nothing against the page:
+ * it dropped onto the dashboard's stat row and profile avatar, covering
+ * live tap targets with no backdrop. On <body> the z-index finally counts.
+ */
 export function LanguageSelector() {
   const { lang, setLang, languages } = useT();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Measure before paint so the menu never flashes at the wrong spot, and
+  // keep it pinned to the trigger while the page scrolls or resizes.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = root.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -23,7 +52,14 @@ export function LanguageSelector() {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      // The menu now lives on <body>, so "outside" must exclude it too.
+      if (
+        !root.current?.contains(target) &&
+        !(target instanceof Element && target.closest("[data-language-menu]"))
+      ) {
+        setOpen(false);
+      }
     };
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
@@ -43,9 +79,15 @@ export function LanguageSelector() {
         <span>{active.native}</span>
       </button>
 
-      {open && (
-        <>
-          <div className="fh-card absolute right-0 z-50 mt-2 w-44 animate-fade-up overflow-hidden rounded-2xl p-1.5">
+      {open &&
+        mounted &&
+        pos &&
+        createPortal(
+          <div
+            data-language-menu
+            style={{ top: pos.top, right: pos.right }}
+            className="fh-card fixed z-[95] w-44 animate-fade-up overflow-hidden rounded-2xl p-1.5 shadow-[var(--elev-shadow-strong)]"
+          >
             {languages.map((l) => (
               <button
                 key={l.code}
@@ -69,9 +111,9 @@ export function LanguageSelector() {
                 {l.code === lang && <Check className="h-4 w-4" />}
               </button>
             ))}
-          </div>
-        </>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

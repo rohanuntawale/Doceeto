@@ -71,7 +71,7 @@ export default function PatientAccount() {
           <p className="truncate text-lg font-semibold text-cream">{patient.name}</p>
           <p className="truncate text-sm text-[var(--text-muted)]">{patient.address}</p>
           <p className="mt-0.5 text-xs text-[var(--text-faint)]">
-            {patient.avatarUrl ? "Tap the photo to change it" : "Tap the circle to add a photo"}
+            {patient.avatarUrl ? t("account.tapPhoto") : t("account.addPhoto")}
           </p>
         </div>
       </div>

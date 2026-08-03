@@ -20,7 +20,8 @@ import { TrackMap } from "@/components/map/track-map";
 import { useToast } from "@/components/ui/toast";
 import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
 import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
-import { consultTypeOf, tripStageOf } from "@/lib/labels";
+import { labelsIn } from "@/lib/labels";
+import { useT } from "@/lib/i18n";
 import { isGig } from "@/lib/scheduling/slots";
 import { stagesFor, tripStageOfRequest } from "@/lib/scheduling/trip";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
@@ -124,8 +125,10 @@ function TrackerCard({
   const known = hasCoords(other);
   const km = known ? haversineKm(self, other as LatLng) : null;
   const isHomeVisit = req.type === "home_visit";
+  const { t } = useT();
+  const L = labelsIn(t);
   const stage = tripStageOfRequest(req);
-  const st = tripStageOf(stage);
+  const st = L.tripStage(stage);
 
   // Copy follows the stage, so the patient sees the journey rather than a
   // static "accepted" until it's over.
@@ -165,7 +168,7 @@ function TrackerCard({
               </>
             ) : (
               <>
-                {typeIcon[req.type]} {consultTypeOf(req.type).label}
+                {typeIcon[req.type]} {L.consultType(req.type).label}
                 {subtitle ? ` · ${subtitle}` : ""}
               </>
             )}
@@ -257,6 +260,8 @@ function TrackerCard({
  */
 export function TripRail({ req }: { req: ConsultRequest }) {
   const rail = stagesFor(req.type);
+  const { t } = useT();
+  const L = labelsIn(t);
   const current = tripStageOfRequest(req);
   const at = current ? rail.indexOf(current) : -1;
 
@@ -301,7 +306,7 @@ export function TripRail({ req }: { req: ConsultRequest }) {
                 i === at ? "text-cream" : "text-[var(--text-faint)]",
               )}
             >
-              {tripStageOf(s).label}
+              {L.tripStage(s).label}
             </span>
           </div>
         );
@@ -321,6 +326,8 @@ export function TripControls({ req }: { req: ConsultRequest }) {
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
+  const { t } = useT();
+  const L = labelsIn(t);
   const stage = tripStageOfRequest(req);
   const startJourney = req.type === "home_visit" && stage === "accepted";
   const travelling = req.type === "home_visit" && stage === "enroute";
