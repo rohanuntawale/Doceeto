@@ -6,9 +6,11 @@ import { MAP_CENTER, COMMISSION_RATE } from "@/lib/config";
 import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import {
   DomainError,
+  PENDING_SIGNUP_TTL_MS,
   SESSION_TTL_MS,
   newSessionId,
   type Near,
+  type PendingSignup,
   type SessionRecord,
   type UserRecord,
 } from "@/lib/db/shared";
@@ -27,6 +29,7 @@ import {
 } from "@/lib/scheduling/booking";
 import { nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
+import type { HealthProfile } from "@/lib/health/profile";
 import type {
   Ambulance,
   ConsultRequest,
@@ -57,7 +60,7 @@ import type {
  */
 
 export { DomainError };
-export type { Near, SessionRecord, UserRecord };
+export type { Near, PendingSignup, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const nowIso = () => new Date().toISOString();
@@ -288,6 +291,23 @@ export async function deleteSessionsForUser(userId: string): Promise<void> {
   await sql(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
 }
 
+/**
+ * Doctor ids holding at least one live session — i.e. signed in on some device
+ * right now. Half of the "is this doctor really online?" question; the other
+ * half is a fresh heartbeat (see lib/presence.ts).
+ */
+export async function signedInDoctorIds(): Promise<string[]> {
+  const rows = await sql(
+    `SELECT DISTINCT user_id FROM sessions WHERE role = 'doctor' AND expires_at > now()`,
+  );
+  return rows.map((r) => String(r.user_id));
+}
+
+/** Record that a doctor's cockpit is still open. The heartbeat. */
+export async function touchDoctor(doctorId: string): Promise<void> {
+  await sql(`UPDATE doctors SET last_seen = now() WHERE id = $1`, [doctorId]);
+}
+
 export async function purgeExpiredSessions(): Promise<void> {
   await sql(`DELETE FROM sessions WHERE expires_at < now()`);
 }
@@ -345,6 +365,57 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
     [email.toLowerCase()],
   );
   return r ? mapUser(r) : null;
+}
+
+// ── Pending sign-ups (Google, before the profile exists) ─────
+
+export async function createPendingSignup(input: {
+  googleId: string;
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: "patient" | "doctor";
+}): Promise<PendingSignup> {
+  const row: PendingSignup = {
+    id: newSessionId(),
+    googleId: input.googleId,
+    email: input.email.toLowerCase(),
+    name: input.name,
+    avatarUrl: input.avatarUrl ?? null,
+    role: input.role,
+    expiresAt: new Date(Date.now() + PENDING_SIGNUP_TTL_MS).toISOString(),
+  };
+  await sql(
+    `INSERT INTO pending_signups (id, google_id, email, name, avatar_url, role, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [row.id, row.googleId, row.email, row.name, row.avatarUrl, row.role, row.expiresAt],
+  );
+  return row;
+}
+
+/** Resolve a pending sign-up id. Expired rows are deleted, never returned. */
+export async function getPendingSignup(id: string): Promise<PendingSignup | null> {
+  if (!id) return null;
+  const r = await one(`SELECT * FROM pending_signups WHERE id = $1`, [id]);
+  if (!r) return null;
+  if (new Date(iso(r.expires_at)).getTime() <= Date.now()) {
+    await deletePendingSignup(id);
+    return null;
+  }
+  return {
+    id: r.id,
+    googleId: r.google_id,
+    email: r.email,
+    name: r.name,
+    avatarUrl: r.avatar_url ?? null,
+    role: r.role,
+    expiresAt: iso(r.expires_at),
+  };
+}
+
+export async function deletePendingSignup(id: string): Promise<void> {
+  if (!id) return;
+  await sql(`DELETE FROM pending_signups WHERE id = $1`, [id]);
 }
 
 // ── Google sign-in ───────────────────────────────────────────
@@ -467,10 +538,13 @@ export async function createDoctorUser(input: {
         input.age ?? null,
         Number(input.experienceYears) || 0,
         input.languages?.length ? input.languages : ["English", "Hindi"],
-        // A doctor without a profile photo is not shown to patients: they
-        // start offline and the photo requirement is enforced when they try
-        // to go online. A Google signup brings its picture and starts live.
-        input.avatarUrl ? "online" : "offline",
+        // ALWAYS offline to begin with, photo or no photo. Being online is a
+        // promise to answer a patient right now, and a brand-new account has
+        // made no such promise — a Google sign-up that arrived with a picture
+        // used to be marked live the instant it was created, putting a doctor
+        // on the emergency map before they had agreed to be there. Going
+        // online stays a deliberate act.
+        "offline",
         Number(input.consultFee) || 0,
         Number(input.homeVisitFee) || 0,
         color,
@@ -489,7 +563,10 @@ export async function createDoctorUser(input: {
 }
 
 export async function getPatientProfile(id: string) {
-  const r = await one(`SELECT id, name, address, lat, lng, avatar_url FROM users WHERE id = $1`, [id]);
+  const r = await one(
+    `SELECT id, name, address, lat, lng, avatar_url, health_profile FROM users WHERE id = $1`,
+    [id],
+  );
   if (!r) return null;
   return {
     id: r.id,
@@ -498,7 +575,83 @@ export async function getPatientProfile(id: string) {
     lat: num(r.lat, MAP_CENTER.lat),
     lng: num(r.lng, MAP_CENTER.lng),
     avatarUrl: r.avatar_url ?? undefined,
+    healthProfile: (r.health_profile as HealthProfile | null) ?? undefined,
   };
+}
+
+/**
+ * Save the patient's health profile. The route sanitizes; this writes — and
+ * when the weight changed, it also APPENDS to the vitals log, so a history
+ * accrues from ordinary profile edits and weight becomes a trend, not a
+ * snapshot.
+ */
+export async function setPatientHealthProfile(
+  id: string,
+  profile: HealthProfile,
+): Promise<void> {
+  const prev = await one(
+    `SELECT health_profile FROM users WHERE id = $1 AND role = 'patient'`,
+    [id],
+  );
+  if (!prev) return;
+  const prevWeight = (prev.health_profile as HealthProfile | null)?.weightKg;
+
+  await sql(`UPDATE users SET health_profile = $2::jsonb WHERE id = $1 AND role = 'patient'`, [
+    id,
+    JSON.stringify(profile),
+  ]);
+
+  if (profile.weightKg !== undefined && profile.weightKg !== prevWeight) {
+    await sql(
+      `INSERT INTO vitals (id, patient_id, kind, value) VALUES ($1, $2, 'weight', $3)`,
+      [uid("vital"), id, profile.weightKg],
+    );
+  }
+}
+
+/** Recent weight measurements, newest first — the doctor brief's trend line. */
+export async function getWeightHistory(
+  patientId: string,
+  limit = 10,
+): Promise<{ value: number; recordedAt: string }[]> {
+  const rows = await sql(
+    `SELECT value, recorded_at FROM vitals
+      WHERE patient_id = $1 AND kind = 'weight'
+      ORDER BY recorded_at DESC LIMIT $2`,
+    [patientId, limit],
+  );
+  return rows.map((r) => ({ value: num(r.value), recordedAt: iso(r.recorded_at) }));
+}
+
+/**
+ * Everything a doctor may read about a patient whose consult they ACCEPTED —
+ * identity, contactable address, their standing as a patient, and the full
+ * health profile. Authorization (does this doctor hold that consult?) is the
+ * route's job; this just assembles the brief.
+ */
+export async function getPatientBrief(patientId: string) {
+  const r = await one(
+    `SELECT id, name, address, avatar_url, rating, rating_count, health_profile, created_at
+       FROM users WHERE id = $1 AND role = 'patient'`,
+    [patientId],
+  );
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    address: r.address ?? "",
+    avatarUrl: r.avatar_url ?? undefined,
+    rating: r.rating != null ? num(r.rating) : undefined,
+    ratingCount: r.rating_count != null ? num(r.rating_count) : undefined,
+    healthProfile: (r.health_profile as HealthProfile | null) ?? undefined,
+    memberSince: iso(r.created_at),
+    weightHistory: await getWeightHistory(patientId),
+  };
+}
+
+/** Cheapest possible round trip — exists to wake a suspended Neon compute. */
+export async function ping(): Promise<void> {
+  await sql(`SELECT 1`);
 }
 
 /**

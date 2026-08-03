@@ -12,6 +12,8 @@ export interface PatientIdentity {
   lng: number;
   /** Profile photo (a small data-URL, or a Google picture URL). */
   avatarUrl?: string;
+  /** Health basics (height, weight, allergies, …) — lib/health/profile.ts. */
+  healthProfile?: import("@/lib/health/profile").HealthProfile;
   /** True once real device geolocation has been applied. */
   located?: boolean;
 }

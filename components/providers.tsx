@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ToastProvider } from "@/components/ui/toast";
 import { RealtimeBridge } from "@/components/realtime-bridge";
+import { SiteDownGate } from "@/components/site-down-gate";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <RealtimeBridge />
+      <SiteDownGate />
       <ToastProvider>{children}</ToastProvider>
     </QueryClientProvider>
   );

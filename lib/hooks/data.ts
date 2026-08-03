@@ -282,6 +282,8 @@ export interface Actions {
    *  rejection (e.g. the profile-photo requirement) instead of assuming
    *  success. Demo mode resolves immediately. */
   setDoctorStatus: (id: string, status: Doctor["status"]) => void | Promise<unknown>;
+  /** "My cockpit is still open." Drives the real online/offline status. */
+  heartbeat: () => Promise<void>;
   /** Doctor's bookable calendar. `id` is used in demo mode only — the live
    *  backend always scopes the write to the signed-in doctor. */
   setAvailability: (id: string, availability: DoctorAvailability) => Promise<void>;
@@ -358,6 +360,9 @@ export function useActions(): Actions {
         ratePatient: async () => {},
         updateDoctor: demoStore.updateDoctor,
         setDoctorStatus: demoStore.setDoctorStatus,
+        // Demo mode has no sessions and no server to be absent from: the one
+        // browser holding the store IS the doctor, so presence is a given.
+        heartbeat: async () => {},
         setAvailability: async (id, availability) =>
           demoStore.setDoctorAvailability(id, availability),
         acceptRequest: async (id, doctorId) => demoStore.acceptRequest(id, doctorId),
@@ -395,6 +400,15 @@ export function useActions(): Actions {
       ratePatient: (input) => callAction<void>(qc, "ratePatient", { ...input }),
       updateDoctor: (id, patch) => callAction(qc, "updateDoctor", { patch }),
       setDoctorStatus: (_id, status) => callAction(qc, "setDoctorStatus", { status }),
+      // Bypasses callAction on purpose: that helper invalidates every query on
+      // completion, and a beat every 30s would refetch the whole app forever.
+      heartbeat: async () => {
+        await apiFetch("/api/actions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "heartbeat", payload: {} }),
+        });
+      },
       setAvailability: (_id, availability) =>
         callAction<void>(qc, "setAvailability", { availability }),
       acceptRequest: async (id) => void (await callAction(qc, "acceptRequest", { id })),

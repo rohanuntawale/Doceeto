@@ -1,11 +1,14 @@
 "use client";
 
-import { Zap, CalendarDays, Briefcase } from "lucide-react";
+import { useState } from "react";
+import { Zap, CalendarDays, Briefcase, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequestCard } from "@/components/zumi/request-card";
+import { PatientBriefDialog } from "@/components/doctor/patient-brief-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
+import { isDemoMode } from "@/lib/config";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import {
@@ -24,6 +27,9 @@ export default function RequestsPage() {
   const actions = useActions();
   const me = useCurrentDoctor();
   const toast = useToast();
+  // Which accepted consult's patient brief is open (live mode only — the
+  // brief comes from the account store, which demo mode doesn't have).
+  const [briefFor, setBriefFor] = useState<string | null>(null);
 
   const doctorId = me?.id ?? "";
   const ongoing = doctorId ? ongoingConsultOf(requests, doctorId) : undefined;
@@ -212,11 +218,32 @@ export default function RequestsPage() {
                   actions.completeRequest(r.id);
                   toast.push({ tone: "success", title: "Consult completed" });
                 }}
+                footer={
+                  // Accepting the consult is what unlocks the patient's
+                  // health profile — the server enforces the same rule.
+                  !isDemoMode && r.patientId ? (
+                    <button
+                      onClick={() => setBriefFor(r.id)}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
+                    >
+                      <ClipboardList className="h-4 w-4 text-salmon" />
+                      View patient details
+                    </button>
+                  ) : undefined
+                }
               />
             ))}
           </div>
         )}
       </section>
+
+      {briefFor && (
+        <PatientBriefDialog
+          requestId={briefFor}
+          open
+          onClose={() => setBriefFor(null)}
+        />
+      )}
     </>
   );
 }

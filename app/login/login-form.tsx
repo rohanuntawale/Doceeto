@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
 import { surfaceFromPath } from "@/lib/auth/constants";
 import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
+import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
 
 export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   return (
@@ -19,6 +20,8 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
 }
 
 function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
+  // Wake the database while they're still typing — sign-in lands warm.
+  useWarmBackend();
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/doctor";

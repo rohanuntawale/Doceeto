@@ -41,6 +41,13 @@ export const RETIRED_COOKIES = [
 export const OAUTH_STATE_COOKIE = "iyashi_oauth";
 
 /**
+ * Points at a verified Google identity that has not become an account yet —
+ * a doctor part-way through filling in their own practice profile. Holding
+ * only an opaque id means the browser cannot alter who it claims to be.
+ */
+export const PENDING_SIGNUP_COOKIE = "iyashi_pending_signup";
+
+/**
  * Which surface an API call is acting as. Page requests carry the surface in
  * their path; fetches don't, so the client tags them with this header (and
  * `?surface=` for EventSource, which cannot set headers).

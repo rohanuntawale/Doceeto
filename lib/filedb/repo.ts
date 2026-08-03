@@ -2,9 +2,11 @@ import "server-only";
 import { data, persist, type StoredUser } from "@/lib/filedb/store";
 import {
   DomainError,
+  PENDING_SIGNUP_TTL_MS,
   SESSION_TTL_MS,
   newSessionId,
   type Near,
+  type PendingSignup,
   type SessionRecord,
   type UserRecord,
 } from "@/lib/db/shared";
@@ -25,6 +27,7 @@ import {
 } from "@/lib/scheduling/booking";
 import { nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
+import type { HealthProfile } from "@/lib/health/profile";
 import type {
   Ambulance,
   ConsultRequest,
@@ -41,7 +44,7 @@ import type {
 } from "@/lib/types/domain";
 
 export { DomainError };
-export type { Near, SessionRecord, UserRecord };
+export type { Near, PendingSignup, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -109,6 +112,28 @@ export async function deleteSessionsForUser(userId: string): Promise<void> {
   persist();
 }
 
+/** Doctor ids holding at least one live session (signed in somewhere now). */
+export async function signedInDoctorIds(): Promise<string[]> {
+  const now = Date.now();
+  return Array.from(
+    new Set(
+      data()
+        .sessions.filter(
+          (s) => s.role === "doctor" && new Date(s.expiresAt).getTime() > now,
+        )
+        .map((s) => s.userId),
+    ),
+  );
+}
+
+/** Record that a doctor's cockpit is still open. The heartbeat. */
+export async function touchDoctor(doctorId: string): Promise<void> {
+  const doc = data().doctors.find((d) => d.id === doctorId);
+  if (!doc) return;
+  doc.lastSeen = now();
+  persist();
+}
+
 export async function purgeExpiredSessions(): Promise<void> {
   const d = data();
   const now = Date.now();
@@ -122,6 +147,48 @@ export async function purgeExpiredSessions(): Promise<void> {
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const u = data().users.find((x) => x.email === email.toLowerCase());
   return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
+}
+
+// ── Pending sign-ups (Google, before the profile exists) ─────
+
+export async function createPendingSignup(input: {
+  googleId: string;
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+  role: "patient" | "doctor";
+}): Promise<PendingSignup> {
+  const row: PendingSignup = {
+    id: newSessionId(),
+    googleId: input.googleId,
+    email: input.email.toLowerCase(),
+    name: input.name,
+    avatarUrl: input.avatarUrl ?? null,
+    role: input.role,
+    expiresAt: new Date(Date.now() + PENDING_SIGNUP_TTL_MS).toISOString(),
+  };
+  data().pendingSignups.push(row);
+  persist();
+  return row;
+}
+
+export async function getPendingSignup(id: string): Promise<PendingSignup | null> {
+  if (!id) return null;
+  const found = data().pendingSignups.find((p) => p.id === id);
+  if (!found) return null;
+  if (new Date(found.expiresAt).getTime() <= Date.now()) {
+    await deletePendingSignup(id);
+    return null;
+  }
+  return found;
+}
+
+export async function deletePendingSignup(id: string): Promise<void> {
+  const d = data();
+  const i = d.pendingSignups.findIndex((p) => p.id === id);
+  if (i === -1) return;
+  d.pendingSignups.splice(i, 1);
+  persist();
 }
 
 // ── Google sign-in ───────────────────────────────────────────
@@ -235,9 +302,10 @@ export async function createDoctorUser(input: {
     registrationNo: input.registrationNo,
     about: input.about,
     avatarUrl: input.avatarUrl,
-    // No photo, no roster: starts offline until one is added (a Google
-    // signup brings its picture and starts live). Mirrors Postgres.
-    status: input.avatarUrl ? "online" : "offline",
+    // ALWAYS offline to begin with. Being online is a promise to answer a
+    // patient right now, and a new account has made no such promise. Mirrors
+    // Postgres.
+    status: "offline",
     verified: false,
     rating: 0,
     consultFee: Number(input.consultFee) || 0,
@@ -265,8 +333,69 @@ export async function getPatientProfile(id: string) {
     lat: Number(u.lat ?? MAP_CENTER.lat),
     lng: Number(u.lng ?? MAP_CENTER.lng),
     avatarUrl: u.avatarUrl,
+    healthProfile: u.healthProfile,
   };
 }
+
+/**
+ * Save the patient's health profile. The route sanitizes; this writes — and
+ * when the weight changed, it also APPENDS to the vitals log (mirroring
+ * Postgres), so weight becomes a trend rather than a snapshot.
+ */
+export async function setPatientHealthProfile(
+  id: string,
+  profile: HealthProfile,
+): Promise<void> {
+  const d = data();
+  const u = d.users.find((x) => x.id === id && x.role === "patient");
+  if (!u) return;
+  const prevWeight = u.healthProfile?.weightKg;
+  u.healthProfile = profile;
+  if (profile.weightKg !== undefined && profile.weightKg !== prevWeight) {
+    (d.vitals ??= []).push({
+      id: uid("vital"),
+      patientId: id,
+      kind: "weight",
+      value: profile.weightKg,
+      recordedAt: now(),
+    });
+  }
+  persist();
+}
+
+/** Recent weight measurements, newest first — the doctor brief's trend line. */
+export async function getWeightHistory(
+  patientId: string,
+  limit = 10,
+): Promise<{ value: number; recordedAt: string }[]> {
+  return (data().vitals ?? [])
+    .filter((v) => v.patientId === patientId && v.kind === "weight")
+    .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+    .slice(0, limit)
+    .map((v) => ({ value: v.value, recordedAt: v.recordedAt }));
+}
+
+/**
+ * Everything a doctor may read about a patient whose consult they ACCEPTED.
+ * Mirrors the Postgres brief; authorization stays in the route.
+ */
+export async function getPatientBrief(patientId: string) {
+  const u = data().users.find((x) => x.id === patientId && x.role === "patient");
+  if (!u) return null;
+  return {
+    id: u.id,
+    name: u.name,
+    address: u.address ?? "",
+    avatarUrl: u.avatarUrl,
+    rating: u.rating,
+    ratingCount: u.ratingCount,
+    healthProfile: u.healthProfile,
+    memberSince: u.createdAt ?? "",
+  };
+}
+
+/** Mirrors the Postgres repo's wake-up ping; the file store is always warm. */
+export async function ping(): Promise<void> {}
 
 /**
  * The one write for profile photos, both roles. Mirrors Postgres: the photo

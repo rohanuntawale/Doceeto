@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { AvatarUploader } from "@/components/ui/avatar-uploader";
+import { HealthProfileForm } from "@/components/patient/health-profile-form";
 import { useT, type LangCode } from "@/lib/i18n";
 import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
@@ -74,6 +75,9 @@ export default function PatientAccount() {
           </p>
         </div>
       </div>
+
+      {/* Health basics — what a doctor reads before treating them. */}
+      <HealthProfileForm />
 
       {/* Language */}
       <Section icon={<Languages className="h-4 w-4" />} title={t("account.language")}>

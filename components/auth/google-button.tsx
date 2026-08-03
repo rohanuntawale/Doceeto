@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -10,6 +12,10 @@ import { cn } from "@/lib/utils/cn";
  * Google will tell us who someone is but never what they are here — a patient
  * account and a doctor account are different things, decided by which button
  * was pressed.
+ *
+ * The click flips the button into a "Taking you to Google…" state immediately:
+ * on a cold serverless start the redirect can take a few seconds, and a button
+ * that looks dead gets pressed again and again.
  */
 export function GoogleButton({
   role,
@@ -23,6 +29,7 @@ export function GoogleButton({
   label?: string;
   className?: string;
 }) {
+  const [leaving, setLeaving] = useState(false);
   const href =
     `/api/auth/google/start?role=${role}` +
     (next ? `&next=${encodeURIComponent(next)}` : "");
@@ -30,15 +37,22 @@ export function GoogleButton({
   return (
     <a
       href={href}
+      aria-disabled={leaving}
+      onClick={(e) => {
+        // One navigation only — repeat clicks while it's in flight do nothing.
+        if (leaving) e.preventDefault();
+        else setLeaving(true);
+      }}
       className={cn(
         "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-lg border border-[var(--border)]",
         "bg-espresso/60 px-4 text-sm font-medium text-cream transition-colors hover:bg-espresso/80",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60",
+        leaving && "cursor-wait opacity-70",
         className,
       )}
     >
-      <GoogleMark />
-      {label ?? "Continue with Google"}
+      {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleMark />}
+      {leaving ? "Taking you to Google…" : (label ?? "Continue with Google")}
     </a>
   );
 }

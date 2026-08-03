@@ -3,6 +3,7 @@ import { getRequestSession } from "@/lib/auth/session";
 import { db as repo, type Near } from "@/lib/db";
 import { hasOngoingConsult, isOnGig, visibleToDoctor } from "@/lib/scheduling/slots";
 import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
+import { withRealStatus } from "@/lib/presence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,8 +44,21 @@ export async function GET(req: Request) {
         // Availability that a patient cannot derive themselves (they only ever
         // receive their own requests) is attached here: whether each doctor is
         // on a gig, and what they're offering. Read-only — none of it is stored.
-        const [requests, gigs] = await Promise.all([repo.getRequests(), repo.getGigs()]);
-        const decorated = all.map((d) => {
+        const [requests, gigs, signedIn] = await Promise.all([
+          repo.getRequests(),
+          repo.getGigs(),
+          repo.signedInDoctorIds(),
+        ]);
+        // THE status every surface sees is derived here, not read off the row.
+        // A doctor is only shown online if they asked to be, still hold a live
+        // session, and their cockpit has reported in recently — see
+        // lib/presence.ts. Doing it at this one read means the map, the list,
+        // the ops console and every count agree, and none of them can show
+        // someone who has walked away as available.
+        const now = Date.now();
+        const signedInIds = new Set(signedIn);
+        const decorated = all.map((raw) => {
+          const d = withRealStatus(raw, signedInIds, now);
           const live = activeGigs(gigs.filter((g) => g.doctorId === d.id));
           return {
             ...d,

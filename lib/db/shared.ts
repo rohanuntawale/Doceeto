@@ -41,8 +41,28 @@ export interface SessionRecord {
   expiresAt: string;
 }
 
+/**
+ * A Google identity that has been verified but has NOT yet become an account.
+ *
+ * Doctors fill in their own specialty, credentials and fees; until that form
+ * comes back there is nothing truthful to store, so no doctor row exists. An
+ * abandoned sign-up expires here rather than leaving a half-invented profile.
+ */
+export interface PendingSignup {
+  id: string;
+  googleId: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  role: "patient" | "doctor";
+  expiresAt: string;
+}
+
 /** How long a new session stays valid. */
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Long enough to fill in a practice profile without rushing. */
+export const PENDING_SIGNUP_TTL_MS = 60 * 60 * 1000;
 
 /** Opaque, unguessable session id — 256 bits of randomness, no claims inside. */
 export function newSessionId(): string {

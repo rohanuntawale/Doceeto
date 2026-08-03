@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { exchangeCode, redirectUri } from "@/lib/auth/google";
 import { setSession } from "@/lib/auth/session";
-import { OAUTH_STATE_COOKIE, homeFor, type SurfaceRole } from "@/lib/auth/constants";
+import {
+  OAUTH_STATE_COOKIE,
+  PENDING_SIGNUP_COOKIE,
+  homeFor,
+  type SurfaceRole,
+} from "@/lib/auth/constants";
 import { db } from "@/lib/db";
-import { emitChange } from "@/lib/server/events";
 import { clientIp, rateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// A cold start here stacks Google's token exchange on top of a possibly
+// suspended Neon compute; the platform default (10s on some plans) can kill
+// the exchange mid-flight, which the user experiences as a dead button.
+export const maxDuration = 30;
 
 /** Send them back to the sign-in page with something readable. */
 function fail(origin: string, message: string) {
@@ -98,24 +106,36 @@ export async function GET(req: Request) {
         return fail(origin, "Google hasn't verified that email address, so it can't be used to sign in here.");
       }
       if (role === "doctor") {
-        const created = await db.createDoctorUser({
-          email: identity.email,
-          passwordHash: null, // Google account: no password to store
+        /*
+         * NO ACCOUNT YET — on purpose.
+         *
+         * Google proves who someone is; it says nothing about their specialty,
+         * qualifications, registration number or fees. Filling those in on
+         * their behalf would put invented credentials in front of patients
+         * choosing who to trust with their care. So the verified identity is
+         * parked here and the doctor is sent to the same profile form the
+         * password sign-up uses; the account exists only once they submit it.
+         * Abandon it and the pending row simply expires.
+         */
+        const pending = await db.createPendingSignup({
           googleId: identity.googleId,
-          avatarUrl: identity.picture,
-          fullName: identity.name,
-          specialty: "General Physician",
-          kind: "practising",
-          gender: "female",
-          experienceYears: 0,
-          consultFee: 400,
-          homeVisitFee: 900,
-          clinicAddress: "",
-          lat: null,
-          lng: null,
+          email: identity.email,
+          name: identity.name,
+          avatarUrl: identity.picture ?? null,
+          role: "doctor",
         });
-        user = created.user;
-        emitChange(["doctors"]); // patients' maps pick the new doctor up live
+        cookies().set(PENDING_SIGNUP_COOKIE, pending.id, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          expires: new Date(pending.expiresAt),
+        });
+        // The name is a prefill only — a convenience so they don't retype it.
+        // Identity is read from the pending row server-side, never from this.
+        const to = new URL("/?google=doctor", origin);
+        to.searchParams.set("name", identity.name);
+        return NextResponse.redirect(to);
       } else {
         user = await db.createPatientUser({
           email: identity.email,

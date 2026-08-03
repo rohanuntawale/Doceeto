@@ -306,6 +306,15 @@ export async function POST(req: Request) {
       }
 
       // ── Doctor actions (only on their own record) ──
+      case "heartbeat": {
+        // "My cockpit is still open." Deliberately NOT routed through done():
+        // this fires every 30 seconds per doctor, and auditing or broadcasting
+        // each one would bury the audit log and trigger a refetch storm. It
+        // touches last_seen and says nothing else.
+        if (role !== "doctor") return needs("doctors");
+        await repo.touchDoctor(me);
+        return NextResponse.json({ ok: true });
+      }
       case "setDoctorStatus": {
         if (role !== "doctor") return needs("doctors");
         // An off-list status would defeat the offline-coordinate rule in

@@ -29,7 +29,10 @@ import {
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useMedicalHistory } from "@/lib/hooks/use-medical-history";
 import { useConsultRequests, useDoctors, useOrders } from "@/lib/hooks/data";
-import { weeklyCareActivity, healthScore } from "@/lib/health/metrics";
+import { weeklyCareActivity } from "@/lib/health/metrics";
+import { realHealthScore } from "@/lib/health/score";
+import { bmiBand, bmiOf } from "@/lib/health/profile";
+import { BmiAdvisor } from "@/components/patient/bmi-advisor";
 import { useT } from "@/lib/i18n";
 
 export default function PatientHome() {
@@ -69,24 +72,46 @@ export default function PatientHome() {
     ...myOrders.map((o) => Date.parse(o.createdAt)),
   ]);
 
-  // "Health score": an engagement score with a documented formula
-  // (lib/health/metrics.ts) — profile completeness, recent checks, recent
-  // completed consults, recent medicine. The spark is the score recomputed
-  // for each of the last 7 days, and the trend is the change over that week.
-  const score = healthScore({
-    profileComplete: located,
-    checkTimes: sessions.map((s) => s.startedAt),
-    completedConsultTimes: myRequests
-      .filter((r) => r.status === "completed")
-      .map((r) => Date.parse(r.completedAt ?? r.createdAt)),
-    orderTimes: myOrders.map((o) => Date.parse(o.createdAt)),
+  // BMI from the health profile — feeds the score and the advisor below.
+  const bmi = bmiOf(patient.healthProfile ?? {});
+
+  // The REAL health score (lib/health/score.ts): body, lifestyle and risk
+  // factors from the health profile, plus the last 90 days of actual care
+  // history — emergencies taken, appointments missed, urgent symptom checks.
+  // Null until the profile can support a number; the gauge then invites them
+  // to fill it in rather than inventing one.
+  const nowMs = Date.now();
+  const score = realHealthScore({
+    profile: patient.healthProfile ?? {},
+    emergencyConsultTimes: myRequests
+      .filter((r) => r.mode === "emergency")
+      .map((r) => Date.parse(r.createdAt)),
+    // A booked slot in the past that was never completed or called off is a
+    // missed visit — the one adherence fact the data can actually prove.
+    missedAppointmentTimes: myRequests
+      .filter(
+        (r) =>
+          r.scheduledAt &&
+          Date.parse(r.scheduledAt) < nowMs &&
+          (r.status === "pending" || r.status === "accepted"),
+      )
+      .map((r) => Date.parse(r.scheduledAt!)),
+    checkConclusions: sessions
+      .filter((s) => s.conclusion)
+      .map((s) => ({ at: s.startedAt, urgency: s.conclusion!.urgency })),
   });
 
+  // BMI replaces the old decorative "Verified: Done" pill — a real number,
+  // full when in the healthy range, visibly short when out of it or missing.
   const progressItems = [
     { label: "Profile", value: located ? 100 : 45 },
-    { label: "Verified", value: 100, display: "Done" },
+    {
+      label: "BMI",
+      value: bmi === undefined ? 0 : bmiBand(bmi) === "healthy" ? 100 : 45,
+      display: bmi === undefined ? "Add" : `${bmi}`,
+    },
     { label: "Records", value: Math.min(100, sessions.length * 25), display: `${sessions.length}` },
-    { label: "Care score", value: score.value },
+    { label: "Health score", value: score?.value ?? 0, display: score ? undefined : "—" },
   ];
   const goals = [
     { id: "profile", label: "Complete your profile", sub: "Add your details", done: located, href: "/patient/account" },
@@ -115,6 +140,9 @@ export default function PatientHome() {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+      {/* Watches BMI and raises the AI suggestion notification. Renders nothing. */}
+      <BmiAdvisor />
+
       {/* Header — greeting + stat counters */}
       <header className="flex flex-wrap items-end justify-between gap-4 lg:col-span-12">
         <div>
@@ -237,13 +265,60 @@ export default function PatientHome() {
         />
       </div>
       <div className="lg:col-span-4">
-        <GaugeCard
-          title="Health score"
-          value={score.value}
-          caption={score.caption}
-          trend={score.trend}
-          spark={score.spark}
-        />
+        {score ? (
+          <GaugeCard
+            title="Health score"
+            value={score.value}
+            caption={score.caption}
+            trend={score.trend !== 0 ? score.trend : undefined}
+            spark={score.spark}
+            footer={
+              <div className="space-y-1.5">
+                {score.pillars.map((pl) => (
+                  <div key={pl.key} className="flex items-center gap-2" title={pl.note}>
+                    <span className="w-[86px] shrink-0 text-[11px] text-[var(--text-muted)]">
+                      {pl.label}
+                    </span>
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgb(var(--c-espresso-700))]">
+                      <span
+                        className="block h-full rounded-full bg-[rgb(var(--c-terracotta))]"
+                        style={{ width: `${(pl.earned / pl.max) * 100}%` }}
+                      />
+                    </span>
+                    <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-cream">
+                      {pl.earned}/{pl.max}
+                    </span>
+                  </div>
+                ))}
+                {score.coverage.known < score.coverage.total && (
+                  <Link
+                    href="/patient/account"
+                    className="block pt-1 text-[11px] text-salmon transition-colors hover:text-cream"
+                  >
+                    Based on {score.coverage.known} of {score.coverage.total} areas —
+                    complete your health profile for a fuller picture
+                  </Link>
+                )}
+              </div>
+            }
+          />
+        ) : (
+          // No number is the honest answer until the profile can support one.
+          <section className="fh-card relative flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl p-6 text-center">
+            <div className="pattern-grid pointer-events-none absolute inset-0" aria-hidden />
+            <p className="relative text-sm font-semibold text-cream">Health score</p>
+            <p className="relative mt-2 max-w-[220px] text-xs leading-relaxed text-[var(--text-muted)]">
+              Fill in your health profile — height, weight, habits — and your
+              real score appears here, computed from your own data.
+            </p>
+            <Link
+              href="/patient/account"
+              className="relative mt-4 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-on-accent transition-transform active:scale-[0.98]"
+            >
+              Add health details
+            </Link>
+          </section>
+        )}
       </div>
       <div className="lg:col-span-4">
         <GoalsCard title="Health goals" goals={goals} />

@@ -59,57 +59,6 @@ export function weeklyCareActivity(eventTimes: number[], now = Date.now()): Week
   return { data, trend, total };
 }
 
-export interface HealthSignals {
-  /** Address (and so location for visits) is on file. */
-  profileComplete: boolean;
-  /** Epoch-ms times of finished symptom checks. */
-  checkTimes: number[];
-  /** Epoch-ms times of COMPLETED consults (a doctor actually saw them). */
-  completedConsultTimes: number[];
-  /** Epoch-ms times of medicine orders. */
-  orderTimes: number[];
-}
-
-export interface HealthScore {
-  value: number;
-  /** Change vs the score as it stood 7 days ago. */
-  trend: number;
-  caption: string;
-  /** The score recomputed at each of the last 7 days — a real sparkline. */
-  spark: number[];
-}
-
-/**
- * An engagement-style wellness score with a transparent formula:
- *
- *   35  base
- *  +15  profile complete (we can reach and locate them)
- *  +20  recent symptom check   (≤30 days; ≤90 days earns +10)
- *  +20  recent completed consult (≤90 days; ever earns +10)
- *  +10  medicine ordered ≤30 days
- *
- * Capped to 5–100. It rewards staying on top of your care, which is the only
- * thing the app can honestly measure — it is NOT a clinical judgement.
- */
-export function healthScoreAt(s: HealthSignals, at: number): number {
-  const within = (times: number[], days: number) =>
-    times.some((t) => Number.isFinite(t) && t <= at && at - t <= days * DAY_MS);
-
-  let score = 35;
-  if (s.profileComplete) score += 15;
-  if (within(s.checkTimes, 30)) score += 20;
-  else if (within(s.checkTimes, 90)) score += 10;
-  if (within(s.completedConsultTimes, 90)) score += 20;
-  else if (s.completedConsultTimes.some((t) => t <= at)) score += 10;
-  if (within(s.orderTimes, 30)) score += 10;
-  return Math.max(5, Math.min(100, score));
-}
-
-export function healthScore(s: HealthSignals, now = Date.now()): HealthScore {
-  const value = healthScoreAt(s, now);
-  const weekAgo = healthScoreAt(s, now - 7 * DAY_MS);
-  const spark = Array.from({ length: 7 }, (_, i) => healthScoreAt(s, now - (6 - i) * DAY_MS));
-  const caption =
-    value >= 75 ? "Looking good" : value >= 50 ? "Keeping steady" : "Check in with a doctor";
-  return { value, trend: value - weekAgo, caption, spark };
-}
+// The old engagement-style "health score" that lived here (points for using
+// the app recently) is gone — the real one, computed from the patient's
+// actual health data and care history, lives in lib/health/score.ts.

@@ -39,8 +39,40 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id  TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+-- The patient's health profile (height, weight, blood group, allergies,
+-- conditions, medication, history, lifestyle, emergency contact) as one JSONB
+-- blob — the shape lives in lib/health/profile.ts and is sanitized on write.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS health_profile JSONB;
 CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_key ON users (google_id)
   WHERE google_id IS NOT NULL;
+
+-- A Google sign-in that has proved WHO someone is but has not yet produced an
+-- account. Doctors must fill in their own specialty, credentials and fees, so
+-- nothing is invented on their behalf — the account is created only when that
+-- form is submitted, and an abandoned sign-up simply expires here.
+CREATE TABLE IF NOT EXISTS pending_signups (
+  id          TEXT PRIMARY KEY,
+  google_id   TEXT NOT NULL,
+  email       TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  avatar_url  TEXT,
+  role        TEXT NOT NULL CHECK (role IN ('patient','doctor')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at  TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pending_signups_expiry_idx ON pending_signups(expires_at);
+
+-- Longitudinal vitals log — one row per measurement, never overwritten, so
+-- weight (and later BP/glucose) can be TRENDED rather than only snapshotted.
+-- Fed automatically: every health-profile save with a changed weight appends.
+CREATE TABLE IF NOT EXISTS vitals (
+  id          TEXT PRIMARY KEY,
+  patient_id  TEXT NOT NULL,
+  kind        TEXT NOT NULL CHECK (kind IN ('weight')),
+  value       DOUBLE PRECISION NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS vitals_patient_idx ON vitals(patient_id, kind, recorded_at DESC);
 
 -- Sessions are rows, not signed cookies: the browser holds only `id`, so the
 -- database decides who you are and deleting the row ends the session at once.

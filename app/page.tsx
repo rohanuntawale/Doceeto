@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { Name, BrandMark } from "@/components/brand/wordmark";
@@ -12,6 +12,7 @@ import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
 import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
+import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
 import { cn } from "@/lib/utils/cn";
 
 type Role = "patient" | "doctor";
@@ -67,9 +68,19 @@ function OnboardingPanel() {
   const params = useSearchParams();
   const toast = useToast();
   const { update } = useCurrentPatient();
+  // Wake the database while they're still reading — sign-in lands warm.
+  useWarmBackend();
 
-  const [role, setRole] = useState<Role>(params.get("as") === "doctor" ? "doctor" : "patient");
-  const [name, setName] = useState("");
+  /**
+   * Arrived back from Google as a doctor. Google proved who they are but knows
+   * nothing about their practice, so they land straight in the profile step —
+   * no account exists yet, and none will until this form is submitted.
+   */
+  const googleDoctor = params.get("google") === "doctor";
+  const [role, setRole] = useState<Role>(
+    googleDoctor || params.get("as") === "doctor" ? "doctor" : "patient",
+  );
+  const [name, setName] = useState(googleDoctor ? (params.get("name") ?? "") : "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -78,7 +89,7 @@ function OnboardingPanel() {
 
   // Doctor onboarding is two steps: account basics, then the full practice
   // profile — everything a patient reads on the doctor's card and detail page.
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(googleDoctor ? 2 : 1);
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
   const [kind, setKind] = useState<"practising" | "resident">("practising");
   const [gender, setGender] = useState<"" | "female" | "male">("");
@@ -150,6 +161,33 @@ function OnboardingPanel() {
         router.push("/doctor");
         return;
       }
+
+      // Google doctor: the identity is already proved and parked server-side,
+      // so this submit carries the practice profile only — no email, no
+      // password, and nothing about them taken from the browser's word.
+      if (googleDoctor) {
+        if (!registrationNo.trim()) {
+          return setError("Add your medical registration number.");
+        }
+        setLoading(true);
+        const res = await fetch("/api/auth/google/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(profile),
+        });
+        const data = await res.json().catch(() => ({}));
+        setLoading(false);
+        if (!res.ok) return setError(data.error ?? "Could not create the account.");
+        toast.push({
+          tone: "success",
+          title: "Welcome to Doceeto",
+          desc: "Your profile is live — go online when ready.",
+        });
+        router.push("/doctor");
+        router.refresh();
+        return;
+      }
+
       setLoading(true);
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -335,6 +373,29 @@ function OnboardingPanel() {
             <>
               {/* Step 2 — the profile patients will read. Everything here
                   lands on the doctor's public card and detail page. */}
+
+              {/* A Google doctor never saw step 1, so their name is asked for
+                  here. Prefilled from Google, and editable — the name on the
+                  card should be the one they practise under. */}
+              {googleDoctor && (
+                <>
+                  <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-xs leading-relaxed text-[var(--text-muted)]">
+                    Signed in with Google. Your account isn&rsquo;t created yet — patients
+                    choose a doctor on what&rsquo;s below, so it has to come from you.
+                  </div>
+                  <Field label="Full name">
+                    <input
+                      className={inputCls}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your full name"
+                      autoComplete="name"
+                      required
+                    />
+                  </Field>
+                </>
+              )}
+
               <Field label="Specialty">
                 <select
                   className={inputCls}
@@ -511,7 +572,9 @@ function OnboardingPanel() {
             />
           </div>
 
-          {step === 2 && (
+          {/* A Google doctor has no step 1 to go back to — their email and
+              identity came from Google, not from a form. */}
+          {step === 2 && !googleDoctor && (
             <button
               type="button"
               onClick={() => {
@@ -581,7 +644,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // Small circular social button. With an href it is a real link (OAuth is a
 // full-page journey, so the browser must navigate); without one it nudges the
-// user with a toast so the affordance never feels broken.
+// user with a toast so the affordance never feels broken. The link flips to a
+// spinner on first click — a cold serverless redirect can take seconds, and a
+// silent button invites the double-click that used to break the flow.
 function SocialButton({
   label,
   href,
@@ -592,12 +657,23 @@ function SocialButton({
   children: React.ReactNode;
 }) {
   const toast = useToast();
+  const [leaving, setLeaving] = useState(false);
   const cls =
     "grid h-11 w-11 place-items-center rounded-full text-cream/80 transition-colors hover:bg-white/8 hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50";
   if (href) {
     return (
-      <a href={href} aria-label={label} title={label} className={cls}>
-        {children}
+      <a
+        href={href}
+        aria-label={label}
+        title={label}
+        aria-disabled={leaving}
+        onClick={(e) => {
+          if (leaving) e.preventDefault();
+          else setLeaving(true);
+        }}
+        className={cn(cls, leaving && "cursor-wait")}
+      >
+        {leaving ? <Loader2 className="h-5 w-5 animate-spin text-cream" /> : children}
       </a>
     );
   }

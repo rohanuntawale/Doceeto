@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { MAP_CENTER } from "@/lib/config";
 import { seedDoctors, seedReviews } from "@/lib/seed-doctors";
-import type { SessionRecord, UserRecord } from "@/lib/db/shared";
+import type { PendingSignup, SessionRecord, UserRecord } from "@/lib/db/shared";
 import type {
   Ambulance,
   ConsultRequest,
@@ -37,6 +37,8 @@ export interface StoredUser extends UserRecord {
   /** Google's `sub` once this account has been linked to a Google identity. */
   googleId?: string;
   avatarUrl?: string;
+  /** Patient health profile (lib/health/profile.ts); absent for doctors/ops. */
+  healthProfile?: import("@/lib/health/profile").HealthProfile;
   /** Aggregate rating this patient received from doctors (mutual ratings). */
   rating?: number;
   ratingCount?: number;
@@ -63,6 +65,8 @@ export interface FileData {
   users: StoredUser[];
   /** Live sign-ins. The browser holds only each row's opaque id. */
   sessions: SessionRecord[];
+  /** Verified Google identities that haven't become accounts yet. */
+  pendingSignups: PendingSignup[];
   doctors: Doctor[];
   /** Service packages doctors publish for patients to hire. */
   gigs: Gig[];
@@ -76,6 +80,17 @@ export interface FileData {
   consults: Record<string, unknown>[];
   prescriptions: Record<string, unknown>[];
   audits: Record<string, unknown>[];
+  /** Longitudinal vitals log — one row per measurement, never overwritten.
+   *  Only weight today; the shape leaves room for BP/glucose later. */
+  vitals?: StoredVital[];
+}
+
+export interface StoredVital {
+  id: string;
+  patientId: string;
+  kind: "weight";
+  value: number;
+  recordedAt: string; // ISO
 }
 
 const FILE = path.join(process.cwd(), ".data", "iyashi.json");
@@ -84,6 +99,7 @@ function empty(): FileData {
   return {
     users: [],
     sessions: [],
+    pendingSignups: [],
     doctors: [],
     gigs: [],
     ambulances: [],
@@ -96,6 +112,7 @@ function empty(): FileData {
     consults: [],
     prescriptions: [],
     audits: [],
+    vitals: [],
   };
 }
 
@@ -186,6 +203,7 @@ export function data(): FileData {
     // Backfill arrays added in later versions onto a long-lived in-memory
     // object (survives dev hot-reloads) so new fields are never undefined.
     if (!g.__iyashiFileDb.sessions) g.__iyashiFileDb.sessions = [];
+    if (!g.__iyashiFileDb.pendingSignups) g.__iyashiFileDb.pendingSignups = [];
     if (!g.__iyashiFileDb.patientReviews) g.__iyashiFileDb.patientReviews = [];
     if (!g.__iyashiFileDb.transactions) g.__iyashiFileDb.transactions = [];
     if (!g.__iyashiFileDb.gigs) g.__iyashiFileDb.gigs = [];

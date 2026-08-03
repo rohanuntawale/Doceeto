@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -91,12 +91,15 @@ export function GaugeCard({
   caption,
   trend,
   spark,
+  footer,
 }: {
   title: string;
   value: number;
   caption: string;
   trend?: number;
   spark?: number[];
+  /** Extra content under the gauge — e.g. the health score's pillar breakdown. */
+  footer?: ReactNode;
 }) {
   const r = 52;
   const circ = 2 * Math.PI * r;
@@ -135,6 +138,7 @@ export function GaugeCard({
           <Sparkline data={spark} />
         </div>
       )}
+      {footer && <div className="relative mt-3">{footer}</div>}
     </section>
   );
 }

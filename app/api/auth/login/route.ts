@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
+export const maxDuration = 30; // bcrypt + a possibly cold database
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
