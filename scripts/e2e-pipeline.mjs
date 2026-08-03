@@ -31,32 +31,68 @@ const cookieFrom = (res) => {
   }
   return "";
 };
-/** Register a fresh throwaway account and return its session cookie. */
+/**
+ * Which surface a cookie speaks for. The API resolves the acting session from
+ * the calling surface, so every request is tagged the way the real apps do
+ * rather than relying on the "try each role" fallback.
+ */
+const surfaceOf = (cookie) => (cookie.match(/iyashi_sid_(\w+)=/) ?? [, "patient"])[1];
+const hdrs = (cookie, extra) => ({ cookie, "x-iyashi-surface": surfaceOf(cookie), ...extra });
+
+/**
+ * A doctor must have a profile photo before they can go online or publish —
+ * patients need to see who's treating them. The client crops to a small JPEG;
+ * the server only checks the data-URL shape and size, so a minimal one does.
+ */
+const TEST_AVATAR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+const setAvatar = async (cookie) =>
+  fetch(`${BASE}/api/auth/avatar`, {
+    method: "POST",
+    headers: hdrs(cookie, { "content-type": "application/json" }),
+    body: JSON.stringify({ dataUrl: TEST_AVATAR }),
+  });
+
+/**
+ * A session for one role, from a STABLE test account: registered on the first
+ * run, signed into on every run after. Fresh accounts per run would burn
+ * through the signup rate limit (10/hour per IP) after a handful of runs.
+ */
 const sessionFor = async (role) => {
-  const email = `e2e-${role}-${Math.random().toString(36).slice(2)}@t.test`;
-  const body =
+  const creds = { email: `e2e.${role}@doceeto.local`, password: `e2e-${role}-1` };
+  const profile =
     role === "doctor"
-      ? { role: "doctor", fullName: "E2E Doctor", email, password: "e2epass123" }
-      : { role: "patient", name: "E2E Patient", email, password: "e2epass123" };
-  const res = await fetch(`${BASE}/api/auth/register`, {
+      ? { role: "doctor", fullName: "E2E Doctor", specialty: "General Physician" }
+      : { role: "patient", name: "E2E Patient" };
+  const reg = await fetch(`${BASE}/api/auth/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...creds, ...profile }),
   });
-  const cookie = cookieFrom(res);
+  let cookie = reg.ok ? cookieFrom(reg) : "";
   if (!cookie) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Could not register a ${role} session (status ${res.status}): ${err.error ?? ""}. Is the dev server running?`);
+    const login = await fetch(`${BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(creds),
+    });
+    cookie = login.ok ? cookieFrom(login) : "";
+    if (!cookie) {
+      const err = await login.json().catch(() => ({}));
+      throw new Error(`Could not get a ${role} session (register ${reg.status}, login ${login.status}): ${err.error ?? ""}. Is the dev server running?`);
+    }
   }
+  // Without a photo a doctor cannot go online, and everything downstream
+  // (bookings, gigs, broadcasts) is gated on being online.
+  if (role === "doctor") await setAvatar(cookie);
   return cookie;
 };
-const me = async (cookie) => (await fetch(`${BASE}/api/auth/me`, { headers: { cookie }, cache: "no-store" })).json();
+const me = async (cookie) => (await fetch(`${BASE}/api/auth/me`, { headers: hdrs(cookie), cache: "no-store" })).json();
 const get = async (entity, cookie) => {
-  const r = await fetch(`${BASE}/api/data?entity=${entity}`, { headers: { cookie }, cache: "no-store" });
+  const r = await fetch(`${BASE}/api/data?entity=${entity}`, { headers: hdrs(cookie), cache: "no-store" });
   return { status: r.status, data: await r.json().catch(() => null) };
 };
 const act = async (action, payload, cookie) => {
-  const r = await fetch(`${BASE}/api/actions`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ action, payload }) });
+  const r = await fetch(`${BASE}/api/actions`, { method: "POST", headers: hdrs(cookie, { "content-type": "application/json" }), body: JSON.stringify({ action, payload }) });
   return { status: r.status, data: await r.json().catch(() => ({})) };
 };
 /**
@@ -71,17 +107,23 @@ const secondDoctorSession = async () => {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...creds, role: "doctor", fullName: "Dr. Second Opinion", specialty: "General Physician" }),
   });
-  if (reg.ok) return cookieFrom(reg);
-  const login = await fetch(`${BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(creds),
-  });
-  return login.ok ? cookieFrom(login) : "";
+  let cookie = "";
+  if (reg.ok) {
+    cookie = cookieFrom(reg);
+  } else {
+    const login = await fetch(`${BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(creds),
+    });
+    cookie = login.ok ? cookieFrom(login) : "";
+  }
+  if (cookie) await setAvatar(cookie); // same photo gate as the primary doctor
+  return cookie;
 };
 /** One doctor's bookable calendar, as the patient's picker sees it. */
 const calendar = async (doctorId, cookie) => {
-  const r = await fetch(`${BASE}/api/availability?doctorId=${encodeURIComponent(doctorId)}`, { headers: { cookie }, cache: "no-store" });
+  const r = await fetch(`${BASE}/api/availability?doctorId=${encodeURIComponent(doctorId)}`, { headers: hdrs(cookie), cache: "no-store" });
   return r.ok ? r.json() : { days: [] };
 };
 const allSlots = (cal) => (cal.days || []).flatMap((d) => d.slots);
@@ -114,10 +156,13 @@ async function run() {
   const docs = await get("doctors", patCookie);
   check("patient reads the doctor list", docs.status === 200 && Array.isArray(docs.data) && docs.data.length > 0, `count=${docs.data?.length}`);
 
-  // ── Booking a SEEDED doctor completes (any online doctor can claim it) ──
-  const booked = await act("createRequest", { type: "clinic", symptoms: "e2e clinic visit", fee: 400, address: "Clinic", lat: 21.15, lng: 79.09, doctorId: "doc-seed-1" }, patCookie);
+  // ── Booking a live doctor completes end to end ──
+  // Only doctors who are actually online are bookable: presence is derived
+  // from a live session plus a recent heartbeat, so the display-only seed
+  // roster is offline and off the platform by design.
+  const booked = await act("createRequest", { type: "clinic", symptoms: "e2e clinic visit", fee: 400, address: "Clinic", lat: 21.15, lng: 79.09, doctorId }, patCookie);
   const reqId = booked.data?.id;
-  check("patient books a seeded doctor", booked.status === 200 && !!reqId, reqId);
+  check("patient books a live doctor", booked.status === 200 && !!reqId, reqId ?? booked.data?.error);
   const seenByDoc = ((await get("requests", docCookie)).data || []).find((r) => r.id === reqId);
   check("a real doctor sees the pending request", seenByDoc?.status === "pending");
   check("doctor accepts the request", (await act("acceptRequest", { id: reqId }, docCookie)).status === 200);
@@ -125,7 +170,7 @@ async function run() {
   check("patient sees it accepted + claimed by the real doctor", seenByPat?.status === "accepted" && seenByPat?.doctorId === doctorId, `status=${seenByPat?.status}`);
 
   // ── One active consult: a second accept is blocked until this one closes ──
-  const booked2 = await act("createRequest", { type: "clinic", symptoms: "e2e second visit", fee: 300, address: "Clinic 2", lat: 21.15, lng: 79.09, doctorId: "doc-seed-1" }, patCookie);
+  const booked2 = await act("createRequest", { type: "clinic", symptoms: "e2e second visit", fee: 300, address: "Clinic 2", lat: 21.15, lng: 79.09, doctorId }, patCookie);
   const reqId2 = booked2.data?.id;
   const blockedAccept = await act("acceptRequest", { id: reqId2 }, docCookie);
   check("doctor with an active consult is blocked from a second accept (409)", blockedAccept.status === 409 && !!blockedAccept.data?.error, `status=${blockedAccept.status}`);
@@ -210,6 +255,9 @@ async function run() {
   // be able to decline it out from under them (that would free the slot).
   const otherDoc = await secondDoctorSession();
   const otherId = otherDoc ? (await me(otherDoc))?.doctor?.id : null;
+  // Offline is off the platform: this doctor has to be online to be offered
+  // the broadcast further down, let alone win the race for it.
+  if (otherDoc) await act("setDoctorStatus", { status: "online" }, otherDoc);
   check("a second doctor account is available for the ownership checks", !!otherId && otherId !== doctorId, otherId ?? "none");
   if (otherId && otherId !== doctorId) {
     check("another doctor cannot decline a request that isn't theirs (403)", (await act("declineRequest", { id: urgent2.data?.id }, otherDoc)).status === 403);
@@ -283,9 +331,10 @@ async function run() {
   }
 
   // The Uber-style rail: one step at a time, server-derived.
+  // A home visit's rail is accepted → enroute → arrived; arrived is the last
+  // stage, after which completing the consult is the only move left.
   check("trip advances to enroute", (await act("advanceTrip", { id: hireId }, docCookie)).data?.tripStage === "enroute");
   check("trip advances to arrived", (await act("advanceTrip", { id: hireId }, docCookie)).data?.tripStage === "arrived");
-  check("trip advances to in_progress", (await act("advanceTrip", { id: hireId }, docCookie)).data?.tripStage === "in_progress");
   check("advancing past the last stage is refused (400)", (await act("advanceTrip", { id: hireId }, docCookie)).status === 400);
 
   await act("completeRequest", { id: hireId }, docCookie);
