@@ -21,7 +21,7 @@ export default function OrdersBoard() {
 
   return (
     <>
-      <PageHeader kanji="薬" label="AURAMED · FULFILMENT" title="Medicine orders" />
+      <PageHeader label="AURAMED · FULFILMENT" title="Medicine orders" />
 
       {/* dense: the poster-size variant clips ₹-values at 3-up on a phone */}
       <div className="grid grid-cols-3 gap-3">
@@ -33,7 +33,7 @@ export default function OrdersBoard() {
       <section className="mt-6">
         <div className="label mb-3">IN FLIGHT · {active.length}</div>
         {active.length === 0 ? (
-          <EmptyState kanji="薬" title="No active deliveries" />
+          <EmptyState title="No active deliveries" />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {active.map((o) => (
@@ -53,7 +53,7 @@ export default function OrdersBoard() {
       <section className="mt-8">
         <div className="label mb-3">DELIVERED · {done.length}</div>
         {done.length === 0 ? (
-          <EmptyState kanji="済" title="Nothing delivered yet" />
+          <EmptyState title="Nothing delivered yet" />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {done.map((o) => (

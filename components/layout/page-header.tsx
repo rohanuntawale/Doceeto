@@ -1,10 +1,8 @@
 export function PageHeader({
-  kanji,
   label,
   title,
   action,
 }: {
-  kanji?: string;
   label: string;
   title: string;
   action?: React.ReactNode;
@@ -13,7 +11,6 @@ export function PageHeader({
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          {kanji && <span className="font-jp text-sm text-salmon">{kanji}</span>}
           <span className="label">{label}</span>
         </div>
         <h1 className="mt-1.5 font-serif text-2xl text-cream sm:text-3xl md:text-4xl">

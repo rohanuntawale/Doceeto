@@ -13,13 +13,13 @@ import type {
 
 type Tone = "critical" | "warn" | "ok" | "idle" | "info";
 
-export const sosCategory: Record<SosCategory, { label: string; kanji: string }> = {
-  cardiac: { label: "Cardiac", kanji: "心" },
-  trauma: { label: "Trauma", kanji: "傷" },
-  respiratory: { label: "Respiratory", kanji: "肺" },
-  stroke: { label: "Stroke", kanji: "脳" },
-  obstetric: { label: "Obstetric", kanji: "産" },
-  other: { label: "Other", kanji: "他" },
+export const sosCategory: Record<SosCategory, { label: string }> = {
+  cardiac: { label: "Cardiac" },
+  trauma: { label: "Trauma" },
+  respiratory: { label: "Respiratory" },
+  stroke: { label: "Stroke" },
+  obstetric: { label: "Obstetric" },
+  other: { label: "Other" },
 };
 
 export const sosStatus: Record<SosStatus, { label: string; tone: Tone }> = {
@@ -106,7 +106,7 @@ const of = <T,>(map: Record<string, T>, key: string | null | undefined, fallback
   map[key ?? ""] ?? fallback;
 
 export const sosCategoryOf = (k?: string | null) =>
-  of(sosCategory, k, { label: "Other", kanji: "他" });
+  of(sosCategory, k, { label: "Other" });
 export const sosStatusOf = (k?: string | null) =>
   of(sosStatus, k, { label: "Unknown", tone: "idle" as Tone });
 export const consultStatusOf = (k?: string | null) =>

@@ -23,7 +23,7 @@ export function DoctorGate({ children }: { children: React.ReactNode }) {
   if (!mounted) {
     return (
       <div className="grid min-h-[60dvh] place-items-center">
-        <span className="font-jp text-2xl text-[var(--text-faint)] animate-pulse">医</span>
+        <span className="text-sm text-[var(--text-faint)] animate-pulse">Loading…</span>
       </div>
     );
   }
@@ -54,8 +54,8 @@ function DoctorOnboarding() {
   return (
     <div className="grid min-h-[70dvh] place-items-center px-4">
       <div className="w-full max-w-md rounded-card border border-[var(--border)] bg-espresso-800 p-7 text-center shadow-card">
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-white/8 font-jp text-2xl text-salmon ring-1 ring-inset ring-white/12">
-          医
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-white/8 text-salmon ring-1 ring-inset ring-white/12">
+          <Stethoscope className="h-6 w-6" />
         </span>
         <h1 className="mt-4 font-serif text-2xl text-cream">Set up your doctor profile</h1>
         <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--text-muted)]">

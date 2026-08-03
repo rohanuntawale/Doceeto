@@ -33,11 +33,10 @@ export default function ConsultsPage() {
 
   return (
     <>
-      <PageHeader kanji="診" label="DOCEETO · CONSULTS" title="Your consults" />
+      <PageHeader label="DOCEETO · CONSULTS" title="Your consults" />
 
       {mine.length === 0 ? (
         <EmptyState
-          kanji="診"
           title="No consults yet"
           desc="Accept a request to start your first consult."
           action={

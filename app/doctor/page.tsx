@@ -330,7 +330,6 @@ export default function DoctorHome() {
         <div className="max-h-[24rem] flex-1 space-y-3 overflow-y-auto p-4">
           {pending.length === 0 ? (
             <EmptyState
-              kanji="頼"
               title="No open requests"
               desc="New consults will appear here the moment they come in."
               action={

@@ -14,8 +14,7 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
         <div className="flex justify-center">
           <Wordmark compact />
         </div>
-        <p className="mt-10 font-jp text-5xl text-[var(--text-faint)]">誤</p>
-        <h1 className="mt-4 font-serif text-3xl text-cream">
+        <h1 className="mt-10 font-serif text-3xl text-cream">
           Something went wrong
         </h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">

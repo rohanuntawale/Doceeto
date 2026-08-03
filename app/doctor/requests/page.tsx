@@ -67,7 +67,7 @@ export default function RequestsPage() {
 
   return (
     <>
-      <PageHeader kanji="頼" label="DOCEETO · FREELANCE DOCTOR" title="Requests" />
+      <PageHeader label="DOCEETO · FREELANCE DOCTOR" title="Requests" />
 
       {liveGig ? (
         <div className="mb-6 flex items-start gap-2 rounded-card border border-terracotta/40 bg-terracotta/[0.07] p-3.5 text-sm text-tan">
@@ -101,7 +101,6 @@ export default function RequestsPage() {
         </div>
         {gigHires.length === 0 ? (
           <EmptyState
-            kanji="仕"
             title="No one waiting to hire you"
             desc="Patients who pick one of your gigs land here."
             action={
@@ -136,7 +135,6 @@ export default function RequestsPage() {
         </div>
         {urgent.length === 0 ? (
           <EmptyState
-            kanji="頼"
             title={ongoing ? "Paused while you're on a consult" : "No urgent requests right now"}
             desc={
               ongoing
@@ -165,7 +163,6 @@ export default function RequestsPage() {
         </div>
         {booked.length === 0 ? (
           <EmptyState
-            kanji="暦"
             title="Nothing waiting on you"
             desc="Slots patients book on your calendar land here for a quick confirm."
           />
@@ -197,7 +194,6 @@ export default function RequestsPage() {
         <div className="label mb-3">ACCEPTED BY YOU · {accepted.length}</div>
         {accepted.length === 0 ? (
           <EmptyState
-            kanji="診"
             title="Nothing in progress"
             desc="Accepted consults show up here until you complete them."
           />

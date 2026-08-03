@@ -536,6 +536,23 @@ export async function POST(req: Request) {
         await repo.updateAmbulance(String(payload.id), payload.patch ?? {});
         return done({ ok: true }, ["ambulances"]);
 
+      /**
+       * Ops removes a doctor from the platform. The repo owns the policy — what
+       * is deleted (profile, gigs, reviews, account + sessions) versus what is
+       * deliberately kept (patient consult history, the money ledger) — and it
+       * refuses while a consult is live rather than stranding a patient.
+       *
+       * Every entity the removal touches is invalidated so open ops tabs and
+       * any patient browsing that doctor refresh rather than showing a ghost.
+       */
+      case "deleteDoctor": {
+        if (role !== "ops") return needs("ops");
+        const doctorId = String(payload.doctorId ?? "");
+        if (!doctorId) return bad("Which doctor?");
+        const result = await repo.deleteDoctor(doctorId);
+        return done(result, ["doctors", "gigs", "reviews", "requests"]);
+      }
+
       default:
         return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }

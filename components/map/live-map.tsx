@@ -12,8 +12,8 @@ const MapImpl = dynamic(() => import("@/components/map/map-impl"), {
       className="grid place-items-center rounded-card border border-[var(--border)] bg-espresso-800"
       style={{ height: 420 }}
     >
-      <span className="font-jp text-2xl text-[var(--text-faint)] animate-pulse">
-        地図
+      <span className="text-sm text-[var(--text-faint)] animate-pulse">
+        Loading map…
       </span>
     </div>
   ),

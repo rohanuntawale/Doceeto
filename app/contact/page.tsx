@@ -36,7 +36,7 @@ export default function ContactPage() {
         <div className="max-w-2xl">
           <div className="flex items-center gap-3">
             <span className="h-px w-8 bg-terracotta" />
-            <span className="label">Contact · 連絡</span>
+            <span className="label">Contact</span>
           </div>
           <h1 className="mt-5 font-serif text-4xl leading-tight text-cream md:text-6xl">
             Get in <span className="text-salmon">touch.</span>
@@ -129,7 +129,7 @@ export default function ContactPage() {
               <p className="mt-1 text-xs text-[var(--text-muted)]">hello@doceeto.health</p>
             </a>
             <div className="rounded-card border border-terracotta/25 bg-terracotta/10 p-5">
-              <div className="font-jp text-lg text-salmon">癒し</div>
+              <div className="font-serif text-lg text-salmon">Doceeto</div>
               <p className="mt-2 text-sm text-cream">Healing, on demand.</p>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 Building the single front door to care in India.

@@ -22,6 +22,8 @@ import type {
   ConsultRequest,
   Doctor,
   DoctorAvailability,
+  DoctorDeletion,
+  DoctorDetail,
   Gig,
   GigStatus,
   Order,
@@ -55,6 +57,9 @@ const ENTITY_KEYS = [
   "transactions",
   "gigs",
   "availability",
+  // Key prefix, not an entity: the ops doctor profile aggregates almost every
+  // table, so any write can change what it shows.
+  "doctorDetail",
 ];
 
 // Flipped by the RealtimeBridge when /api/stream is connected — polling
@@ -121,6 +126,39 @@ function useDoctorsDemo(): Doctor[] {
   );
 }
 export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Doctor>("doctors");
+
+/**
+ * Ops-only deep read of ONE doctor: profile, account, reviews, consults, gigs
+ * and wallet in a single call. Separate from useApiEntity because it returns
+ * one object keyed by id rather than a list, and because it must surface the
+ * server's error (403/404) instead of silently degrading to an empty array —
+ * an ops console that shows "nothing here" for a permission failure is worse
+ * than one that says so.
+ */
+export function useDoctorDetail(doctorId: string) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["doctorDetail", doctorId],
+    enabled: Boolean(doctorId),
+    refetchInterval: () => (sseConnected ? POLL_MS_SSE : POLL_MS),
+    queryFn: async (): Promise<DoctorDetail> => {
+      const res = await apiFetch(
+        `/api/data?entity=doctorDetail&doctorId=${encodeURIComponent(doctorId)}`,
+        { cache: "no-store" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(
+          typeof body?.error === "string" ? body.error : "Could not load this doctor.",
+        );
+      return body as DoctorDetail;
+    },
+  });
+  return {
+    detail: data ?? null,
+    loading: isLoading,
+    error: (error as Error | null) ?? null,
+  };
+}
 
 function useReviewsDemo(doctorId?: string): Review[] {
   const all = useDemoState().reviews;
@@ -265,6 +303,10 @@ export interface Actions {
   advanceTrip: (id: string) => Promise<void>;
   requestPayout: (doctorId: string) => void;
   advanceOrder: (orderId: string, current: OrderStatus) => void;
+  /** Ops removes a doctor from the platform. Resolves with what was actually
+   *  removed versus kept; rejects with the server's message (e.g. while the
+   *  doctor is mid-consult). */
+  deleteDoctor: (doctorId: string) => Promise<DoctorDeletion>;
 }
 
 /** Wipe locally-created test data (demo mode only). No-op in live mode. */
@@ -337,6 +379,11 @@ export function useActions(): Actions {
         advanceTrip: async (id) => void demoStore.advanceTrip(id),
         requestPayout: demoStore.requestPayout,
         advanceOrder: (id) => demoStore.advanceOrder(id),
+        // Demo mode has no accounts to remove, so this is refused rather than
+        // faked — a delete that silently does nothing is the worst outcome.
+        deleteDoctor: async () => {
+          throw new Error("Deleting a doctor needs the live backend.");
+        },
       };
     }
     // Live: the server takes patient identity from the session, so the
@@ -365,6 +412,8 @@ export function useActions(): Actions {
       requestPayout: () => callAction(qc, "requestPayout", {}),
       advanceOrder: (orderId, current) =>
         callAction(qc, "advanceOrder", { orderId, next: nextOrder(current) }),
+      deleteDoctor: (doctorId) =>
+        callAction<DoctorDeletion>(qc, "deleteDoctor", { doctorId }),
     };
   }, [qc, nextOrder]);
 }

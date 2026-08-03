@@ -32,6 +32,8 @@ import type {
   ConsultRequest,
   Doctor,
   DoctorAvailability,
+  DoctorDeletion,
+  DoctorDetail,
   Gig,
   GigStatus,
   Order,
@@ -91,6 +93,7 @@ const mapDoctor = (r: Row): Doctor => ({
   lat: num(r.lat),
   lng: num(r.lng),
   lastSeen: iso(r.last_seen),
+  createdAt: r.created_at ? iso(r.created_at) : undefined,
   qualifications: r.qualifications ?? undefined,
   education: r.education ?? undefined,
   about: r.about ?? undefined,
@@ -214,7 +217,7 @@ const mapUser = (r: Row): UserRecord => ({
 
 const DOCTOR_COLS = `id, full_name, specialty, kind, gender, age, experience_years, languages,
   status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url, lat, lng, last_seen,
-  qualifications, education, about, registration_no, clinic_address, availability`;
+  qualifications, education, about, registration_no, clinic_address, availability, created_at`;
 
 /**
  * Geo filter. A bounding box in SQL narrows the rows, then the exact haversine
@@ -517,6 +520,125 @@ export async function setUserAvatar(
 export async function getDoctorById(id: string): Promise<Doctor | null> {
   const r = await one(`SELECT ${DOCTOR_COLS} FROM doctors WHERE id = $1`, [id]);
   return r ? mapDoctor(r) : null;
+}
+
+/**
+ * The complete ops view of one doctor: profile, the account behind it, and
+ * every row that references them. One round of parallel queries rather than a
+ * join, because the pieces are independent lists the UI renders separately.
+ *
+ * Ops-only — the caller must enforce that. This returns the account email and
+ * unmasked coordinates, neither of which any patient-facing read may expose.
+ */
+export async function getDoctorDetail(id: string): Promise<DoctorDetail | null> {
+  const doctor = await getDoctorById(id);
+  if (!doctor) return null;
+
+  const [acct, reviews, requests, gigs, transactions, sessions] = await Promise.all([
+    // A registered doctor's id IS their users.id; seeded catalog doctors have
+    // no such row, and `account` stays null for them.
+    one(
+      `SELECT email, created_at, google_id, password_hash, address, avatar_url
+         FROM users WHERE id = $1`,
+      [id],
+    ),
+    getReviews(id),
+    // Same projection getRequests uses, so the ops table shows the patient
+    // rating and "reviewed" flags exactly as every other surface does.
+    sql(
+      `SELECT ${REQUEST_COLS} FROM consult_requests r
+       LEFT JOIN users u ON u.id = r.patient_id
+       WHERE r.doctor_id = $1 ORDER BY r.created_at DESC`,
+      [id],
+    ),
+    getGigs(id),
+    sql(`SELECT * FROM transactions WHERE doctor_id = $1 ORDER BY created_at DESC`, [id]),
+    one(
+      `SELECT count(*)::int AS n FROM sessions WHERE user_id = $1 AND expires_at > now()`,
+      [id],
+    ),
+  ]);
+
+  return {
+    doctor,
+    account: acct
+      ? {
+          email: acct.email,
+          createdAt: iso(acct.created_at),
+          googleLinked: Boolean(acct.google_id),
+          hasPassword: Boolean(acct.password_hash),
+          address: acct.address ?? undefined,
+          avatarUrl: acct.avatar_url ?? undefined,
+        }
+      : null,
+    reviews,
+    requests: requests.map((r) => ({
+      ...mapRequest(r),
+      patientRating: r.patient_rating != null ? num(r.patient_rating) : null,
+      patientRatingCount: num(r.patient_rating_count),
+      patientRated: Boolean(r.patient_rated),
+      reviewed: Boolean(r.reviewed),
+    })),
+    gigs,
+    transactions: transactions.map(mapTransaction),
+    activeSessions: num(sessions?.n),
+  };
+}
+
+/**
+ * Ops removes a doctor from the platform.
+ *
+ * What goes: the profile, their gig shelf, the reviews written about them, and
+ * the account itself (sessions cascade off users, so every signed-in device is
+ * logged out immediately).
+ *
+ * What stays: consult_requests and transactions. Patients keep their own
+ * consult history, and the money ledger stays auditable — the schema is built
+ * for parentless rows precisely so a deleted account cannot erase either.
+ *
+ * Refuses while a consult is live: deleting mid-visit would strand a patient
+ * with a doctor who no longer exists.
+ */
+export async function deleteDoctor(id: string): Promise<DoctorDeletion> {
+  return tx(async (c) => {
+    const { rows: docRows } = await c.query(
+      `SELECT id, full_name FROM doctors WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    if (!docRows[0]) throw new DomainError("That doctor no longer exists.");
+
+    const { rows: live } = await c.query(
+      `SELECT count(*)::int AS n FROM consult_requests
+        WHERE doctor_id = $1 AND status = 'accepted'`,
+      [id],
+    );
+    if (num(live[0].n) > 0)
+      throw new DomainError(
+        "This doctor is mid-consult. Wait for it to finish or cancel it first.",
+      );
+
+    const kept = await c.query(
+      `SELECT
+         (SELECT count(*)::int FROM consult_requests WHERE doctor_id = $1) AS requests,
+         (SELECT count(*)::int FROM transactions     WHERE doctor_id = $1) AS txns`,
+      [id],
+    );
+    const gigs = await c.query(`DELETE FROM gigs WHERE doctor_id = $1`, [id]);
+    const reviews = await c.query(`DELETE FROM reviews WHERE doctor_id = $1`, [id]);
+    await c.query(`DELETE FROM doctors WHERE id = $1`, [id]);
+    // Sessions cascade from users; a seeded doctor has no account row at all.
+    const account = await c.query(`DELETE FROM users WHERE id = $1 AND role = 'doctor'`, [id]);
+
+    return {
+      doctorId: id,
+      fullName: docRows[0].full_name,
+      removedAccount: (account.rowCount ?? 0) > 0,
+      removedGigs: gigs.rowCount ?? 0,
+      removedReviews: reviews.rowCount ?? 0,
+      keptRequests: num(kept.rows[0].requests),
+      keptTransactions: num(kept.rows[0].txns),
+    };
+  });
 }
 
 // ── Reads ────────────────────────────────────────────────────

@@ -1,18 +1,25 @@
 "use client";
 
-import { BadgeCheck, Star, Briefcase } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { BadgeCheck, Star, Briefcase, Trash2, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { StatusPill } from "@/components/ui/status-pill";
-import { useDoctors } from "@/lib/hooks/data";
+import { useDoctors, useActions } from "@/lib/hooks/data";
 import { doctorStatusOf } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { DeleteDoctorDialog } from "@/components/ops/delete-doctor-dialog";
+import type { Doctor } from "@/lib/types/domain";
 
 export default function DoctorsNetwork() {
   const doctors = useDoctors();
   const mounted = useMounted();
+  const router = useRouter();
+  const { deleteDoctor } = useActions();
+  const [pendingDelete, setPendingDelete] = useState<Doctor | null>(null);
 
   const online = doctors.filter((d) => d.status === "online").length;
   const verified = doctors.filter((d) => d.verified).length;
@@ -26,7 +33,7 @@ export default function DoctorsNetwork() {
 
   return (
     <>
-      <PageHeader kanji="医" label="DOCEETO · NETWORK" title="Doctor network" />
+      <PageHeader label="DOCEETO · NETWORK" title="Doctor network" />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard value={`${online}/${doctors.length}`} label="Online now" accent />
@@ -51,9 +58,11 @@ export default function DoctorsNetwork() {
                   "Rating",
                   "Consult",
                   "Home visit",
+                  "Joined",
                   "Last seen",
-                ].map((h) => (
-                  <th key={h} className="label px-5 py-3 font-normal">
+                  "",
+                ].map((h, i) => (
+                  <th key={h || `col-${i}`} className="label px-5 py-3 font-normal">
                     {h}
                   </th>
                 ))}
@@ -65,7 +74,8 @@ export default function DoctorsNetwork() {
                 return (
                   <tr
                     key={d.id}
-                    className="border-b border-[var(--border)] last:border-0 hover:bg-white/[0.02]"
+                    onClick={() => router.push(`/ops/doctors/${d.id}`)}
+                    className="cursor-pointer border-b border-[var(--border)] last:border-0 hover:bg-white/[0.04]"
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -128,7 +138,33 @@ export default function DoctorsNetwork() {
                       {formatINR(d.homeVisitFee)}
                     </td>
                     <td className="px-5 py-3 font-mono text-xs text-[var(--text-faint)]">
+                      {d.createdAt
+                        ? mounted
+                          ? new Date(d.createdAt).toLocaleDateString(undefined, {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : ""
+                        : "—"}
+                    </td>
+                    <td className="px-5 py-3 font-mono text-xs text-[var(--text-faint)]">
                       {mounted ? timeAgo(d.lastSeen) : ""}
+                    </td>
+                    {/* stopPropagation: the row itself opens the profile, so a
+                        delete click must not also navigate behind the dialog. */}
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setPendingDelete(d)}
+                          aria-label={`Delete ${d.fullName}`}
+                          title="Delete this doctor"
+                          className="grid h-8 w-8 place-items-center rounded-lg text-[var(--text-faint)] transition-colors hover:bg-status-critical/15 hover:text-status-critical"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <ChevronRight className="h-4 w-4 text-[var(--text-faint)]" />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -137,6 +173,12 @@ export default function DoctorsNetwork() {
           </table>
         </div>
       </Card>
+
+      <DeleteDoctorDialog
+        doctor={pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={deleteDoctor}
+      />
     </>
   );
 }

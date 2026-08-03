@@ -23,8 +23,8 @@ export function OpsGuard({ children }: { children: React.ReactNode }) {
   if (!allowed) {
     return (
       <div className="grid min-h-screen place-items-center">
-        <span className="font-jp text-3xl text-[var(--text-faint)] animate-pulse">
-          検
+        <span className="text-sm text-[var(--text-faint)] animate-pulse">
+          Loading…
         </span>
       </div>
     );

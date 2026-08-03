@@ -22,7 +22,7 @@ export default function OpsOverview() {
 
   return (
     <>
-      <PageHeader kanji="全" label="OPS · COMMAND CENTER" title="City overview" />
+      <PageHeader label="OPS · COMMAND CENTER" title="City overview" />
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard
@@ -53,7 +53,7 @@ export default function OpsOverview() {
         />
         <div className="grid gap-3 p-4 md:grid-cols-2">
           {activeOrders.length === 0 ? (
-            <EmptyState kanji="薬" title="No active deliveries" />
+            <EmptyState title="No active deliveries" />
           ) : (
             activeOrders.map((o) => (
               <OrderCard key={o.id} order={o} onAdvance={() => actions.advanceOrder(o.id, o.status)} />

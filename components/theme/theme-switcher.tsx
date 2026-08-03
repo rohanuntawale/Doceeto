@@ -78,7 +78,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
                 className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-white/5"
               >
                 <span
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg font-jp text-sm text-cream ring-1 ring-inset ring-black/20"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm text-cream ring-1 ring-inset ring-black/20"
                   style={{ background: t.bg }}
                 >
                   <span style={{ color: t.accent }}>{t.jp}</span>

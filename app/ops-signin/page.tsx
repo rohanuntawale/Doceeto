@@ -66,7 +66,7 @@ export default function OpsSignIn() {
               <Lock className="h-4 w-4" />
             </span>
             <div>
-              <div className="label">ADMIN · 検診</div>
+              <div className="label">ADMIN</div>
               <h1 className="font-serif text-lg text-cream">Ops console sign in</h1>
             </div>
           </div>

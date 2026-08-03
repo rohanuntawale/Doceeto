@@ -11,7 +11,7 @@ const TrackMapImpl = dynamic(() => import("@/components/map/track-map-impl"), {
       className="grid place-items-center rounded-card border border-[var(--border)]"
       style={{ height: 300 }}
     >
-      <span className="font-jp text-2xl text-[var(--text-faint)] animate-pulse">地図</span>
+      <span className="text-sm text-[var(--text-faint)] animate-pulse">Loading map…</span>
     </div>
   ),
 });

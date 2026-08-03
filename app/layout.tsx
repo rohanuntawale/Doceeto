@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Inter, JetBrains_Mono, Noto_Sans_JP } from "next/font/google";
+import { Playfair_Display, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { NO_FLASH_SCRIPT } from "@/lib/theme";
@@ -17,12 +17,6 @@ const inter = Inter({
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
-  display: "swap",
-});
-const notoJp = Noto_Sans_JP({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-jp",
   display: "swap",
 });
 
@@ -47,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${playfair.variable} ${inter.variable} ${mono.variable} ${notoJp.variable}`}
+      className={`${playfair.variable} ${inter.variable} ${mono.variable}`}
     >
       <head>
         {/* Apply the saved color theme before paint to avoid a flash. */}

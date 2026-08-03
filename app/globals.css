@@ -5,7 +5,7 @@
 /* ── Theme tokens ────────────────────────────────────────────
    Every brand hue is an "R G B" triplet so Tailwind can do
    rgb(var(--x) / <alpha>) and any data-theme can reskin the app.
-   Default theme = Mori (森): the Investor Brief 2026 palette —
+   Default theme = Mori: the Investor Brief 2026 palette —
    deep forest green shell, paper text, WHITE accent (CTAs, SOS),
    gold for highlights; warm status-critical kept for map SOS pins. */
 /* Doceeto (default) — the brand skin: warm cream/beige canvas, frosted glass
@@ -55,7 +55,7 @@
   --map-filter: grayscale(0.12) brightness(1.02) contrast(0.96) saturate(0.92);
 }
 
-/* Mori (森) — Rohan's deep forest-green Investor Brief shell, kept as an
+/* Mori — Rohan's deep forest-green Investor Brief shell, kept as an
    opt-in dark theme. */
 [data-theme="mori"] {
   --c-espresso: 20 48 38; /* Doceeto deck deepest green #143026 */
@@ -79,7 +79,7 @@
   --map-filter: grayscale(0.3) brightness(0.8) contrast(1.05) hue-rotate(65deg) sepia(0.18);
 }
 
-/* Sumi (墨) — the original warm espresso shell */
+/* Sumi — the original warm espresso shell */
 [data-theme="sumi"] {
   --c-on-accent: 241 233 216;
   --c-espresso: 42 35 32;
@@ -101,7 +101,7 @@
   --map-filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
 }
 
-/* Matcha (抹茶) — tea-green shell, soft gold accent */
+/* Matcha — tea-green shell, soft gold accent */
 [data-theme="matcha"] {
   --c-on-accent: 240 236 219;
   --c-espresso: 30 37 29;
@@ -123,7 +123,7 @@
   --map-filter: grayscale(0.3) brightness(0.82) contrast(1.05) hue-rotate(45deg) sepia(0.14);
 }
 
-/* Sakura (桜) — dusk plum shell, blossom-pink accent */
+/* Sakura — dusk plum shell, blossom-pink accent */
 [data-theme="sakura"] {
   --c-on-accent: 244 233 231;
   --c-espresso: 36 30 36;
@@ -145,7 +145,7 @@
   --map-filter: grayscale(0.3) brightness(0.82) contrast(1.03) hue-rotate(300deg) sepia(0.12);
 }
 
-/* Ai (藍) — indigo night shell, lantern-blue accent */
+/* Ai — indigo night shell, lantern-blue accent */
 [data-theme="ai"] {
   --c-on-accent: 233 231 221;
   --c-espresso: 25 31 45;

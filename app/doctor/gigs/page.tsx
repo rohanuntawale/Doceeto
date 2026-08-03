@@ -92,7 +92,6 @@ export default function DoctorGigsPage() {
   return (
     <>
       <PageHeader
-        kanji="仕"
         label="DOCEETO · GIGS"
         title="Your gigs"
         action={
@@ -143,7 +142,6 @@ export default function DoctorGigsPage() {
           {pending.length === 0 ? (
             <div className="p-4">
               <EmptyState
-                kanji="仕"
                 title="No gig requests yet"
                 desc={
                   activeCount === 0
@@ -206,7 +204,6 @@ export default function DoctorGigsPage() {
           {gigs.length === 0 ? (
             <div className="p-4">
               <EmptyState
-                kanji="仕"
                 title="No gigs yet"
                 desc="A gig is a package patients hire outright — say what you do, how long it takes, and what it costs."
                 action={

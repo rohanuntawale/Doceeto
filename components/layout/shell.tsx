@@ -13,7 +13,6 @@ import { clearOpsAuthed } from "@/lib/ops-auth";
 export interface NavItem {
   href: string;
   label: string;
-  kanji?: string;
   icon: React.ReactNode;
 }
 
@@ -83,9 +82,6 @@ export function Shell({
             </Link>
           </div>
           <div className="hidden items-center gap-2 lg:flex">
-            <span className="font-jp text-sm text-salmon">
-              {role === "doctor" ? "助け" : "検診"}
-            </span>
             <span className="label">
               {role === "doctor" ? "Doctor space" : "Team console"}
             </span>
@@ -135,11 +131,6 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
         {item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
-      {item.kanji && (
-        <span className="font-jp text-xs text-[var(--text-faint)]">
-          {item.kanji}
-        </span>
-      )}
     </Link>
   );
 }

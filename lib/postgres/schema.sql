@@ -93,6 +93,20 @@ CREATE TABLE IF NOT EXISTS doctors (
 -- through doctors, and a photo is part of what patients see.
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
+-- Onboarding timestamp — when this doctor joined the platform. Added later, so
+-- it lands nullable rather than defaulting every existing row to "now" and
+-- claiming the whole roster onboarded at migration time. New rows get now();
+-- existing registered doctors are backfilled from their account (a registered
+-- doctor's id IS their users.id). Seeded catalog doctors have no account and
+-- stay NULL, which the ops UI renders honestly as "—".
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+ALTER TABLE doctors ALTER COLUMN created_at SET DEFAULT now();
+UPDATE doctors d
+   SET created_at = u.created_at
+  FROM users u
+ WHERE u.id = d.id
+   AND d.created_at IS NULL;
+
 CREATE INDEX IF NOT EXISTS doctors_status_idx ON doctors(status);
 -- Geo filtering (?near=lat,lng&km=10) sorts by distance from a point. Without
 -- PostGIS this is a plain lat/lng index plus a bounding-box prefilter in SQL.

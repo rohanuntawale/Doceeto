@@ -157,6 +157,9 @@ export interface Doctor {
   lat: number;
   lng: number;
   lastSeen: string; // ISO
+  /** When they joined the platform, ISO. Undefined for seeded catalog doctors,
+   *  which have no account and therefore no onboarding moment. */
+  createdAt?: string;
   // Patient-facing profile detail. Optional: seeded doctors carry rich data;
   // registered doctors fall back to specialty-derived defaults (see
   // lib/utils/doctor.ts) until they fill their profile.
@@ -184,6 +187,46 @@ export interface Doctor {
   /** Live gigs this doctor is offering, and the cheapest one's price. */
   gigCount?: number;
   gigFromPrice?: number | null;
+}
+
+/**
+ * Everything ops can see about one doctor, assembled server-side in a single
+ * read. Ops-only: it carries the account email and exact coordinates, which no
+ * patient-facing endpoint is allowed to return.
+ */
+export interface DoctorDetail {
+  doctor: Doctor;
+  /** The login behind the profile. Null for seeded catalog doctors, which are
+   *  display-only rows with no account to sign in with. */
+  account: {
+    email: string;
+    /** When the account itself was created, ISO. */
+    createdAt: string;
+    /** Signed up with (or later linked) Google. */
+    googleLinked: boolean;
+    /** Has a password set — false means Google-only sign-in. */
+    hasPassword: boolean;
+    address?: string;
+    avatarUrl?: string;
+  } | null;
+  reviews: Review[];
+  requests: ConsultRequest[];
+  gigs: Gig[];
+  transactions: Transaction[];
+  /** Live sessions — how many devices are signed in right now. */
+  activeSessions: number;
+}
+
+/** What a doctor deletion actually removed, for the confirmation + audit log. */
+export interface DoctorDeletion {
+  doctorId: string;
+  fullName: string;
+  removedAccount: boolean;
+  removedGigs: number;
+  removedReviews: number;
+  /** Kept deliberately: patient consult history and the money ledger. */
+  keptRequests: number;
+  keptTransactions: number;
 }
 
 export interface Ambulance {

@@ -60,7 +60,6 @@ const config: Config = {
         serif: ["var(--font-playfair)", "Playfair Display", "Georgia", "serif"],
         sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
-        jp: ["var(--font-jp)", "Noto Sans JP", "sans-serif"],
       },
       letterSpacing: {
         label: "0.15em",

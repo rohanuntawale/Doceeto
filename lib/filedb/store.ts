@@ -31,6 +31,9 @@ export interface StoredUser extends UserRecord {
   address?: string;
   lat?: number;
   lng?: number;
+  /** When the account was created, ISO. Optional — accounts written before
+   *  this field existed have none, and the ops view renders that as "—". */
+  createdAt?: string;
   /** Google's `sub` once this account has been linked to a Google identity. */
   googleId?: string;
   avatarUrl?: string;

@@ -83,6 +83,34 @@ export async function GET(req: Request) {
         );
       }
 
+      // Everything ops can see about one doctor: profile, the account behind
+      // it, reviews, consult history, gigs and the wallet ledger. Ops only —
+      // it returns the account email and unmasked coordinates.
+      case "doctorDetail": {
+        if (role !== "ops")
+          return NextResponse.json({ error: "Ops only." }, { status: 403 });
+        const doctorId = params.get("doctorId");
+        if (!doctorId)
+          return NextResponse.json({ error: "doctorId is required." }, { status: 400 });
+        const detail = await repo.getDoctorDetail(doctorId);
+        if (!detail)
+          return NextResponse.json({ error: "Doctor not found." }, { status: 404 });
+        // Same derived availability the roster shows, so the profile agrees
+        // with the row that linked to it.
+        const [requests, gigs] = await Promise.all([repo.getRequests(), repo.getGigs()]);
+        const live = activeGigs(gigs.filter((g) => g.doctorId === doctorId));
+        return NextResponse.json({
+          ...detail,
+          doctor: {
+            ...detail.doctor,
+            onGig: isOnGig(requests, doctorId),
+            onConsult: hasOngoingConsult(requests, doctorId),
+            gigCount: live.length,
+            gigFromPrice: gigFromPrice(live),
+          },
+        });
+      }
+
       case "ambulances": {
         // Fleet positions are operational data — ops only.
         if (role !== "ops") return NextResponse.json([]);

@@ -1,8 +1,7 @@
 /**
  * Color themes. Each one only swaps the RGB-triplet CSS variables in
  * app/globals.css (via a data-theme attribute on <html>), so the whole
- * app reskins with no component changes. All four keep the calm,
- * Japanese-inspired feel; they differ in shell and accent.
+ * app reskins with no component changes.
  */
 // Single product skin — the Doceeto brand: warm cream/beige glassmorphism,
 // terracotta + sage-green accents.

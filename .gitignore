@@ -40,3 +40,4 @@ nul
 # large context / doc files
 context1.txt
 *.pdf
+.next-dev.log

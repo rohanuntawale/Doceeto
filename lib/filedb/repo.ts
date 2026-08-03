@@ -30,6 +30,8 @@ import type {
   ConsultRequest,
   Doctor,
   DoctorAvailability,
+  DoctorDeletion,
+  DoctorDetail,
   Gig,
   GigStatus,
   Order,
@@ -216,6 +218,7 @@ export async function createDoctorUser(input: {
     avatarUrl: input.avatarUrl,
     role: "doctor",
     name: fullName,
+    createdAt: now(),
   };
   const d = data();
   const doctor: Doctor = {
@@ -244,6 +247,7 @@ export async function createDoctorUser(input: {
     lat: input.lat ?? MAP_CENTER.lat + (Math.random() - 0.5) * 0.02,
     lng: input.lng ?? MAP_CENTER.lng + (Math.random() - 0.5) * 0.02,
     lastSeen: now(),
+    createdAt: now(),
   };
   d.users.push(user);
   d.doctors.unshift(doctor);
@@ -286,6 +290,82 @@ export async function setUserAvatar(
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {
   return data().doctors.find((x) => x.id === id) ?? null;
+}
+
+/**
+ * Complete ops view of one doctor — the file-store twin of the Postgres
+ * getDoctorDetail. Ops-only: carries the account email and exact coordinates.
+ */
+export async function getDoctorDetail(id: string): Promise<DoctorDetail | null> {
+  const d = data();
+  const doctor = d.doctors.find((x) => x.id === id);
+  if (!doctor) return null;
+
+  // A registered doctor's id IS their user id; seeded catalog doctors have no
+  // account row, and `account` stays null for them.
+  const u = d.users.find((x) => x.id === id && x.role === "doctor");
+  const nowMs = Date.now();
+
+  return {
+    doctor,
+    account: u
+      ? {
+          email: u.email,
+          createdAt: u.createdAt ?? doctor.createdAt ?? doctor.lastSeen,
+          googleLinked: Boolean(u.googleId),
+          hasPassword: Boolean(u.passwordHash),
+          address: u.address,
+          avatarUrl: u.avatarUrl,
+        }
+      : null,
+    reviews: await getReviews(id),
+    requests: d.requests.filter((r) => r.doctorId === id),
+    gigs: d.gigs.filter((g) => g.doctorId === id),
+    transactions: d.transactions.filter((t) => t.doctorId === id),
+    activeSessions: d.sessions.filter(
+      (s) => s.userId === id && Date.parse(s.expiresAt) > nowMs,
+    ).length,
+  };
+}
+
+/**
+ * Ops removes a doctor. Same policy as the Postgres store: the profile, gig
+ * shelf, reviews and account go (sessions with them, so every signed-in device
+ * is logged out); consult history and the money ledger stay. Refuses while a
+ * consult is live rather than stranding a patient mid-visit.
+ */
+export async function deleteDoctor(id: string): Promise<DoctorDeletion> {
+  const d = data();
+  const doctor = d.doctors.find((x) => x.id === id);
+  if (!doctor) throw new DomainError("That doctor no longer exists.");
+
+  if (d.requests.some((r) => r.doctorId === id && r.status === "accepted"))
+    throw new DomainError(
+      "This doctor is mid-consult. Wait for it to finish or cancel it first.",
+    );
+
+  const keptRequests = d.requests.filter((r) => r.doctorId === id).length;
+  const keptTransactions = d.transactions.filter((t) => t.doctorId === id).length;
+  const removedGigs = d.gigs.filter((g) => g.doctorId === id).length;
+  const removedReviews = d.reviews.filter((v) => v.doctorId === id).length;
+  const hadAccount = d.users.some((x) => x.id === id && x.role === "doctor");
+
+  d.gigs = d.gigs.filter((g) => g.doctorId !== id);
+  d.reviews = d.reviews.filter((v) => v.doctorId !== id);
+  d.doctors = d.doctors.filter((x) => x.id !== id);
+  d.sessions = d.sessions.filter((s) => s.userId !== id);
+  d.users = d.users.filter((x) => !(x.id === id && x.role === "doctor"));
+  persist();
+
+  return {
+    doctorId: id,
+    fullName: doctor.fullName,
+    removedAccount: hadAccount,
+    removedGigs,
+    removedReviews,
+    keptRequests,
+    keptTransactions,
+  };
 }
 
 // ── Reads ────────────────────────────────────────────────────
