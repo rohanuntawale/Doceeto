@@ -39,3 +39,10 @@ export const MAP_ZOOM = 12;
 
 /** Transparent commission on each completed visit (the doctor keeps the rest). */
 export const COMMISSION_RATE = 0.15;
+
+/**
+ * Medicine ordering, hidden from patients for now — flip to true to bring the
+ * tab, chips and order rows back. The store page, APIs and ops fulfilment
+ * views stay intact underneath; this only gates what PATIENTS can see.
+ */
+export const MEDICINE_ENABLED = false;

@@ -29,6 +29,7 @@ import {
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useMedicalHistory } from "@/lib/hooks/use-medical-history";
 import { useConsultRequests, useDoctors, useOrders } from "@/lib/hooks/data";
+import { MEDICINE_ENABLED } from "@/lib/config";
 import { weeklyCareActivity } from "@/lib/health/metrics";
 import { realHealthScore } from "@/lib/health/score";
 import { bmiBand, bmiOf } from "@/lib/health/profile";
@@ -117,7 +118,9 @@ export default function PatientHome() {
     { id: "profile", label: "Complete your profile", sub: "Add your details", done: located, href: "/patient/account" },
     { id: "contact", label: "Add an emergency contact", sub: "Someone we can reach for you", href: "/patient/account" },
     { id: "checkup", label: "Book a yearly check-up", sub: "Stay ahead with preventive care", href: "/patient/doctors" },
-    { id: "meds", label: "Set medication reminders", sub: "Never miss a dose", href: "/patient/medicine" },
+    ...(MEDICINE_ENABLED
+      ? [{ id: "meds", label: "Set medication reminders", sub: "Never miss a dose", href: "/patient/medicine" }]
+      : []),
     { id: "verify", label: "Verify your phone number", href: "/patient/account" },
   ];
 
@@ -252,7 +255,9 @@ export default function PatientHome() {
         <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
         <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
         <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#5E7C8B" />
-        <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
+        {MEDICINE_ENABLED && (
+          <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
+        )}
       </div>
 
       {/* Care activity + health score + goals */}

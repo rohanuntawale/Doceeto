@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import { MEDICINE_ENABLED } from "@/lib/config";
 import { Plus, Minus, ShoppingBag, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -10,7 +12,19 @@ import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { MED_CATALOG, DARK_STORES } from "@/lib/demo/seed";
 import { formatINR } from "@/lib/utils/format";
 
+/** Medicine is switched off for patients: anyone landing here by URL or an
+ *  old link goes home instead of seeing a store that isn't offered. The gate
+ *  wraps the store so the store's own hooks never run half-mounted. */
 export default function PatientMedicine() {
+  const router = useRouter();
+  useEffect(() => {
+    if (!MEDICINE_ENABLED) router.replace("/patient");
+  }, [router]);
+  if (!MEDICINE_ENABLED) return null;
+  return <MedicineStore />;
+}
+
+function MedicineStore() {
   const { patient } = useCurrentPatient();
   const { createOrder } = useActions();
   const toast = useToast();

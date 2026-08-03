@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Stethoscope, Sparkles, Pill, X } from "lucide-react";
+import { MEDICINE_ENABLED } from "@/lib/config";
 
 const KEY = "iyashi:guide-dismissed:v1";
 
@@ -16,11 +17,15 @@ const STEPS = [
     title: "Need a doctor? Find one",
     desc: "See doctors near you on a map. Pick one for a home visit, clinic visit or video call, or let us find your best match.",
   },
-  {
-    icon: <Pill className="h-4 w-4" />,
-    title: "Order medicine",
-    desc: "Add what you need and we deliver it to your door.",
-  },
+  ...(MEDICINE_ENABLED
+    ? [
+        {
+          icon: <Pill className="h-4 w-4" />,
+          title: "Order medicine",
+          desc: "Add what you need and we deliver it to your door.",
+        },
+      ]
+    : []),
 ];
 
 /** A short, dismissible first-run guide so new users know what to do. */

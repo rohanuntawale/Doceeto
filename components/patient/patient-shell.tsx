@@ -7,6 +7,7 @@ import { Home, Search, Pill, User } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
+import { MEDICINE_ENABLED } from "@/lib/config";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
 
@@ -17,7 +18,10 @@ import { cn } from "@/lib/utils/cn";
 const NAV = [
   { id: "home", href: "/patient", labelKey: "nav.home", icon: Home, color: "#0A84FF", exact: true },
   { id: "care", href: "/patient/doctors", labelKey: "nav.care", icon: Search, color: "#30D158" },
-  { id: "meds", href: "/patient/medicine", labelKey: "nav.meds", icon: Pill, color: "#FF9F0A" },
+  // Medicine hidden while MEDICINE_ENABLED is off.
+  ...(MEDICINE_ENABLED
+    ? [{ id: "meds", href: "/patient/medicine", labelKey: "nav.meds", icon: Pill, color: "#FF9F0A" }]
+    : []),
   { id: "account", href: "/patient/account", labelKey: "nav.account", icon: User, color: "#5E5CE6" },
 ];
 

@@ -11,6 +11,7 @@ import { tripStageOfRequest } from "@/lib/scheduling/trip";
 import { timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { useConsultRequests, useOrders, useDoctors } from "@/lib/hooks/data";
+import { MEDICINE_ENABLED } from "@/lib/config";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 
 /**
@@ -33,7 +34,12 @@ export function CareStatus({
   const requests = useConsultRequests().filter(
     (r) => r.patientId === patient.id && !(r.status === "completed" && r.reviewed),
   );
-  const orders = useOrders().filter((o) => o.patientId === patient.id);
+  // With medicine hidden, past orders are hidden too — "nothing of buying
+  // medicine" means the feed, not just the store.
+  const allOrders = useOrders();
+  const orders = MEDICINE_ENABLED
+    ? allOrders.filter((o) => o.patientId === patient.id)
+    : [];
   const doctors = useDoctors();
 
   const docName = (id: string | null) =>
@@ -45,7 +51,11 @@ export function CareStatus({
     return (
       <EmptyState
         title="No active care"
-        desc="Book a doctor or order medicine. It shows up here and updates live."
+        desc={
+          MEDICINE_ENABLED
+            ? "Book a doctor or order medicine. It shows up here and updates live."
+            : "Book a doctor and your care shows up here, updating live."
+        }
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <Link
@@ -54,12 +64,14 @@ export function CareStatus({
             >
               <Stethoscope className="h-4 w-4" /> Find a doctor
             </Link>
-            <Link
-              href="/patient/medicine"
-              className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-cream"
-            >
-              <Pill className="h-4 w-4" /> Order medicine
-            </Link>
+            {MEDICINE_ENABLED && (
+              <Link
+                href="/patient/medicine"
+                className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-cream"
+              >
+                <Pill className="h-4 w-4" /> Order medicine
+              </Link>
+            )}
           </div>
         }
       />
