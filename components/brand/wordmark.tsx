@@ -66,39 +66,86 @@ export function BrandMark({
 }) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="0 0 512 512"
       className={cn("h-[34px] w-[34px] shrink-0", className)}
+      xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Doceeto"
     >
-      {/* green app-icon squircle */}
-      <rect x="2" y="2" width="96" height="96" rx="24" fill={BRAND.green} />
-      {/* the D — stem and arms, open at the break */}
-      <path
-        d="M 69.5 39 C 65.5 32.6 57.5 29 48 29 L 31 29 L 31 71 L 48 71 C 57.5 71 65.5 67.4 69.5 61"
-        fill="none"
-        stroke={BRAND.bone}
-        strokeWidth="13"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      {/* Background */}
+      <rect
+        width="512"
+        height="512"
+        rx="80"
+        fill="#EAE6DC"
       />
-      {/* the patient — gold dot held in the break of the arms */}
-      <circle cx="79" cy="50" r="5.2" fill={BRAND.gold} />
-      {!reduced && (
-        <>
-          {/* stethoscope crossing the chest */}
-          <circle cx="46.5" cy="47" r="8.3" fill={BRAND.bone} />
-          <circle cx="46.5" cy="47" r="3.2" fill={BRAND.green} />
-          <path
-            d="M 38 51 C 38.4 57.8 42.8 61.8 48.6 61.2"
-            fill="none"
-            stroke={BRAND.gold}
-            strokeWidth="2.8"
-            strokeLinecap="round"
-          />
-          <circle cx="53.8" cy="60" r="2.7" fill={BRAND.gold} />
-        </>
-      )}
+
+      {/* Main green D-shaped logo */}
+      <path
+        d="
+          M 145 135
+          H 255
+          C 305 135 340 165 362 210
+          C 367 220 365 232 356 238
+          C 347 244 336 240 330 230
+          C 315 204 295 190 255 190
+          H 185
+          V 322
+          H 255
+          C 295 322 315 308 330 282
+          C 336 272 347 268 356 274
+          C 365 280 367 292 362 302
+          C 340 347 305 377 255 377
+          H 145
+          C 125 377 110 362 110 342
+          V 170
+          C 110 150 125 135 145 135
+          Z
+        "
+        fill="#153D32"
+      />
+
+      {/* Inner green circle */}
+      <circle
+        cx="245"
+        cy="256"
+        r="38"
+        fill="#153D32"
+      />
+
+      {/* Top gold arc */}
+      <path
+        d="M 195 220 C 220 198 260 198 285 220"
+        fill="none"
+        stroke="#C9A13F"
+        strokeWidth="12"
+        strokeLinecap="round"
+      />
+
+      {/* Bottom gold arc */}
+      <path
+        d="M 195 292 C 220 314 260 314 285 292"
+        fill="none"
+        stroke="#C9A13F"
+        strokeWidth="12"
+        strokeLinecap="round"
+      />
+
+      {/* Gold node on bottom arc */}
+      <circle
+        cx="285"
+        cy="292"
+        r="15"
+        fill="#C9A13F"
+      />
+
+      {/* Floating gold dot */}
+      <circle
+        cx="420"
+        cy="256"
+        r="28"
+        fill="#C9A13F"
+      />
     </svg>
   );
 }
