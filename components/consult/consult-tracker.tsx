@@ -18,12 +18,13 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { TrackMap } from "@/components/map/track-map";
 import { useToast } from "@/components/ui/toast";
+import { StartCodeForDoctor, StartCodeForPatient } from "@/components/consult/start-code";
 import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
 import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
 import { labelsIn } from "@/lib/labels";
 import { useT } from "@/lib/i18n";
 import { isGig } from "@/lib/scheduling/slots";
-import { stagesFor, tripStageOfRequest } from "@/lib/scheduling/trip";
+import { awaitingStartCode, stagesFor, tripStageOfRequest } from "@/lib/scheduling/trip";
 import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { initials } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -179,6 +180,18 @@ function TrackerCard({
 
       {/* The rail — where the visit has got to. */}
       <TripRail req={req} />
+
+      {/* The arrival handshake. The patient's four digits, the doctor's
+          keypad — the step that turns "arrived" into "in consult". */}
+      {awaitingStartCode(req) && (
+        <div className="px-3 pt-3">
+          {side === "patient" ? (
+            <StartCodeForPatient req={req} />
+          ) : (
+            <StartCodeForDoctor req={req} />
+          )}
+        </div>
+      )}
 
       {known ? (
         <div className="p-3">

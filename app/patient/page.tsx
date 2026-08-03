@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Pill,
   ChevronRight,
-  MapPin,
   Sparkles,
   ArrowRight,
   Video,
@@ -14,6 +13,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { CareStatus } from "@/components/patient/care-status";
+import { LocationChip } from "@/components/patient/location-chip";
 import { PatientConsultTracker } from "@/components/consult/consult-tracker";
 import { GlassCard } from "@/components/ui/glass-card";
 import { FaqCard, HistoryCard } from "@/components/dashboard/extras";
@@ -157,10 +157,7 @@ export default function PatientHome() {
             {t(greetingKey)},{" "}
             <span className="text-[rgb(var(--c-terracotta))]">{firstName}</span>
           </h1>
-          <p className="mt-1.5 flex items-center gap-1 text-sm text-[var(--text-muted)]">
-            <MapPin className="h-3.5 w-3.5" />
-            {patient.address || t("home.setLocation")}
-          </p>
+          <LocationChip />
         </div>
         {/* Full-width row below sm so the stats and avatar share one line
             instead of the avatar wrapping onto its own. */}

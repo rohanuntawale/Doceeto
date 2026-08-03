@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequestCard } from "@/components/zumi/request-card";
 import { PatientBriefDialog } from "@/components/doctor/patient-brief-dialog";
+import { StartCodeForDoctor } from "@/components/consult/start-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
 import { isDemoMode } from "@/lib/config";
@@ -20,6 +21,7 @@ import {
   ongoingConsultOf,
   visibleToDoctor,
 } from "@/lib/scheduling/slots";
+import { awaitingStartCode } from "@/lib/scheduling/trip";
 import { formatSlotRange } from "@/lib/scheduling/time";
 
 export default function RequestsPage() {
@@ -219,17 +221,24 @@ export default function RequestsPage() {
                   toast.push({ tone: "success", title: "Consult completed" });
                 }}
                 footer={
-                  // Accepting the consult is what unlocks the patient's
-                  // health profile — the server enforces the same rule.
-                  !isDemoMode && r.patientId ? (
-                    <button
-                      onClick={() => setBriefFor(r.id)}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
-                    >
-                      <ClipboardList className="h-4 w-4 text-salmon" />
-                      View patient details
-                    </button>
-                  ) : undefined
+                  <div className="space-y-2.5">
+                    {/* The consult can't be completed until the patient's
+                        code is entered, so the keypad lives right here. */}
+                    {!isDemoMode && awaitingStartCode(r) && (
+                      <StartCodeForDoctor req={r} />
+                    )}
+                    {/* Accepting the consult is what unlocks the patient's
+                        health profile — the server enforces the same rule. */}
+                    {!isDemoMode && r.patientId && (
+                      <button
+                        onClick={() => setBriefFor(r.id)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
+                      >
+                        <ClipboardList className="h-4 w-4 text-salmon" />
+                        View patient details
+                      </button>
+                    )}
+                  </div>
                 }
               />
             ))}

@@ -7,6 +7,7 @@ import { CANCEL_REASON_MAX } from "@/lib/scheduling/booking";
 import { ARRIVE_RADIUS_KM } from "@/lib/scheduling/trip";
 import { GIG_DESC_MAX, GIG_TITLE_MAX, sanitizeGigPatch } from "@/lib/gigs/rules";
 import { haversineKm } from "@/lib/utils/geo";
+import { rateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -464,11 +465,70 @@ export async function POST(req: Request) {
         // ignored, exactly as with advanceSos and advanceOrder.
         const stage = await repo.advanceTrip(String(payload.id), me);
         if (stage === null)
-          return bad("That visit is already at its last step — complete it instead.");
+          return bad("Ask the patient for their 4-digit code to start the consult.");
         return done({ ok: true, tripStage: stage }, ["requests"]);
       }
-      case "completeRequest":
+
+      // ── Arrival confirmation (the ride-hailing handshake) ──
+      case "verifyStartCode": {
         if (role !== "doctor") return needs("doctors");
+        const code = String(payload.code ?? "").trim();
+        if (!/^\d{4}$/.test(code)) return bad("Enter the 4-digit code from the patient.");
+        const result = await repo.verifyStartCode(String(payload.id), me, code);
+        if (!result.ok) {
+          // 409, not 400: the request was well-formed, the digits were wrong.
+          return NextResponse.json(
+            {
+              error:
+                result.reason === "locked"
+                  ? "Too many wrong codes. Ask the patient to generate a new one."
+                  : `That code doesn't match. ${result.attemptsLeft} ${result.attemptsLeft === 1 ? "try" : "tries"} left.`,
+              reason: result.reason,
+              attemptsLeft: result.attemptsLeft,
+            },
+            { status: 409 },
+          );
+        }
+        return done({ ok: true, tripStage: "in_progress" }, ["requests"]);
+      }
+      case "startConsultAsPatient": {
+        // The escape hatch: a dead doctor phone, or a patient who would
+        // rather tap than read digits aloud. Same proof, opposite direction.
+        if (role !== "patient") return needs("patients");
+        await repo.startConsultAsPatient(String(payload.id), me);
+        return done({ ok: true }, ["requests"]);
+      }
+      case "reissueStartCode": {
+        if (role !== "patient") return needs("patients");
+        // Cheap to call but not free — a doctor watching the screen shouldn't
+        // be able to farm codes by pestering the patient to re-roll.
+        if (!rateLimit(`startcode:${me}`, 10, 10 * 60_000)) {
+          return NextResponse.json(
+            { error: "Too many new codes. Try again in a few minutes." },
+            { status: 429 },
+          );
+        }
+        const code = await repo.reissueStartCode(String(payload.id), me);
+        return done({ ok: true, startCode: code }, ["requests"]);
+      }
+
+      case "completeRequest": {
+        if (role !== "doctor") return needs("doctors");
+        // A visit can only be completed once it was CONFIRMED started. This
+        // is what gives the code teeth: without it a doctor could close (and
+        // bill) a visit they never attended, and the handshake would be
+        // decoration. The patient-side start and ops override are the ways
+        // out for the genuinely stuck.
+        const req = (await repo.getRequests()).find((r) => r.id === String(payload.id));
+        if (req && req.doctorId === me && req.tripStage !== "in_progress") {
+          return NextResponse.json(
+            {
+              error:
+                "Enter the patient's 4-digit code to start the consult before completing it.",
+            },
+            { status: 409 },
+          );
+        }
         await repo.completeRequest(String(payload.id), {
           doctorId: me,
           notes: payload.notes ? String(payload.notes) : undefined,
@@ -477,6 +537,7 @@ export async function POST(req: Request) {
             : undefined,
         });
         return done({ ok: true }, ["requests", "transactions"]);
+      }
       case "requestPayout": {
         if (role !== "doctor") return needs("doctors");
         const ok = await repo.requestPayout(me);

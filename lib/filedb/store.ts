@@ -39,6 +39,8 @@ export interface StoredUser extends UserRecord {
   avatarUrl?: string;
   /** Patient health profile (lib/health/profile.ts); absent for doctors/ops. */
   healthProfile?: import("@/lib/health/profile").HealthProfile;
+  /** Symptom-checker chat history (lib/care/history.ts); patients only. */
+  chatHistory?: import("@/lib/care/history").CheckSession[];
   /** Aggregate rating this patient received from doctors (mutual ratings). */
   rating?: number;
   ratingCount?: number;

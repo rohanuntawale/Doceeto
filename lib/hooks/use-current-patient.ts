@@ -66,10 +66,18 @@ function hydrateOnce() {
     apiFetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        current =
-          data?.role === "patient" && data.patient
-            ? { ...DEFAULT, ...data.patient, ready: true }
-            : { ...current, ready: true };
+        if (data?.role === "patient" && data.patient) {
+          // A device fix can land before this response does. When it has, the
+          // live position WINS — the account row is only ever where the
+          // patient last was, and letting it overwrite a current fix is
+          // exactly what pinned everyone to their sign-up address.
+          const live = current.located
+            ? { lat: current.lat, lng: current.lng, address: current.address }
+            : {};
+          current = { ...DEFAULT, ...data.patient, ...live, located: current.located, ready: true };
+        } else {
+          current = { ...current, ready: true };
+        }
         emit();
       })
       .catch(() => {
@@ -85,7 +93,12 @@ function hydrateOnce() {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (raw) {
-      current = { ...DEFAULT, ...JSON.parse(raw), ready: true };
+      // Same rule as live mode: a fix already applied by the device beats the
+      // remembered one.
+      const live = current.located
+        ? { lat: current.lat, lng: current.lng, address: current.address, located: true }
+        : {};
+      current = { ...DEFAULT, ...JSON.parse(raw), ...live, ready: true };
     } else {
       current = { ...DEFAULT, id: `patient-${Date.now().toString(36)}`, ready: true };
       persist();

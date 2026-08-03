@@ -719,6 +719,18 @@ const BANK: DQuestion[] = [
   Q_SEVERITY,
 ];
 
+/** Look up a question/option pair in the local bank. Replaying a saved
+ *  session goes through here first so bank answers restore their original
+ *  scores/tags/flags instead of being re-guessed from keyword triage. */
+export function bankOption(
+  questionId: string,
+  value: string,
+): { q: DQuestion; opt: DOption } | null {
+  const q = BANK.find((x) => x.id === questionId);
+  const opt = q?.options.find((o) => o.value === value);
+  return q && opt ? { q, opt } : null;
+}
+
 /** Fresh session. Seed free-text + prior conditions prime the scores so the
  *  checker feels like it already knows the patient. */
 export function initState(seed = "", historyConditions: string[] = []): DState {

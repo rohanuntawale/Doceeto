@@ -9,6 +9,7 @@ import {
   PENDING_SIGNUP_TTL_MS,
   SESSION_TTL_MS,
   newSessionId,
+  newStartCode,
   type Near,
   type PendingSignup,
   type SessionRecord,
@@ -27,7 +28,7 @@ import {
   type ResolvedHire,
   type ResolvedSlot,
 } from "@/lib/scheduling/booking";
-import { nextTripStage } from "@/lib/scheduling/trip";
+import { MAX_START_CODE_ATTEMPTS, nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
 import type { HealthProfile } from "@/lib/health/profile";
 import type {
@@ -154,6 +155,10 @@ const mapRequest = (r: Row): ConsultRequest => ({
   broadcast: Boolean(r.broadcast),
   tripStage: r.trip_stage ?? null,
   tripStageAt: isoOrNull(r.trip_stage_at),
+  // Carried on the row; /api/data strips it for every reader but the patient.
+  startCode: r.start_code ?? null,
+  startCodeAttempts: num(r.start_code_attempts, 0),
+  startedAt: isoOrNull(r.started_at),
   acceptedAt: isoOrNull(r.accepted_at),
   completedAt: isoOrNull(r.completed_at),
   cancelledAt: isoOrNull(r.cancelled_at),
@@ -580,6 +585,26 @@ export async function getPatientProfile(id: string) {
 }
 
 /**
+ * Save where the patient IS RIGHT NOW. Called whenever the device reports a
+ * meaningfully different position, so every later booking / SOS carries the
+ * current address rather than the one typed at sign-up.
+ *
+ * COALESCE keeps the stored address when the reverse geocode came back empty —
+ * a failed lookup must not blank out a good address.
+ */
+export async function setPatientLocation(
+  id: string,
+  loc: { lat: number; lng: number; address?: string },
+): Promise<void> {
+  await sql(
+    `UPDATE users
+        SET lat = $2, lng = $3, address = COALESCE($4, address)
+      WHERE id = $1 AND role = 'patient'`,
+    [id, loc.lat, loc.lng, loc.address ? loc.address.slice(0, 200) : null],
+  );
+}
+
+/**
  * Save the patient's health profile. The route sanitizes; this writes — and
  * when the weight changed, it also APPENDS to the vitals log, so a history
  * accrues from ordinary profile edits and weight becomes a trend, not a
@@ -607,6 +632,36 @@ export async function setPatientHealthProfile(
       [uid("vital"), id, profile.weightKg],
     );
   }
+}
+
+// ── Symptom-checker chat history ─────────────────────────────
+// One JSONB blob per patient (like health_profile). The column ships in
+// schema.sql, but setup() only runs on seed — this lazy ALTER covers databases
+// created before the column existed without requiring a re-seed.
+let chatColumnReady: Promise<unknown> | null = null;
+const ensureChatColumn = () =>
+  (chatColumnReady ??= sql(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_history JSONB`,
+  ));
+
+export async function getChatHistory(patientId: string): Promise<unknown[]> {
+  await ensureChatColumn();
+  const r = await one(
+    `SELECT chat_history FROM users WHERE id = $1 AND role = 'patient'`,
+    [patientId],
+  );
+  return Array.isArray(r?.chat_history) ? (r!.chat_history as unknown[]) : [];
+}
+
+export async function setChatHistory(
+  patientId: string,
+  sessions: unknown[],
+): Promise<void> {
+  await ensureChatColumn();
+  await sql(
+    `UPDATE users SET chat_history = $2::jsonb WHERE id = $1 AND role = 'patient'`,
+    [patientId, JSON.stringify(sessions)],
+  );
 }
 
 /** Recent weight measurements, newest first — the doctor brief's trend line. */
@@ -1186,12 +1241,15 @@ export async function acceptRequest(id: string, doctorId: string): Promise<boole
     // Throws a 409 with the reason, so the doctor sees why rather than a no-op.
     assertCanAccept(req, ex.rows.map(mapRequest), doctorId);
 
+    // Mint the arrival code here: from this moment there is a doctor-patient
+    // pair, and the patient's app can show the digits straight away.
     await c.query(
       `UPDATE consult_requests
        SET status = 'accepted', doctor_id = $2, accepted_at = now(),
-           trip_stage = 'accepted', trip_stage_at = now()
+           trip_stage = 'accepted', trip_stage_at = now(),
+           start_code = $3, start_code_attempts = 0
        WHERE id = $1`,
-      [id, doctorId],
+      [id, doctorId, newStartCode()],
     );
     // A hired gig leaves the shelf the moment it's accepted: the doctor is
     // committed to this one, so the listing pauses itself instead of inviting
@@ -1460,11 +1518,115 @@ export async function advanceTrip(id: string, doctorId: string): Promise<string 
 
     const next = nextTripStage(req);
     if (!next) return null;
+    // `in_progress` is NOT walkable: it is reached only by the arrival code
+    // (or the patient starting it themselves). Without this guard a doctor
+    // could tap their way past the handshake and the code would be theatre.
+    if (next === "in_progress") return null;
     await c.query(
       `UPDATE consult_requests SET trip_stage = $2, trip_stage_at = now() WHERE id = $1`,
       [id, next],
     );
     return next;
+  });
+}
+
+/**
+ * The handshake. The doctor submits what the patient read out; the row is
+ * locked so two submissions can't both spend an attempt against a stale
+ * count, and a wrong guess is recorded whether or not the caller retries.
+ *
+ * Returns why it failed rather than throwing, so the cockpit can show
+ * "3 tries left" instead of a generic error.
+ */
+export async function verifyStartCode(
+  id: string,
+  doctorId: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; reason: "locked" | "wrong"; attemptsLeft: number }> {
+  return tx(async (c) => {
+    const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [id]);
+    if (!rq.rows[0]) throw new DomainError("That visit no longer exists.", 404);
+    const req = mapRequest(rq.rows[0]);
+    if (req.doctorId !== doctorId) throw new DomainError("That isn't your visit.", 403);
+    if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+    if (req.tripStage === "in_progress") return { ok: true as const }; // already started
+
+    const attempts = req.startCodeAttempts ?? 0;
+    if (attempts >= MAX_START_CODE_ATTEMPTS) {
+      return { ok: false as const, reason: "locked" as const, attemptsLeft: 0 };
+    }
+
+    // A row accepted before this feature shipped has no code; mint one now so
+    // the visit isn't stranded, and let this attempt fail against it.
+    let expected = req.startCode;
+    if (!expected) {
+      expected = newStartCode();
+      await c.query(`UPDATE consult_requests SET start_code = $2 WHERE id = $1`, [id, expected]);
+    }
+
+    if (code !== expected) {
+      const used = attempts + 1;
+      await c.query(
+        `UPDATE consult_requests SET start_code_attempts = $2 WHERE id = $1`,
+        [id, used],
+      );
+      return {
+        ok: false as const,
+        reason: "wrong" as const,
+        attemptsLeft: Math.max(0, MAX_START_CODE_ATTEMPTS - used),
+      };
+    }
+
+    await c.query(
+      `UPDATE consult_requests
+         SET trip_stage = 'in_progress', trip_stage_at = now(), started_at = now()
+       WHERE id = $1`,
+      [id],
+    );
+    return { ok: true as const };
+  });
+}
+
+/**
+ * Start the consult from the PATIENT's side — the escape hatch for a dead
+ * doctor phone, or a patient who would rather tap than read digits aloud.
+ * Same proof, opposite direction: only the patient's own session can do it.
+ */
+export async function startConsultAsPatient(id: string, patientId: string): Promise<void> {
+  await tx(async (c) => {
+    const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [id]);
+    if (!rq.rows[0]) throw new DomainError("That visit no longer exists.", 404);
+    const req = mapRequest(rq.rows[0]);
+    if (req.patientId !== patientId) throw new DomainError("That isn't your visit.", 403);
+    if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+    if (!req.doctorId) throw new DomainError("No doctor has taken this visit yet.", 409);
+    if (req.tripStage === "in_progress") return;
+    await c.query(
+      `UPDATE consult_requests
+         SET trip_stage = 'in_progress', trip_stage_at = now(), started_at = now()
+       WHERE id = $1`,
+      [id],
+    );
+  });
+}
+
+/** New digits, attempts reset — for a locked or forgotten code. Patient only. */
+export async function reissueStartCode(id: string, patientId: string): Promise<string> {
+  return tx(async (c) => {
+    const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [id]);
+    if (!rq.rows[0]) throw new DomainError("That visit no longer exists.", 404);
+    const req = mapRequest(rq.rows[0]);
+    if (req.patientId !== patientId) throw new DomainError("That isn't your visit.", 403);
+    if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+    if (req.tripStage === "in_progress") {
+      throw new DomainError("This consult has already started.", 409);
+    }
+    const code = newStartCode();
+    await c.query(
+      `UPDATE consult_requests SET start_code = $2, start_code_attempts = 0 WHERE id = $1`,
+      [id, code],
+    );
+    return code;
   });
 }
 

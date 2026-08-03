@@ -20,14 +20,35 @@ export const TRIP_STAGES: TripStage[] = ["accepted", "enroute", "arrived", "in_p
  */
 export const ARRIVE_RADIUS_KM = 0.15;
 
+/** Wrong guesses before the arrival code locks and must be reissued. */
+export const MAX_START_CODE_ATTEMPTS = 5;
+
 /**
  * A home visit is the only journey: the doctor taps "On the way" and GPS
- * marks them arrived. Video and clinic visits have no rail at all — the
- * doctor accepts, holds the consult, and marks it complete.
+ * marks them arrived. Video and clinic visits skip straight to the handshake.
+ *
+ * Every type ends at `in_progress`, which is reached ONLY by the arrival
+ * code — the patient reads out four digits, the doctor types them, and the
+ * consult is confirmed started by both sides at once.
  */
 export function stagesFor(type: ConsultType): TripStage[] {
-  return type === "home_visit" ? ["accepted", "enroute", "arrived"] : ["accepted"];
+  return type === "home_visit"
+    ? ["accepted", "enroute", "arrived", "in_progress"]
+    : ["accepted", "in_progress"];
 }
+
+/**
+ * True when the next move on this visit is the code handshake, so the UI can
+ * show the patient their digits and the doctor the keypad. Deliberately NOT
+ * "is the doctor here" — a video consult confirms the same way, proving both
+ * sides actually joined.
+ */
+export function awaitingStartCode(
+  req: Pick<ConsultRequest, "tripStage" | "status" | "type">,
+): boolean {
+  return nextTripStage(req) === "in_progress";
+}
+
 
 /** Where a request currently sits. Accepted rows predating stages read as accepted. */
 export function tripStageOfRequest(req: Pick<ConsultRequest, "tripStage" | "status">): TripStage | null {

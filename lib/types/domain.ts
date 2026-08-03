@@ -289,6 +289,16 @@ export interface ConsultRequest {
   /** Length of the booked slot, in minutes. */
   slotMinutes?: number | null;
   /** When a doctor claimed it — createdAt→acceptedAt is the response time. */
+  /**
+   * The 4-digit arrival code, ride-hailing style. Present ONLY on the
+   * patient's own copy of the row — /api/data strips it for doctors and ops,
+   * so the only way a doctor can pass it is by the patient reading it out.
+   */
+  startCode?: string | null;
+  /** Wrong guesses so far; MAX_START_CODE_ATTEMPTS locks it until reissued. */
+  startCodeAttempts?: number;
+  /** When the code was accepted (or the patient started it) — treatment began. */
+  startedAt?: string | null;
   acceptedAt?: string | null;
   /** When the consult was closed out; dates the doctor's "today" counts. */
   completedAt?: string | null;

@@ -43,6 +43,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 -- conditions, medication, history, lifestyle, emergency contact) as one JSONB
 -- blob — the shape lives in lib/health/profile.ts and is sanitized on write.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS health_profile JSONB;
+-- The patient's symptom-checker chat history (a capped, newest-first list of
+-- sessions) as one JSONB blob — shape lives in lib/care/history.ts and is
+-- sanitized on write. Server-side so it survives refreshes and devices.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_history JSONB;
 CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_key ON users (google_id)
   WHERE google_id IS NOT NULL;
 
@@ -217,6 +221,17 @@ CREATE TABLE IF NOT EXISTS consult_requests (
   -- Doctors who passed on a broadcast; they are never offered it again.
   passed_by      TEXT[] NOT NULL DEFAULT '{}'
 );
+-- Arrival confirmation, the ride-hailing pattern: on acceptance the server
+-- mints a 4-digit code that ONLY the patient can see. The doctor types what
+-- the patient reads out, which is simultaneous proof that the doctor showed
+-- up, the patient was there, and treatment actually began (started_at).
+--   start_code          the digits; never returned to a doctor or ops
+--   start_code_attempts wrong guesses so far; 5 locks the code until reissued
+--   started_at          when the consult was really confirmed to have begun
+ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS start_code          TEXT;
+ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS start_code_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS started_at          TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS requests_status_idx    ON consult_requests(status);
 CREATE INDEX IF NOT EXISTS requests_doctor_idx    ON consult_requests(doctor_id, status);
 CREATE INDEX IF NOT EXISTS requests_patient_idx   ON consult_requests(patient_id);

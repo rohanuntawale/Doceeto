@@ -164,7 +164,15 @@ export async function GET(req: Request) {
 
       case "requests": {
         const all = await repo.getRequests(near);
-        if (role === "ops") return NextResponse.json(all);
+        // THE arrival-code rule: the digits leave the server only to the
+        // patient they belong to. A doctor who could read them from this
+        // response would confirm their own attendance without ever meeting
+        // the patient, and the whole handshake would mean nothing.
+        const hideCode = (r: (typeof all)[number]) => ({
+          ...r,
+          startCode: undefined,
+        });
+        if (role === "ops") return NextResponse.json(all.map(hideCode));
         if (role === "patient")
           return NextResponse.json(all.filter((r) => r.patientId === me));
         // doctor: open broadcasts, directed-to-me, requests aimed at a
@@ -178,7 +186,7 @@ export async function GET(req: Request) {
         // the unfiltered set.
         const busy = hasOngoingConsult(near ? await repo.getRequests() : all, me);
         return NextResponse.json(
-          all.filter((r) => visibleToDoctor(r, { doctorId: me, busy })),
+          all.filter((r) => visibleToDoctor(r, { doctorId: me, busy })).map(hideCode),
         );
       }
 

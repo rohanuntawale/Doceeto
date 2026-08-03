@@ -303,6 +303,13 @@ export interface Actions {
   deleteGig: (id: string) => Promise<void>;
   /** Move an accepted visit one step along its rail. */
   advanceTrip: (id: string) => Promise<void>;
+  /** Doctor submits the 4-digit code the patient read out. Rejects with the
+   *  server's message ("3 tries left", "locked") so the UI can show it. */
+  verifyStartCode: (id: string, code: string) => Promise<unknown>;
+  /** Patient starts the consult themselves — the escape hatch. */
+  startConsultAsPatient: (id: string) => Promise<unknown>;
+  /** Patient rolls a new code; returns the new digits. */
+  reissueStartCode: (id: string) => Promise<{ startCode?: string }>;
   requestPayout: (doctorId: string) => void;
   advanceOrder: (orderId: string, current: OrderStatus) => void;
   /** Ops removes a doctor from the platform. Resolves with what was actually
@@ -382,6 +389,10 @@ export function useActions(): Actions {
         setGigStatus: async (id, status) => demoStore.setGigStatus(id, status),
         deleteGig: async (id) => demoStore.deleteGig(id),
         advanceTrip: async (id) => void demoStore.advanceTrip(id),
+        // Demo has no server to check a code against; starting is immediate.
+        verifyStartCode: async (id) => void demoStore.advanceTrip(id),
+        startConsultAsPatient: async (id) => void demoStore.advanceTrip(id),
+        reissueStartCode: async () => ({}),
         requestPayout: demoStore.requestPayout,
         advanceOrder: (id) => demoStore.advanceOrder(id),
         // Demo mode has no accounts to remove, so this is refused rather than
@@ -423,6 +434,10 @@ export function useActions(): Actions {
         void (await callAction(qc, "setGigStatus", { id, status })),
       deleteGig: async (id) => void (await callAction(qc, "deleteGig", { id })),
       advanceTrip: async (id) => void (await callAction(qc, "advanceTrip", { id })),
+      verifyStartCode: (id, code) => callAction(qc, "verifyStartCode", { id, code }),
+      startConsultAsPatient: (id) => callAction(qc, "startConsultAsPatient", { id }),
+      reissueStartCode: (id) =>
+        callAction<{ startCode?: string }>(qc, "reissueStartCode", { id }),
       requestPayout: () => callAction(qc, "requestPayout", {}),
       advanceOrder: (orderId, current) =>
         callAction(qc, "advanceOrder", { orderId, next: nextOrder(current) }),

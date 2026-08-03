@@ -9,6 +9,32 @@ export class DomainError extends Error {
   }
 }
 
+/**
+ * A fresh arrival code: four digits, 1000–9999 so it never loses a leading
+ * zero when read aloud or typed.
+ *
+ * Uses the GLOBAL Web Crypto rather than `node:crypto`. This module is pulled
+ * into the client bundle through lib/scheduling/booking.ts (for DomainError),
+ * and a `node:` import there fails the production build outright. Web Crypto
+ * is available in every runtime the app targets and needs no import.
+ *
+ * Rejection sampling, not modulo: 2^32 is not a multiple of 9000, so `% 9000`
+ * would make the lowest codes fractionally likelier. The loop discards the
+ * biased tail instead — cheap insurance on the token that proves a doctor
+ * actually attended a visit.
+ */
+export function newStartCode(): string {
+  const LIMIT = 9000;
+  const max = Math.floor(0xffffffff / LIMIT) * LIMIT;
+  const buf = new Uint32Array(1);
+  let n = max;
+  while (n >= max) {
+    crypto.getRandomValues(buf);
+    n = buf[0];
+  }
+  return String(1000 + (n % LIMIT));
+}
+
 /** Optional geo filter for the read queries. */
 export interface Near {
   lat: number;

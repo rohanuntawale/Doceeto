@@ -5,6 +5,7 @@ import {
   PENDING_SIGNUP_TTL_MS,
   SESSION_TTL_MS,
   newSessionId,
+  newStartCode,
   type Near,
   type PendingSignup,
   type SessionRecord,
@@ -25,7 +26,7 @@ import {
   type ResolvedHire,
   type ResolvedSlot,
 } from "@/lib/scheduling/booking";
-import { nextTripStage } from "@/lib/scheduling/trip";
+import { MAX_START_CODE_ATTEMPTS, nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
 import type { HealthProfile } from "@/lib/health/profile";
 import type {
@@ -338,6 +339,26 @@ export async function getPatientProfile(id: string) {
 }
 
 /**
+ * Save where the patient IS RIGHT NOW. Called whenever the device reports a
+ * meaningfully different position, so every later booking / SOS carries the
+ * current address rather than the one typed at sign-up. Mirrors Postgres.
+ */
+export async function setPatientLocation(
+  id: string,
+  loc: { lat: number; lng: number; address?: string },
+): Promise<void> {
+  const d = data();
+  const u = d.users.find((x) => x.id === id && x.role === "patient");
+  if (!u) return;
+  u.lat = loc.lat;
+  u.lng = loc.lng;
+  // An empty reverse-geocode must not erase a good address — only a real
+  // string replaces what is stored.
+  if (loc.address) u.address = loc.address.slice(0, 200);
+  persist();
+}
+
+/**
  * Save the patient's health profile. The route sanitizes; this writes — and
  * when the weight changed, it also APPENDS to the vitals log (mirroring
  * Postgres), so weight becomes a trend rather than a snapshot.
@@ -360,6 +381,23 @@ export async function setPatientHealthProfile(
       recordedAt: now(),
     });
   }
+  persist();
+}
+
+// ── Symptom-checker chat history (mirrors the Postgres JSONB blob) ──
+export async function getChatHistory(patientId: string): Promise<unknown[]> {
+  const u = data().users.find((x) => x.id === patientId && x.role === "patient");
+  return Array.isArray(u?.chatHistory) ? u!.chatHistory! : [];
+}
+
+export async function setChatHistory(
+  patientId: string,
+  sessions: unknown[],
+): Promise<void> {
+  const d = data();
+  const u = d.users.find((x) => x.id === patientId && x.role === "patient");
+  if (!u) return;
+  u.chatHistory = sessions as typeof u.chatHistory;
   persist();
 }
 
@@ -824,6 +862,9 @@ export async function acceptRequest(id: string, doctorId: string): Promise<boole
   // The trip rail starts the moment someone claims it.
   req.tripStage = "accepted";
   req.tripStageAt = req.acceptedAt;
+  // Mint the arrival code: from here the patient's app can show the digits.
+  req.startCode = newStartCode();
+  req.startCodeAttempts = 0;
   // A hired gig leaves the shelf the moment it's accepted: the doctor is
   // committed to this one, so the listing pauses itself instead of inviting
   // a second booking on the same package. Resume it from the shelf later.
@@ -1043,10 +1084,82 @@ export async function advanceTrip(id: string, doctorId: string): Promise<string 
   }
   const next = nextTripStage(req);
   if (!next) return null;
+  // `in_progress` is NOT walkable: it is reached only by the arrival code
+  // (or the patient starting it themselves). Mirrors the Postgres guard.
+  if (next === "in_progress") return null;
   req.tripStage = next;
   req.tripStageAt = now();
   persist();
   return next;
+}
+
+/**
+ * The handshake — the doctor submits what the patient read out. Returns why
+ * it failed rather than throwing, so the cockpit can show tries remaining.
+ * Mirrors the Postgres implementation exactly.
+ */
+export async function verifyStartCode(
+  id: string,
+  doctorId: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; reason: "locked" | "wrong"; attemptsLeft: number }> {
+  const req = data().requests.find((r) => r.id === id);
+  if (!req) throw new DomainError("That visit no longer exists.", 404);
+  if (req.doctorId !== doctorId) throw new DomainError("That isn't your visit.", 403);
+  if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+  if (req.tripStage === "in_progress") return { ok: true };
+
+  const attempts = req.startCodeAttempts ?? 0;
+  if (attempts >= MAX_START_CODE_ATTEMPTS) {
+    return { ok: false, reason: "locked", attemptsLeft: 0 };
+  }
+  // A row accepted before this feature shipped has no code; mint one now so
+  // the visit isn't stranded.
+  if (!req.startCode) req.startCode = newStartCode();
+
+  if (code !== req.startCode) {
+    req.startCodeAttempts = attempts + 1;
+    persist();
+    return {
+      ok: false,
+      reason: "wrong",
+      attemptsLeft: Math.max(0, MAX_START_CODE_ATTEMPTS - req.startCodeAttempts),
+    };
+  }
+  req.tripStage = "in_progress";
+  req.tripStageAt = now();
+  req.startedAt = req.tripStageAt;
+  persist();
+  return { ok: true };
+}
+
+/** Start from the PATIENT's side — the escape hatch. Patient's own visit only. */
+export async function startConsultAsPatient(id: string, patientId: string): Promise<void> {
+  const req = data().requests.find((r) => r.id === id);
+  if (!req) throw new DomainError("That visit no longer exists.", 404);
+  if (req.patientId !== patientId) throw new DomainError("That isn't your visit.", 403);
+  if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+  if (!req.doctorId) throw new DomainError("No doctor has taken this visit yet.", 409);
+  if (req.tripStage === "in_progress") return;
+  req.tripStage = "in_progress";
+  req.tripStageAt = now();
+  req.startedAt = req.tripStageAt;
+  persist();
+}
+
+/** New digits, attempts reset — for a locked or forgotten code. Patient only. */
+export async function reissueStartCode(id: string, patientId: string): Promise<string> {
+  const req = data().requests.find((r) => r.id === id);
+  if (!req) throw new DomainError("That visit no longer exists.", 404);
+  if (req.patientId !== patientId) throw new DomainError("That isn't your visit.", 403);
+  if (req.status !== "accepted") throw new DomainError("That visit isn't in progress.", 409);
+  if (req.tripStage === "in_progress") {
+    throw new DomainError("This consult has already started.", 409);
+  }
+  req.startCode = newStartCode();
+  req.startCodeAttempts = 0;
+  persist();
+  return req.startCode;
 }
 
 export async function completeRequest(

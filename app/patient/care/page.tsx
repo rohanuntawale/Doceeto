@@ -40,9 +40,11 @@ import {
   applyText,
   nextStep,
   forceConclusion,
+  bankOption,
   type DState,
   type DStep,
   type DConclusion,
+  type DQuestion,
   type DOption,
   type DCause,
   type Urgency,
@@ -142,6 +144,38 @@ function fromAiStep(s: Record<string, unknown>): DStep {
   };
 }
 
+/** Which chat this TAB is in the middle of — lets a refresh resume it. */
+const ACTIVE_KEY = "iyashi:care:active";
+
+/**
+ * Rebuild live engine state from a saved session so a refresh resumes the
+ * chat instead of wiping it. Bank answers replay with their original
+ * scores/tags; AI-authored answers re-run the keyword triage over their
+ * labels — the same fold they got live — so transcript, scores and the
+ * red-flag safety net all come back, and the next turn continues from there.
+ */
+function replaySession(sess: CheckSession, priors: string[]): DState {
+  let s = initState(sess.seed, priors);
+  for (const a of sess.answers) {
+    if (a.questionId === "free") {
+      s = applyText(s, a.label);
+      continue;
+    }
+    const bank = bankOption(a.questionId, a.value);
+    if (bank) {
+      s = applyAnswer(s, bank.q, bank.opt);
+      continue;
+    }
+    const q: DQuestion = {
+      id: a.questionId,
+      prompt: a.prompt,
+      options: [{ value: a.value, label: a.label }],
+    };
+    s = applyAiAnswer(s, q, { value: a.value, label: a.label });
+  }
+  return s;
+}
+
 function CareInner() {
   const { patient } = useCurrentPatient();
   const { t } = useT();
@@ -196,13 +230,30 @@ function CareInner() {
       /* When the AI drops out mid-session its questions leave no tags on the
          local state, so `nextStep` would hand back the funnel's very first
          question — the patient would be asked to screen for emergencies again
-         after five AI turns. Once we have enough to go on, wrap up instead. */
+         after five AI turns, which reads as the bot forgetting the chat.
+         With enough answers, wrap up; with a few, continue the local funnel
+         from PAST the emergency screen (the keyword scan has already run over
+         every answer, so that safety net stayed live throughout). */
       const offline = () => {
-        setStep(
-          aiDrove.current && state.answers.length >= 3
-            ? forceConclusion(state)
-            : local,
-        );
+        if (aiDrove.current && state.answers.length >= 3) {
+          setStep(forceConclusion(state));
+        } else if (
+          aiDrove.current &&
+          state.answers.length > 0 &&
+          !state.tags.includes("screened")
+        ) {
+          setStep(
+            nextStep({
+              ...state,
+              tags: [...state.tags, "screened"],
+              askedIds: state.askedIds.includes("severe")
+                ? state.askedIds
+                : [...state.askedIds, "severe"],
+            }),
+          );
+        } else {
+          setStep(local);
+        }
         setAiOn(false);
       };
       try {
@@ -240,10 +291,38 @@ function CareInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, viewed]);
 
+  /* Resume after a refresh: the tab remembers which chat it was in
+     (sessionStorage), history hydrates from cache + account, and the saved
+     transcript is replayed into live engine state. A concluded chat reopens
+     read-only; an unfinished one continues from its next question. */
+  const restoreTried = useRef(false);
+  useEffect(() => {
+    if (restoreTried.current) return;
+    // A deep-linked seed or anything already typed outranks a restore.
+    if (state.seed || state.answers.length > 0) {
+      restoreTried.current = true;
+      return;
+    }
+    if (sessions.length === 0) return; // history not hydrated yet (or empty)
+    restoreTried.current = true;
+    const activeId = window.sessionStorage.getItem(ACTIVE_KEY);
+    const sess = activeId ? sessions.find((s) => s.id === activeId) : undefined;
+    if (!sess || (!sess.seed && sess.answers.length === 0)) return;
+    if (sess.conclusion) {
+      setViewed(sess);
+      return;
+    }
+    sessionId.current = sess.id;
+    aiDrove.current = sess.answers.length > 0;
+    setState(replaySession(sess, recentConditions()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, state.seed, state.answers.length]);
+
   // Persist the session as it grows / concludes.
   useEffect(() => {
     if (viewed) return;
     if (state.answers.length === 0 && !state.seed) return;
+    window.sessionStorage.setItem(ACTIVE_KEY, sessionId.current);
     const title =
       state.seed?.slice(0, 40) ||
       state.answers.find((a) => a.questionId === "area")?.label ||
@@ -282,6 +361,8 @@ function CareInner() {
   function newCheck() {
     sessionId.current = `care-${Date.now().toString(36)}`;
     aiDrove.current = false;
+    restoreTried.current = true; // an explicit new chat is never restored over
+    window.sessionStorage.removeItem(ACTIVE_KEY);
     setState(initState("", recentConditions()));
     setViewed(null);
     setDraft("");
@@ -334,9 +415,12 @@ function CareInner() {
       />
 
       {/* ── Mobile / tablet — ChatGPT-style compose ── */}
-      <div className="-mt-4 -mb-[calc(var(--chrome-dock)+1.75rem)] flex h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[480px] flex-col pt-4 lg:hidden">
+      {/* min-h stays LOW: when the soft keyboard opens, 100dvh shrinks, and a
+          tall floor here used to push the composer down out of sight. The
+          transcript is the only part that gives (min-h-0 + scroll). */}
+      <div className="-mt-4 -mb-[calc(var(--chrome-dock)+1.75rem)] flex h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[260px] flex-col pt-3 lg:hidden">
         {/* Header */}
-        <div className="flex items-center gap-3 pb-3">
+        <div className="flex shrink-0 items-center gap-3 pb-3">
           <button
             onClick={() => setDrawerOpen(true)}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full fh-card text-cream lg:hidden"
@@ -363,8 +447,13 @@ function CareInner() {
           </button>
         </div>
 
-        {/* Transcript */}
-        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pb-4">
+        {/* Transcript. min-h-0 is load-bearing: without it this flex child
+            refuses to shrink below its content, and a long chat pushed the
+            composer clean off the bottom of the screen. */}
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-4"
+        >
           {fresh ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
@@ -379,7 +468,6 @@ function CareInner() {
             </div>
           ) : (
             <>
-              <Bubble who="bot">{t("care.subtitle")}</Bubble>
               {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
               {view.answers.map((a, i) =>
                 a.questionId === "free" ? (
@@ -422,17 +510,23 @@ function CareInner() {
                   {step.question.prompt}
                 </p>
               )}
-              <div className="space-y-2">
+              {/* Minimal option rows: one slim tile per choice, the option's
+                  own emoji (when the model wrote one) instead of chrome. */}
+              <div className="space-y-1.5">
                 {step.question.options.map((o) => (
                   <button
                     key={o.value}
                     onClick={() => pick(o)}
-                    className="group flex w-full items-center gap-3 rounded-2xl fh-tile px-3.5 py-3.5 text-left transition-colors hover:border-primary/40"
+                    className="group flex w-full items-center gap-3 rounded-2xl fh-tile px-4 py-3 text-left transition-colors hover:border-primary/40 active:opacity-80"
                   >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[rgb(var(--c-terracotta))]/12">
-                      <span className="h-2 w-2 rounded-full bg-[rgb(var(--c-terracotta))]" />
-                    </span>
-                    <span className="flex-1 text-[15px] font-medium text-cream">
+                    {o.emoji ? (
+                      <span className="w-5 shrink-0 text-center text-base leading-none">
+                        {o.emoji}
+                      </span>
+                    ) : (
+                      <span className="mx-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--c-terracotta))]" />
+                    )}
+                    <span className="flex-1 text-[15px] text-cream">
                       {o.label}
                     </span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
@@ -456,16 +550,18 @@ function CareInner() {
           )}
         </div>
 
-        {/* Composer — pill input (ChatGPT-style) */}
+        {/* Composer — pill input (ChatGPT-style). shrink-0 keeps it on screen
+            no matter how long the transcript gets; 16px text stops iOS from
+            zooming the whole page when the input is focused. */}
         {viewed ? (
           <button
             onClick={newCheck}
-            className="mb-1 flex items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
+            className="mb-1 flex shrink-0 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
           >
             <Plus className="h-4 w-4" /> New check
           </button>
         ) : (
-          <div className="mb-1 flex items-center gap-2 rounded-full fh-card p-1.5">
+          <div className="mb-1 flex shrink-0 items-center gap-2 rounded-full fh-card p-1.5">
             <button
               onClick={newCheck}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--text-muted)] transition-colors hover:text-cream"
@@ -478,7 +574,7 @@ function CareInner() {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendText()}
               placeholder={t("chat.placeholder")}
-              className="flex-1 bg-transparent px-1 py-2 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
+              className="flex-1 bg-transparent px-1 py-2 text-base text-cream outline-none placeholder:text-[var(--text-faint)]"
             />
             <button
               onClick={sendText}
