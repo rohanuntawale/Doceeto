@@ -5,20 +5,24 @@ import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "About · Doceeto Health",
-  description: "One place for care in India: doctors, diagnostics and medicine.",
+  description:
+    "One place for care in India: doctors, diagnostics and medicine.",
 };
 
-const PILLARS = [
-  { name: "Satori", role: "the check", desc: "Describe what you're feeling and a guided symptom check points you to the right kind of doctor before you book." },
-  { name: "Zumi", role: "the doctor", desc: "Freelance doctors on demand, the way Uber did for cabs. See who is nearby, book a home visit, a clinic visit, or a video call." },
-  { name: "Kenshin", role: "the network", desc: "Diagnostic kiosks around the city, like metro machines. Walk up, get screened, and walk away with a plan." },
-  { name: "AuraMed", role: "the medicine", desc: "When a doctor writes a prescription, the medicine is delivered to your door in about ten minutes." },
-];
-
 const STATS = [
-  { value: "0.7", label: "doctors per 1,000 people, below the WHO benchmark of 1" },
-  { value: "1.7L", label: "road-accident deaths a year, most without care in the first hour" },
-  { value: "50%", label: "of health spending is paid out of pocket, among the world's highest" },
+  {
+    value: "0.7",
+    label: "doctors per 1,000 people, below the WHO benchmark of 1",
+  },
+  {
+    value: "1.7L",
+    label: "road-accident deaths a year, most without care in the first hour",
+  },
+  {
+    value: "50%",
+    label:
+      "of health spending is paid out of pocket, among the world's highest",
+  },
 ];
 
 export default function AboutPage() {
@@ -68,44 +72,11 @@ export default function AboutPage() {
             </h2>
           </div>
           <p className="text-[15px] leading-relaxed text-[var(--text-muted)]">
-            The pieces finally exist: a phone in every hand, digital identity and
-            payments, telehealth people now trust, and a generation that expects
-            things in ten minutes. We are putting those pieces together into care.
-            We start with the most urgent, most common moments, then grow into
-            everyday health, one patient at a time.
-          </p>
-        </div>
-
-        {/* Pillars */}
-        <div className="mt-16 border-t border-[var(--border)] pt-12">
-          <div className="label">The platform</div>
-          <h2 className="mt-2 font-serif text-3xl text-cream">
-            Four pillars, one loop.
-          </h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {PILLARS.map((p) => (
-              <div
-                key={p.name}
-                className="rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-terracotta/12 font-serif text-lg text-salmon ring-1 ring-inset ring-terracotta/20">
-                    {p.name.charAt(0)}
-                  </span>
-                  <div>
-                    <div className="font-serif text-xl text-cream">{p.name}</div>
-                    <div className="text-xs text-[var(--text-faint)]">{p.role}</div>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-                  {p.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 text-sm text-[var(--text-muted)]">
-            Each part makes the next one stronger: more users, more doctors, more
-            data, and faster, cheaper, better care.
+            The pieces finally exist: a phone in every hand, digital identity
+            and payments, telehealth people now trust, and a generation that
+            expects things in ten minutes. We are putting those pieces together
+            into care. We start with the most urgent, most common moments, then
+            grow into everyday health, one patient at a time.
           </p>
         </div>
 
