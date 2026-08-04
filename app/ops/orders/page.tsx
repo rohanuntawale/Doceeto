@@ -21,7 +21,7 @@ export default function OrdersBoard() {
 
   return (
     <>
-      <PageHeader label="AURAMED · FULFILMENT" title="Medicine orders" />
+      <PageHeader label="DOCEETO · FULFILMENT" title="Medicine orders" />
 
       {/* dense: the poster-size variant clips ₹-values at 3-up on a phone */}
       <div className="grid grid-cols-3 gap-3">

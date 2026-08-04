@@ -35,7 +35,8 @@ export function CareStatus({
   // A completed consult stays here only until the patient rates it — once
   // reviewed (persisted server-side), the doctor drops out of active care.
   const requests = useConsultRequests().filter(
-    (r) => r.patientId === patient.id && !(r.status === "completed" && r.reviewed),
+    (r) =>
+      r.patientId === patient.id && !(r.status === "completed" && r.reviewed),
   );
   // With medicine hidden, past orders are hidden too — "nothing of buying
   // medicine" means the feed, not just the store.
@@ -46,7 +47,7 @@ export function CareStatus({
   const doctors = useDoctors();
 
   const docName = (id: string | null) =>
-    id ? doctors.find((d) => d.id === id)?.fullName ?? "a doctor" : null;
+    id ? (doctors.find((d) => d.id === id)?.fullName ?? "a doctor") : null;
 
   const isEmpty = requests.length === 0 && orders.length === 0;
 
@@ -92,9 +93,15 @@ export function CareStatus({
         <Row
           key={r.id}
           icon={
-            isGig(r) ? <Briefcase className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />
+            isGig(r) ? (
+              <Briefcase className="h-4 w-4" />
+            ) : (
+              <Stethoscope className="h-4 w-4" />
+            )
           }
-          title={isGig(r) && r.gigTitle ? r.gigTitle : L.consultType(r.type).label}
+          title={
+            isGig(r) && r.gigTitle ? r.gigTitle : L.consultType(r.type).label
+          }
           sub={
             // A doctor who cancels owes an explanation, so it leads here.
             r.status === "cancelled" && r.cancelledBy === "doctor"
@@ -109,10 +116,17 @@ export function CareStatus({
                     : t("care.waiting")
           }
           time={mounted ? timeAgo(r.createdAt) : ""}
-          pill={<StatusPill tone={L.consultStatus(r.status).tone}>{L.consultStatus(r.status).label}</StatusPill>}
+          pill={
+            <StatusPill tone={L.consultStatus(r.status).tone}>
+              {L.consultStatus(r.status).label}
+            </StatusPill>
+          }
           footer={
             r.status === "completed" && r.doctorId ? (
-              <RateDoctor req={r} doctorName={docName(r.doctorId) ?? undefined} />
+              <RateDoctor
+                req={r}
+                doctorName={docName(r.doctorId) ?? undefined}
+              />
             ) : null
           }
         />
@@ -126,14 +140,18 @@ export function CareStatus({
         <Row
           key={o.id}
           icon={<Pill className="h-4 w-4" />}
-          title={`AuraMed · ${o.items.length} item${o.items.length > 1 ? "s" : ""}`}
+          title={`Docceto · ${o.items.length} item${o.items.length > 1 ? "s" : ""}`}
           sub={
             o.status === "delivered"
               ? "Delivered"
               : `${o.darkStore} · ETA ${o.etaMins}m`
           }
           time={mounted ? timeAgo(o.createdAt) : ""}
-          pill={<StatusPill tone={L.orderStatus(o.status).tone}>{L.orderStatus(o.status).label}</StatusPill>}
+          pill={
+            <StatusPill tone={L.orderStatus(o.status).tone}>
+              {L.orderStatus(o.status).label}
+            </StatusPill>
+          }
         />
       ),
     })),
@@ -186,11 +204,15 @@ function Row({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-cream">{title}</p>
-          {sub && <p className="truncate text-xs text-[var(--text-muted)]">{sub}</p>}
+          {sub && (
+            <p className="truncate text-xs text-[var(--text-muted)]">{sub}</p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {pill}
-          <span className="font-mono text-[10px] text-[var(--text-faint)]">{time}</span>
+          <span className="font-mono text-[10px] text-[var(--text-faint)]">
+            {time}
+          </span>
         </div>
       </div>
       {footer}

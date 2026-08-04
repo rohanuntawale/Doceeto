@@ -8,7 +8,12 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { LiveMap } from "@/components/map/live-map";
 import { OrderCard } from "@/components/auramed/order-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useOpsSnapshot, useOrders, useDoctors, useActions } from "@/lib/hooks/data";
+import {
+  useOpsSnapshot,
+  useOrders,
+  useDoctors,
+  useActions,
+} from "@/lib/hooks/data";
 
 export default function OpsOverview() {
   const snap = useOpsSnapshot();
@@ -31,7 +36,11 @@ export default function OpsOverview() {
           accent
           icon={<Users className="h-4 w-4" />}
         />
-        <StatCard value={snap.ordersActive} label="AuraMed active" icon={<Pill className="h-4 w-4" />} />
+        <StatCard
+          value={snap.ordersActive}
+          label="Doceeto active"
+          icon={<Pill className="h-4 w-4" />}
+        />
       </div>
 
       <Card className="mt-5 overflow-hidden">
@@ -43,10 +52,13 @@ export default function OpsOverview() {
 
       <Card className="mt-5">
         <CardHeader
-          label="AURAMED · IN FLIGHT"
+          label="DOCEETO · IN FLIGHT"
           title="Medicine deliveries"
           action={
-            <Link href="/ops/orders" className="flex items-center gap-1 text-xs text-salmon hover:underline">
+            <Link
+              href="/ops/orders"
+              className="flex items-center gap-1 text-xs text-salmon hover:underline"
+            >
               All orders <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           }
@@ -56,7 +68,11 @@ export default function OpsOverview() {
             <EmptyState title="No active deliveries" />
           ) : (
             activeOrders.map((o) => (
-              <OrderCard key={o.id} order={o} onAdvance={() => actions.advanceOrder(o.id, o.status)} />
+              <OrderCard
+                key={o.id}
+                order={o}
+                onAdvance={() => actions.advanceOrder(o.id, o.status)}
+              />
             ))
           )}
         </div>
