@@ -41,7 +41,7 @@ export async function getSession(
 
   if (surface) return lookup(surface);
 
-  for (const role of ["patient", "doctor", "ops"] as const) {
+  for (const role of ["patient", "doctor", "nurse", "ops"] as const) {
     const session = await lookup(role);
     if (session) return session;
   }
@@ -117,7 +117,7 @@ export async function setSession(user: {
  */
 export async function clearSession(role?: SurfaceRole): Promise<void> {
   const jar = cookies();
-  const roles = role ? [role] : (["patient", "doctor", "ops"] as const);
+  const roles = role ? [role] : (["patient", "doctor", "nurse", "ops"] as const);
   for (const r of roles) {
     const name = SESSION_COOKIES[r];
     const sid = jar.get(name)?.value;

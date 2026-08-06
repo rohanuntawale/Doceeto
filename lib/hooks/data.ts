@@ -17,8 +17,10 @@ import { demoStore } from "@/lib/demo/store";
 import { readStoredDoctorId as currentDoctorId } from "@/lib/demo/current-doctor";
 import { hasOngoingConsult, isOnGig } from "@/lib/scheduling/slots";
 import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
+import { cadreOf } from "@/lib/nurse";
 import type {
   Ambulance,
+  Cadre,
   ConsultRequest,
   Doctor,
   DoctorAvailability,
@@ -29,11 +31,13 @@ import type {
   Order,
   OpsSnapshot,
   OrderStatus,
+  Prescription,
   Review,
   SosEvent,
   SosStatus,
   Transaction,
 } from "@/lib/types/domain";
+import type { RxDraft } from "@/lib/prescriptions/rules";
 
 const SOS_ORDER: SosStatus[] = ["open", "assigned", "enroute", "resolved"];
 const ORDER_ORDER: OrderStatus[] = [
@@ -44,7 +48,13 @@ const ORDER_ORDER: OrderStatus[] = [
 ];
 
 const POLL_MS = 4000;
-const POLL_MS_SSE = 30_000; // slow safety-net poll while SSE is connected
+/**
+ * Safety net while SSE is connected. Deliberately not minutes: a single dropped
+ * frame should cost a few seconds of staleness, not leave the screen looking
+ * frozen until someone reloads. Pushes still do the real work — this only
+ * bounds how wrong the screen can get when one goes missing.
+ */
+const POLL_MS_SSE = 10_000;
 // Invalidated after every write. "availability" is a key prefix rather than
 // an entity — a new booking changes which slots a doctor has left.
 const ENTITY_KEYS = [
@@ -56,6 +66,7 @@ const ENTITY_KEYS = [
   "reviews",
   "transactions",
   "gigs",
+  "prescriptions",
   "availability",
   // Key prefix, not an entity: the ops doctor profile aggregates almost every
   // table, so any write can change what it shows.
@@ -82,10 +93,21 @@ async function fetchEntity<T>(entity: string): Promise<T[]> {
   return Array.isArray(data) ? (data as T[]) : [];
 }
 
-function useApiEntity<T>(entity: string): T[] {
+/**
+ * Read an entity, optionally scoped.
+ *
+ * The scope goes in the query KEY as a separate segment rather than being
+ * glued into the entity string. React Query matches keys by PREFIX, so
+ * `["reviews", {doctorId}]` is invalidated by `invalidateQueries(["reviews"])`
+ * while `["reviews&doctorId=…"]` never is — which silently left every scoped
+ * list (a provider's own reviews, their gig shelf, the nurse roster) out of
+ * the realtime path, updating only on the slow poll.
+ */
+function useApiEntity<T>(entity: string, scope?: Record<string, string>): T[] {
+  const qs = scope ? new URLSearchParams(scope).toString() : "";
   const { data } = useQuery({
-    queryKey: [entity],
-    queryFn: () => fetchEntity<T>(entity),
+    queryKey: scope ? [entity, scope] : [entity],
+    queryFn: () => fetchEntity<T>(qs ? `${entity}&${qs}` : entity),
     refetchInterval: () => (sseConnected ? POLL_MS_SSE : POLL_MS),
     refetchOnWindowFocus: true,
   });
@@ -126,6 +148,23 @@ function useDoctorsDemo(): Doctor[] {
   );
 }
 export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Doctor>("doctors");
+
+/**
+ * The nurse roster, for the patient-facing home-care search.
+ *
+ * Deliberately a separate hook rather than a flag on useDoctors: the doctor
+ * list is read in a dozen places and every one of them means DOCTORS. The
+ * server defaults `?entity=doctors` to the doctor cadre for the same reason,
+ * so nurses can only ever arrive somewhere that asked for them.
+ */
+function useNursesDemo(): Doctor[] {
+  const all = useDoctorsDemo();
+  return useMemo(() => all.filter((d) => cadreOf(d) === "nurse"), [all]);
+}
+
+export const useNurses = isDemoMode
+  ? useNursesDemo
+  : () => useApiEntity<Doctor>("doctors", { cadre: "nurse" });
 
 /**
  * Ops-only deep read of ONE doctor: profile, account, reviews, consults, gigs
@@ -170,7 +209,7 @@ function useReviewsDemo(doctorId?: string): Review[] {
 export const useReviews = isDemoMode
   ? (doctorId?: string) => useReviewsDemo(doctorId)
   : (doctorId?: string) =>
-      useApiEntity<Review>(doctorId ? `reviews&doctorId=${encodeURIComponent(doctorId)}` : "reviews");
+      useApiEntity<Review>("reviews", doctorId ? { doctorId } : undefined);
 
 function useGigsDemo(doctorId?: string): Gig[] {
   const s = useDemoState();
@@ -192,7 +231,19 @@ function useGigsDemo(doctorId?: string): Gig[] {
 export const useGigs = isDemoMode
   ? (doctorId?: string) => useGigsDemo(doctorId)
   : (doctorId?: string) =>
-      useApiEntity<Gig>(doctorId ? `gigs&doctorId=${encodeURIComponent(doctorId)}` : "gigs");
+      useApiEntity<Gig>("gigs", doctorId ? { doctorId } : undefined);
+
+function usePrescriptionsDemo(): Prescription[] {
+  return useDemoState().prescriptions;
+}
+/**
+ * Prescriptions this account can see: a patient's own, or the ones a doctor
+ * wrote. The server does the scoping — there is no "all prescriptions" read to
+ * ask for, by design.
+ */
+export const usePrescriptions = isDemoMode
+  ? usePrescriptionsDemo
+  : () => useApiEntity<Prescription>("prescriptions");
 
 function useTransactionsDemo(): Transaction[] {
   return useDemoState().transactions;
@@ -240,6 +291,10 @@ export interface CreateRequestInput {
    *  type and duration are read off that gig server-side, so `fee` and `type`
    *  are ignored for a gig hire. */
   gigId?: string | null;
+  /** Which cadre should receive this. Ignored when a provider is named — the
+   *  server takes the cadre off their row so a request can never be aimed at
+   *  an inbox that will never see it. Defaults to doctors. */
+  targetCadre?: Cadre;
 }
 export interface CreateGigInput {
   title: string;
@@ -295,6 +350,13 @@ export interface Actions {
    *  puts it back out to other doctors rather than ending it. */
   cancelRequest: (id: string, reason?: string) => Promise<void>;
   completeRequest: (id: string) => void;
+  /**
+   * Doctor issues the prescription that closes the consult — completing the
+   * visit is part of the same act, so this is not called alongside
+   * completeRequest. Resolves with the issued document (its code and share
+   * token are what the doctor's confirmation shows).
+   */
+  issuePrescription: (requestId: string, draft: RxDraft) => Promise<Prescription>;
   /** Publish a service package. Rejects with the server's message. */
   createGig: (input: CreateGigInput) => Promise<void>;
   updateGig: (id: string, patch: Partial<Gig>) => Promise<void>;
@@ -316,6 +378,9 @@ export interface Actions {
    *  removed versus kept; rejects with the server's message (e.g. while the
    *  doctor is mid-consult). */
   deleteDoctor: (doctorId: string) => Promise<DoctorDeletion>;
+  /** Ops signs off on a provider's credentials. For a nurse this is also the
+   *  gate on being discoverable: unverified nurses reach no patient. */
+  verifyProvider: (providerId: string, verified: boolean) => Promise<unknown>;
 }
 
 /** Wipe locally-created test data (demo mode only). No-op in live mode. */
@@ -380,6 +445,8 @@ export function useActions(): Actions {
         cancelRequest: async (id, reason) =>
           demoStore.cancelRequest(id, { reason, byDoctor: Boolean(reason) }),
         completeRequest: demoStore.completeRequest,
+        issuePrescription: async (requestId, draft) =>
+          demoStore.issuePrescription(requestId, draft),
         createGig: async (input) => {
           const id = currentDoctorId();
           if (!id) throw new Error("Register as a doctor first.");
@@ -399,6 +466,9 @@ export function useActions(): Actions {
         // faked — a delete that silently does nothing is the worst outcome.
         deleteDoctor: async () => {
           throw new Error("Deleting a doctor needs the live backend.");
+        },
+        verifyProvider: async () => {
+          throw new Error("Verifying a provider needs the live backend.");
         },
       };
     }
@@ -427,6 +497,8 @@ export function useActions(): Actions {
       cancelRequest: async (id, reason) =>
         void (await callAction(qc, "cancelRequest", { id, reason })),
       completeRequest: (id) => callAction(qc, "completeRequest", { id }),
+      issuePrescription: (requestId, draft) =>
+        callAction<Prescription>(qc, "issuePrescription", { requestId, draft }),
       // The gig's owner is the session doctor — no id is sent for creation.
       createGig: async (input) => void (await callAction(qc, "createGig", { ...input })),
       updateGig: async (id, patch) => void (await callAction(qc, "updateGig", { id, patch })),
@@ -443,6 +515,8 @@ export function useActions(): Actions {
         callAction(qc, "advanceOrder", { orderId, next: nextOrder(current) }),
       deleteDoctor: (doctorId) =>
         callAction<DoctorDeletion>(qc, "deleteDoctor", { doctorId }),
+      verifyProvider: (providerId, verified) =>
+        callAction(qc, "verifyProvider", { doctorId: providerId, verified }),
     };
   }, [qc, nextOrder]);
 }

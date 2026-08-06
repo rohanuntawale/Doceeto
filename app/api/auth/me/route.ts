@@ -23,5 +23,14 @@ export async function GET(req: Request) {
     const patient = await db.getPatientProfile(session.userId);
     return NextResponse.json({ role: "patient", patient });
   }
+  if (session.role === "nurse") {
+    // A nurse IS a provider row, read exactly as a doctor's is — that record
+    // carries the coordinates the map needs, the online status, the rating and
+    // the verification flag. It is also returned as `doctor` so every shared
+    // provider component (the tracker, the map, the request cards) can take it
+    // without a second shape to handle.
+    const nurse = await db.getDoctorById(session.userId);
+    return NextResponse.json({ role: "nurse", nurse, doctor: nurse });
+  }
   return NextResponse.json({ role: "ops", name: session.name });
 }

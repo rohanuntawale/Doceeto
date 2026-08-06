@@ -28,9 +28,11 @@ import {
 } from "@/lib/scheduling/booking";
 import { MAX_START_CODE_ATTEMPTS, nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
-import type { HealthProfile } from "@/lib/health/profile";
+import { newRxCode, newShareToken, sanitizeRxDraft, type RxDraft } from "@/lib/prescriptions/rules";
+import { ageFrom, type HealthProfile } from "@/lib/health/profile";
 import type {
   Ambulance,
+  Cadre,
   ConsultRequest,
   Doctor,
   DoctorAvailability,
@@ -39,6 +41,7 @@ import type {
   Gig,
   GigStatus,
   Order,
+  Prescription,
   Review,
   SosEvent,
   Transaction,
@@ -113,14 +116,19 @@ export async function deleteSessionsForUser(userId: string): Promise<void> {
   persist();
 }
 
-/** Doctor ids holding at least one live session (signed in somewhere now). */
+/** Provider ids (either cadre) holding at least one live session. */
 export async function signedInDoctorIds(): Promise<string[]> {
   const now = Date.now();
   return Array.from(
     new Set(
       data()
+        // Both cadres count — a nurse's session carries role 'nurse', and
+        // filtering on 'doctor' alone would render every nurse permanently
+        // offline. Mirrors Postgres.
         .sessions.filter(
-          (s) => s.role === "doctor" && new Date(s.expiresAt).getTime() > now,
+          (s) =>
+            (s.role === "doctor" || s.role === "nurse") &&
+            new Date(s.expiresAt).getTime() > now,
         )
         .map((s) => s.userId),
     ),
@@ -252,7 +260,13 @@ export async function createPatientUser(input: {
   return { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name };
 }
 
-export async function createDoctorUser(input: {
+/**
+ * Create a provider account — a doctor or a nurse. Mirrors Postgres:
+ * both cadres get a `users` login AND a `doctors` registry row, which is what
+ * puts a nurse on the map, in the request pool, on a trip and in the ledger.
+ */
+export async function createProviderUser(input: {
+  cadre: Cadre;
   email: string;
   /** Null for a Google account — there is no password to store. */
   passwordHash: string | null;
@@ -265,6 +279,8 @@ export async function createDoctorUser(input: {
   age?: number;
   experienceYears: number;
   languages?: string[];
+  /** Nurse home-care services (ids from lib/nurse.ts). Empty for doctors. */
+  skills?: string[];
   qualifications?: string;
   education?: string;
   registrationNo?: string;
@@ -276,15 +292,21 @@ export async function createDoctorUser(input: {
   lng?: number | null;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
   assertEmailFree(input.email);
-  const id = uid("doc");
-  const fullName = input.fullName.startsWith("Dr.") ? input.fullName : `Dr. ${input.fullName}`;
+  const isNurseCadre = input.cadre === "nurse";
+  const id = uid(isNurseCadre ? "nurse" : "doc");
+  // Only doctors carry the honorific — see the note in lib/postgres/repo.ts.
+  const fullName = isNurseCadre
+    ? input.fullName.trim().slice(0, 100) || "Nurse"
+    : input.fullName.startsWith("Dr.")
+      ? input.fullName
+      : `Dr. ${input.fullName}`;
   const user: StoredUser = {
     id,
     email: input.email.toLowerCase(),
     passwordHash: input.passwordHash,
     googleId: input.googleId,
     avatarUrl: input.avatarUrl,
-    role: "doctor",
+    role: input.cadre,
     name: fullName,
     createdAt: now(),
   };
@@ -293,6 +315,8 @@ export async function createDoctorUser(input: {
     id,
     fullName,
     specialty: input.specialty,
+    cadre: input.cadre,
+    skills: input.skills ?? [],
     kind: input.kind === "resident" ? "resident" : "practising",
     gender: input.gender === "male" ? "male" : "female",
     age: input.age,
@@ -321,7 +345,65 @@ export async function createDoctorUser(input: {
   d.users.push(user);
   d.doctors.unshift(doctor);
   persist();
-  return { user: { id, email: user.email, passwordHash: user.passwordHash, role: "doctor", name: fullName }, doctor };
+  return {
+    user: { id, email: user.email, passwordHash: user.passwordHash, role: input.cadre, name: fullName },
+    doctor,
+  };
+}
+
+/** Doctor sign-up. Thin wrapper so existing call sites are untouched. */
+export async function createDoctorUser(
+  input: Omit<Parameters<typeof createProviderUser>[0], "cadre">,
+): Promise<{ user: UserRecord; doctor: Doctor }> {
+  return createProviderUser({ ...input, cadre: "doctor" });
+}
+
+/**
+ * Nurse sign-up. The nursing profile maps onto the provider columns rather
+ * than a JSONB blob, so nurses are searchable exactly as doctors are.
+ * Mirrors Postgres.
+ */
+export async function createNurseUser(input: {
+  email: string;
+  passwordHash: string | null;
+  googleId?: string;
+  avatarUrl?: string;
+  fullName: string;
+  title?: string;
+  qualifications?: string;
+  registrationNo?: string;
+  gender?: string;
+  age?: number;
+  experienceYears?: number;
+  languages?: string[];
+  skills?: string[];
+  about?: string;
+  homeVisitFee?: number;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<{ user: UserRecord; doctor: Doctor }> {
+  return createProviderUser({
+    cadre: "nurse",
+    email: input.email,
+    passwordHash: input.passwordHash,
+    googleId: input.googleId,
+    avatarUrl: input.avatarUrl,
+    fullName: input.fullName,
+    specialty: input.title?.trim() || "Home Care Nurse",
+    kind: "practising",
+    gender: input.gender === "male" ? "male" : "female",
+    age: input.age,
+    experienceYears: Number(input.experienceYears) || 0,
+    languages: input.languages,
+    skills: input.skills,
+    qualifications: input.qualifications,
+    registrationNo: input.registrationNo,
+    about: input.about,
+    consultFee: 0,
+    homeVisitFee: Number(input.homeVisitFee) || 0,
+    lat: input.lat,
+    lng: input.lng,
+  });
 }
 
 export async function getPatientProfile(id: string) {
@@ -331,6 +413,7 @@ export async function getPatientProfile(id: string) {
     id: u.id,
     name: u.name,
     address: u.address ?? "",
+    addressFull: u.addressFull ?? "",
     lat: Number(u.lat ?? MAP_CENTER.lat),
     lng: Number(u.lng ?? MAP_CENTER.lng),
     avatarUrl: u.avatarUrl,
@@ -345,7 +428,7 @@ export async function getPatientProfile(id: string) {
  */
 export async function setPatientLocation(
   id: string,
-  loc: { lat: number; lng: number; address?: string },
+  loc: { lat: number; lng: number; address?: string; addressFull?: string },
 ): Promise<void> {
   const d = data();
   const u = d.users.find((x) => x.id === id && x.role === "patient");
@@ -355,6 +438,7 @@ export async function setPatientLocation(
   // An empty reverse-geocode must not erase a good address — only a real
   // string replaces what is stored.
   if (loc.address) u.address = loc.address.slice(0, 200);
+  if (loc.addressFull) u.addressFull = loc.addressFull.slice(0, 200);
   persist();
 }
 
@@ -448,7 +532,9 @@ export async function setUserAvatar(
   const d = data();
   const u = d.users.find((x) => x.id === userId);
   if (u) u.avatarUrl = dataUrl;
-  if (role === "doctor") {
+  // Both provider cadres carry the photo on their registry row too. Mirrors
+  // Postgres — see the note there.
+  if (role === "doctor" || role === "nurse") {
     const doc = d.doctors.find((x) => x.id === userId);
     if (doc) doc.avatarUrl = dataUrl;
   }
@@ -632,10 +718,23 @@ export async function createRequest(input: {
   mode?: string;
   scheduledAt?: string | null;
   gigId?: string | null;
+  /** Which cadre should see this. Ignored when a provider is named — their
+   *  own cadre wins. Mirrors Postgres. */
+  targetCadre?: string;
 }): Promise<ConsultRequest> {
   const d = data();
   const doctorId = input.doctorId ?? null;
   const mode = coerceBookingMode(input.mode);
+  // A named provider settles the cadre themselves, so a request can never be
+  // addressed to one inbox and tagged for another.
+  const named = doctorId ? d.doctors.find((x) => x.id === doctorId) : undefined;
+  const targetCadre: Cadre = named
+    ? named.cadre === "nurse"
+      ? "nurse"
+      : "doctor"
+    : input.targetCadre === "nurse"
+      ? "nurse"
+      : "doctor";
 
   // Resolve the slot or the gig terms and insert with no `await` in between:
   // on the single Node process behind the file store that makes
@@ -674,6 +773,7 @@ export async function createRequest(input: {
     lng: input.lng,
     createdAt: now(),
     mode,
+    targetCadre,
     gigId: hire?.gigId ?? null,
     gigTitle: hire?.gigTitle ?? null,
     // An urgent request with no named doctor went to the whole pool. Recorded
@@ -699,6 +799,8 @@ export async function createOrder(input: {
   total: number;
   address: string;
   darkStore: string;
+  /** Set when the basket came off a doctor's prescription. */
+  prescriptionId?: string | null;
 }): Promise<Order> {
   if (!Array.isArray(input.items) || input.items.length === 0) {
     throw new DomainError("The order has no items.");
@@ -722,6 +824,7 @@ export async function createOrder(input: {
     darkStore: input.darkStore,
     etaMins: 10,
     createdAt: now(),
+    prescriptionId: input.prescriptionId ?? null,
   };
   data().orders.unshift(order);
   persist();
@@ -813,6 +916,8 @@ export async function updateDoctor(
   patch: {
     fullName?: string;
     specialty?: string;
+    /** A nurse's home-care services. Mirrors Postgres — see the note there. */
+    skills?: string[];
     consultFee?: number;
     homeVisitFee?: number;
     age?: number;
@@ -831,6 +936,8 @@ export async function updateDoctor(
   if (!doc) return;
   if (patch.fullName !== undefined) doc.fullName = patch.fullName;
   if (patch.specialty !== undefined) doc.specialty = patch.specialty;
+  // Emptying is allowed (re-picking services); only the shape is enforced.
+  if (Array.isArray(patch.skills)) doc.skills = patch.skills;
   if (patch.consultFee !== undefined) doc.consultFee = patch.consultFee;
   if (patch.homeVisitFee !== undefined) doc.homeVisitFee = patch.homeVisitFee;
   if (patch.age !== undefined) doc.age = patch.age;
@@ -846,6 +953,19 @@ export async function updateDoctor(
   if (typeof patch.lng === "number") doc.lng = patch.lng;
   doc.lastSeen = now();
   persist();
+}
+
+/**
+ * Ops decision on a provider's credentials. Mirrors Postgres — and, like it,
+ * deliberately sits outside updateDoctor so a provider can never mark
+ * themselves trusted.
+ */
+export async function verifyProvider(id: string, verified: boolean): Promise<boolean> {
+  const d = data().doctors.find((x) => x.id === id);
+  if (!d) return false;
+  d.verified = verified;
+  persist();
+  return true;
 }
 
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
@@ -1162,9 +1282,17 @@ export async function reissueStartCode(id: string, patientId: string): Promise<s
   return req.startCode;
 }
 
+/**
+ * Close out a visit.
+ *
+ * Prescribing is deliberately NOT part of this: it goes through
+ * issuePrescription, which completes the visit itself. One act, one entry
+ * point — a consult can never end up completed with a half-written document
+ * attached, and there is no second place where a prescription can be born.
+ */
 export async function completeRequest(
   id: string,
-  opts?: { notes?: string; prescription?: { name: string; qty: number }[]; doctorId?: string },
+  opts?: { notes?: string; doctorId?: string },
 ) {
   const d = data();
   const req = d.requests.find((r) => r.id === id);
@@ -1176,9 +1304,8 @@ export async function completeRequest(
   }
   req.status = "completed";
   req.completedAt = now();
-  const consultId = uid("con");
   d.consults.push({
-    id: consultId,
+    id: uid("con"),
     requestId: req.id,
     doctorId: req.doctorId,
     patientId: req.patientId,
@@ -1186,16 +1313,6 @@ export async function completeRequest(
     endedAt: now(),
     notes: opts?.notes ?? "",
   });
-  if (opts?.prescription && opts.prescription.length > 0) {
-    d.prescriptions.push({
-      id: uid("rx"),
-      consultId,
-      doctorId: req.doctorId,
-      patientId: req.patientId,
-      items: opts.prescription,
-      createdAt: now(),
-    });
-  }
   // Credit the doctor's wallet once (platform commission + net).
   if (
     req.doctorId &&
@@ -1216,6 +1333,91 @@ export async function completeRequest(
     });
   }
   persist();
+}
+
+// ── Prescriptions ────────────────────────────────────────────
+/**
+ * A doctor issues the prescription that closes a consult.
+ *
+ * This is the ONLY way a prescription comes into existence, and it completes
+ * the visit as part of the same act — writing the document and finishing the
+ * consult are one thing to the doctor, so they are one thing here. Issuing
+ * against an already-completed visit is allowed (a doctor who marked complete
+ * and then remembered the antibiotic), which is why completion is conditional
+ * rather than assumed.
+ *
+ * Everything on the document is snapshotted from the doctor and patient rows at
+ * this moment — see the Prescription type for why.
+ */
+export async function issuePrescription(input: {
+  requestId: string;
+  doctorId: string;
+  draft: RxDraft;
+}): Promise<Prescription> {
+  const d = data();
+  const req = d.requests.find((r) => r.id === input.requestId);
+  if (!req) throw new DomainError("That consult no longer exists.", 404);
+  if (req.doctorId !== input.doctorId)
+    throw new DomainError("That consult isn't yours to prescribe for.", 403);
+  if (req.status !== "accepted" && req.status !== "completed")
+    throw new DomainError("You can only prescribe for a consult you are running.", 409);
+  const existing = d.prescriptions.find((rx) => rx.requestId === req.id);
+  if (existing) throw new DomainError("A prescription has already been issued for this consult.", 409);
+
+  const draft = sanitizeRxDraft(input.draft);
+  const doctor = d.doctors.find((x) => x.id === input.doctorId);
+  const patient = req.patientId ? d.users.find((u) => u.id === req.patientId) : undefined;
+  const profile = patient?.healthProfile;
+
+  const rx: Prescription = {
+    id: uid("rx"),
+    code: newRxCode(),
+    requestId: req.id,
+    patientId: req.patientId ?? null,
+    patientName: req.patientName,
+    patientAge: ageFrom(profile?.dob) ?? null,
+    patientGender: profile?.gender ?? null,
+    patientAllergies: profile?.allergies || null,
+    doctorId: input.doctorId,
+    doctorName: doctor?.fullName ?? "Doceeto doctor",
+    doctorSpecialty: doctor?.specialty ?? "",
+    doctorQualifications: doctor?.qualifications ?? null,
+    doctorRegistrationNo: doctor?.registrationNo ?? null,
+    diagnosis: draft.diagnosis,
+    items: draft.items,
+    advice: draft.advice,
+    followUpDays: draft.followUpDays,
+    issuedAt: now(),
+    shareToken: newShareToken(),
+  };
+  d.prescriptions.unshift(rx);
+  persist();
+
+  // Issuing closes the visit when it was still open. Done after the write so a
+  // rejected prescription never silently ends a consult.
+  if (req.status === "accepted") {
+    await completeRequest(req.id, { doctorId: input.doctorId });
+  }
+  return rx;
+}
+
+/** Every prescription, newest first. Callers scope by patient or doctor. */
+export async function getPrescriptions(): Promise<Prescription[]> {
+  return [...data().prescriptions].sort((a, b) => (a.issuedAt < b.issuedAt ? 1 : -1));
+}
+
+/** One prescription by id. */
+export async function getPrescriptionById(id: string): Promise<Prescription | null> {
+  return data().prescriptions.find((rx) => rx.id === id) ?? null;
+}
+
+/**
+ * The shared-link lookup: the ONLY read that needs no session, because the
+ * token IS the credential. Nothing else about the patient is reachable from it.
+ */
+export async function getPrescriptionByToken(token: string): Promise<Prescription | null> {
+  if (!token) return null;
+  return data().prescriptions.find((rx) => rx.shareToken === token) ?? null;
 }
 
 // ── Wallet / payments ────────────────────────────────────────

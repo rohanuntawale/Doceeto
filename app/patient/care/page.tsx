@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { useConsultRequests } from "@/lib/hooks/data";
+import { useConsultRequests, usePrescriptions } from "@/lib/hooks/data";
 import {
   useMedicalHistory,
   type CheckSession,
@@ -176,6 +176,22 @@ function replaySession(sess: CheckSession, priors: string[]): DState {
   return s;
 }
 
+/**
+ * Chronic facts from the health profile, as condition strings the offline
+ * engine can take as priors — so even with the AI down, a hypertensive
+ * patient's chest branch leans cardiac. The AI path doesn't use these; it
+ * gets the full profile server-side from the session.
+ */
+function profilePriors(hp?: import("@/lib/health/profile").HealthProfile): string[] {
+  if (!hp) return [];
+  const out: string[] = [];
+  if (hp.hypertension === "yes") out.push("high blood pressure");
+  if (hp.diabetes === "yes") out.push("diabetes");
+  if (hp.conditions)
+    out.push(...hp.conditions.split(/[,;]/).map((c) => c.trim()).filter(Boolean));
+  return out;
+}
+
 function CareInner() {
   const { patient } = useCurrentPatient();
   const { t } = useT();
@@ -185,14 +201,18 @@ function CareInner() {
 
   const { sessions, saveSession, recentConditions } = useMedicalHistory();
   const requests = useConsultRequests();
+  const prescriptions = usePrescriptions();
 
+  const priors = () => [...recentConditions(), ...profilePriors(patient.healthProfile)];
   const [state, setState] = useState<DState>(() =>
-    initState(seed, recentConditions()),
+    initState(seed, priors()),
   );
   const [step, setStep] = useState<DStep | null>(null);
   const [thinking, setThinking] = useState(false);
   const [aiOn, setAiOn] = useState(false);
   const [aiModel, setAiModel] = useState<string | null>(null);
+  /** True when the server confirmed it used this patient's health record. */
+  const [aiPersonalised, setAiPersonalised] = useState(false);
   const [draft, setDraft] = useState("");
   // ?history=1 deep-links straight into the past-chats drawer — it's where
   // "See all" on the home screen's health history lands.
@@ -275,6 +295,7 @@ function CareInner() {
           aiDrove.current = true;
           setStep(fromAiStep(data.step));
           setAiModel(typeof data.model === "string" ? data.model : null);
+          setAiPersonalised(Boolean(data.personalised));
           setAiOn(true);
         } else {
           offline();
@@ -314,7 +335,7 @@ function CareInner() {
     }
     sessionId.current = sess.id;
     aiDrove.current = sess.answers.length > 0;
-    setState(replaySession(sess, recentConditions()));
+    setState(replaySession(sess, priors()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions, state.seed, state.answers.length]);
 
@@ -363,7 +384,7 @@ function CareInner() {
     aiDrove.current = false;
     restoreTried.current = true; // an explicit new chat is never restored over
     window.sessionStorage.removeItem(ACTIVE_KEY);
-    setState(initState("", recentConditions()));
+    setState(initState("", priors()));
     setViewed(null);
     setDraft("");
     setDrawerOpen(false);
@@ -393,7 +414,15 @@ function CareInner() {
     conclusion,
   };
   const myBookings = requests.filter((r) => r.patientId === patient.id);
-  const reports = myBookings.filter((r) => r.status === "completed");
+  // "Reports" is what this sidebar always promised prescriptions would be —
+  // the empty state said so before there was anything to put here.
+  const reports = prescriptions
+    .filter((rx) => !rx.patientId || rx.patientId === patient.id)
+    .map((rx) => ({
+      id: rx.id,
+      title: rx.diagnosis || rx.code,
+      sub: rx.items.map((it) => it.name).join(" · "),
+    }));
   const activeConclusion = viewed ? view.conclusion : conclusion;
   const fresh = !view.seed && view.answers.length === 0 && !activeConclusion;
 
@@ -635,7 +664,11 @@ function CareInner() {
           </div>
 
           <div
-            title={aiModel ? `Model: ${aiModel}` : "Offline rule engine"}
+            title={
+              aiModel
+                ? `Model: ${aiModel}${aiPersonalised ? " · using your health profile" : ""}`
+                : "Offline rule engine"
+            }
             className={cn(
               "flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]",
               !fresh && "mt-[-2px]",
@@ -647,7 +680,7 @@ function CareInner() {
                 aiOn ? "bg-status-ok" : "bg-[rgb(var(--c-tan))]",
               )}
             />
-            {aiOn ? "AI ready" : "Guided mode"}
+            {aiOn ? (aiPersonalised ? "Personalised for you" : "AI ready") : "Guided mode"}
           </div>
         </div>
 
@@ -1086,7 +1119,7 @@ function ChatSidebar({
   activeId: string;
   onOpenSession: (s: CheckSession) => void;
   bookings: { id: string; type: string; status: string }[];
-  reports: { id: string; type: string; status: string }[];
+  reports: { id: string; title: string; sub: string }[];
   t: (k: string) => string;
 }) {
   // Portal to <body> — the patient shell wraps pages in `<main class="relative
@@ -1180,12 +1213,17 @@ function ChatSidebar({
           reports.slice(0, 5).map((r) => (
             <Link
               key={r.id}
-              href="/patient"
-              className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)] hover:text-cream"
+              href={`/patient/prescriptions/${r.id}`}
+              className="flex items-start gap-2 rounded-xl px-2.5 py-2 text-sm text-[var(--text-muted)] hover:text-cream"
             >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex-1 truncate capitalize">
-                {r.type.replace("_", " ")} report
+              <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{r.title}</span>
+                {r.sub && (
+                  <span className="block truncate text-[11px] text-[var(--text-faint)]">
+                    {r.sub}
+                  </span>
+                )}
               </span>
             </Link>
           ))

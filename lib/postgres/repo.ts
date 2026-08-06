@@ -30,9 +30,11 @@ import {
 } from "@/lib/scheduling/booking";
 import { MAX_START_CODE_ATTEMPTS, nextTripStage } from "@/lib/scheduling/trip";
 import { MAX_ACTIVE_GIGS, normalizeGig, sanitizeGigPatch } from "@/lib/gigs/rules";
-import type { HealthProfile } from "@/lib/health/profile";
+import { newRxCode, newShareToken, sanitizeRxDraft, type RxDraft } from "@/lib/prescriptions/rules";
+import { ageFrom, type HealthProfile } from "@/lib/health/profile";
 import type {
   Ambulance,
+  Cadre,
   ConsultRequest,
   Doctor,
   DoctorAvailability,
@@ -41,7 +43,9 @@ import type {
   Gig,
   GigStatus,
   Order,
+  Prescription,
   Review,
+  RxItem,
   SosEvent,
   Transaction,
 } from "@/lib/types/domain";
@@ -82,6 +86,8 @@ const mapDoctor = (r: Row): Doctor => ({
   id: r.id,
   fullName: r.full_name,
   specialty: r.specialty,
+  cadre: r.cadre === "nurse" ? "nurse" : "doctor",
+  skills: Array.isArray(r.skills) ? r.skills : [],
   kind: r.kind === "resident" ? "resident" : "practising",
   gender: r.gender === "male" ? "male" : "female",
   age: r.age != null ? num(r.age) : undefined,
@@ -147,6 +153,8 @@ const mapRequest = (r: Row): ConsultRequest => ({
   // Settle the mode here so nothing downstream has to infer it from rows
   // written before scheduling existed.
   mode: bookingModeOf({ mode: r.mode, scheduledAt: isoOrNull(r.scheduled_at) }),
+  // Which cadre this is for. Legacy rows carry none and mean "doctor".
+  targetCadre: r.target_cadre === "nurse" ? "nurse" : "doctor",
   scheduledAt: isoOrNull(r.scheduled_at),
   scheduledEnd: isoOrNull(r.scheduled_end),
   slotMinutes: r.slot_minutes != null ? num(r.slot_minutes) : null,
@@ -192,6 +200,29 @@ const mapOrder = (r: Row): Order => ({
   darkStore: r.dark_store ?? "",
   etaMins: num(r.eta_mins),
   createdAt: iso(r.created_at),
+  prescriptionId: r.prescription_id ?? null,
+});
+
+const mapPrescription = (r: Row): Prescription => ({
+  id: r.id,
+  code: r.code,
+  requestId: r.request_id,
+  patientId: r.patient_id ?? null,
+  patientName: r.patient_name ?? "Patient",
+  patientAge: r.patient_age != null ? num(r.patient_age) : null,
+  patientGender: r.patient_gender ?? null,
+  patientAllergies: r.patient_allergies ?? null,
+  doctorId: r.doctor_id,
+  doctorName: r.doctor_name ?? "",
+  doctorSpecialty: r.doctor_specialty ?? "",
+  doctorQualifications: r.doctor_qualifications ?? null,
+  doctorRegistrationNo: r.doctor_registration_no ?? null,
+  diagnosis: r.diagnosis ?? "",
+  items: (Array.isArray(r.items) ? r.items : []) as RxItem[],
+  advice: r.advice ?? "",
+  followUpDays: r.follow_up_days != null ? num(r.follow_up_days) : null,
+  issuedAt: iso(r.issued_at),
+  shareToken: r.share_token,
 });
 
 const mapReview = (r: Row): Review => ({
@@ -223,9 +254,40 @@ const mapUser = (r: Row): UserRecord => ({
   name: r.name,
 });
 
-const DOCTOR_COLS = `id, full_name, specialty, kind, gender, age, experience_years, languages,
+const DOCTOR_COLS = `id, full_name, specialty, cadre, skills, kind, gender, age, experience_years, languages,
   status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url, lat, lng, last_seen,
   qualifications, education, about, registration_no, clinic_address, availability, created_at`;
+
+// ── Provider cadre columns ───────────────────────────────────
+// Nurses share the doctors table (see the note on `cadre` in schema.sql). The
+// columns ship in schema.sql, but setup() only runs on seed — this lazy ALTER
+// covers databases created before nurses existed without requiring a re-seed,
+// exactly as ensureChatColumn does for chat_history. Every read and write of a
+// provider row goes through it, so a live database self-heals on first use.
+let providerColumnsReady: Promise<unknown> | null = null;
+const ensureProviderColumns = () =>
+  (providerColumnsReady ??= (async () => {
+    await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS cadre TEXT NOT NULL DEFAULT 'doctor'`);
+    await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS skills TEXT[] NOT NULL DEFAULT '{}'`);
+    await sql(
+      `ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS target_cadre TEXT NOT NULL DEFAULT 'doctor'`,
+    );
+    // The role CHECKs predate nurses too: without widening them, creating a
+    // nurse account fails on the users/sessions constraint rather than the
+    // missing column.
+    await sql(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
+    await sql(
+      `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('patient','doctor','nurse','ops'))`,
+    );
+    await sql(`ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_role_check`);
+    await sql(
+      `ALTER TABLE sessions ADD CONSTRAINT sessions_role_check CHECK (role IN ('patient','doctor','nurse','ops'))`,
+    );
+    await sql(`ALTER TABLE pending_signups DROP CONSTRAINT IF EXISTS pending_signups_role_check`);
+    await sql(
+      `ALTER TABLE pending_signups ADD CONSTRAINT pending_signups_role_check CHECK (role IN ('patient','doctor','nurse'))`,
+    );
+  })());
 
 /**
  * Geo filter. A bounding box in SQL narrows the rows, then the exact haversine
@@ -301,9 +363,18 @@ export async function deleteSessionsForUser(userId: string): Promise<void> {
  * right now. Half of the "is this doctor really online?" question; the other
  * half is a fresh heartbeat (see lib/presence.ts).
  */
+/**
+ * Provider ids holding at least one live session. Feeds withRealStatus, which
+ * refuses to show anyone as online without one.
+ *
+ * BOTH cadres count: a nurse's session carries role 'nurse', so filtering on
+ * 'doctor' alone would leave every nurse permanently rendered offline — and
+ * therefore undiscoverable — no matter what their own toggle said.
+ */
 export async function signedInDoctorIds(): Promise<string[]> {
   const rows = await sql(
-    `SELECT DISTINCT user_id FROM sessions WHERE role = 'doctor' AND expires_at > now()`,
+    `SELECT DISTINCT user_id FROM sessions
+      WHERE role IN ('doctor','nurse') AND expires_at > now()`,
   );
   return rows.map((r) => String(r.user_id));
 }
@@ -484,7 +555,19 @@ export async function createPatientUser(input: {
   return mapUser(r!);
 }
 
-export async function createDoctorUser(input: {
+/**
+ * Create a provider account — a doctor or a nurse.
+ *
+ * Both cadres get the SAME pair of rows: a `users` login and a `doctors`
+ * registry row. That is what lets a nurse appear on the map, take requests,
+ * run a trip and hold a wallet without a parallel stack; a nurse stored only
+ * as a `users` row would be invisible to every one of those engines.
+ *
+ * The cadre is also the account role, so the session, the cookie and the
+ * surface guard all line up with the registry row.
+ */
+export async function createProviderUser(input: {
+  cadre: Cadre;
   email: string;
   /** Null for a Google account — there is no password to store. */
   passwordHash: string | null;
@@ -497,6 +580,8 @@ export async function createDoctorUser(input: {
   age?: number;
   experienceYears: number;
   languages?: string[];
+  /** Nurse home-care services (ids from lib/nurse.ts). Empty for doctors. */
+  skills?: string[];
   qualifications?: string;
   education?: string;
   registrationNo?: string;
@@ -507,13 +592,21 @@ export async function createDoctorUser(input: {
   lat?: number | null;
   lng?: number | null;
 }): Promise<{ user: UserRecord; doctor: Doctor }> {
-  const id = uid("doc");
-  const fullName = input.fullName.startsWith("Dr.") ? input.fullName : `Dr. ${input.fullName}`;
+  await ensureProviderColumns();
+  const isNurseCadre = input.cadre === "nurse";
+  const id = uid(isNurseCadre ? "nurse" : "doc");
+  // Only doctors carry the honorific — "Dr. Ananya Sharma" on a nurse's card
+  // would misrepresent her to the patient opening the door.
+  const fullName = isNurseCadre
+    ? input.fullName.trim().slice(0, 100) || "Nurse"
+    : input.fullName.startsWith("Dr.")
+      ? input.fullName
+      : `Dr. ${input.fullName}`;
 
   return tx(async (c) => {
     const u = await c.query(
       `INSERT INTO users (id, email, password_hash, role, name, google_id, avatar_url)
-       VALUES ($1, $2, $3, 'doctor', $4, $5, $6)
+       VALUES ($1, $2, $3, $7, $4, $5, $6)
        RETURNING id, email, password_hash, role, name`,
       [
         id,
@@ -522,6 +615,7 @@ export async function createDoctorUser(input: {
         fullName,
         input.googleId ?? null,
         input.avatarUrl ?? null,
+        input.cadre,
       ],
     );
     // Deterministic accent, picked by how many doctors exist — matches the
@@ -529,10 +623,10 @@ export async function createDoctorUser(input: {
     const { rows: countRows } = await c.query(`SELECT count(*)::int AS n FROM doctors`);
     const color = AVATAR_COLORS[num(countRows[0].n) % AVATAR_COLORS.length];
     const d = await c.query(
-      `INSERT INTO doctors (id, full_name, specialty, kind, gender, age, experience_years,
+      `INSERT INTO doctors (id, full_name, specialty, cadre, skills, kind, gender, age, experience_years,
          languages, status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url,
          lat, lng, last_seen, qualifications, education, about, registration_no, clinic_address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,false,0,$10,$11,$12,$13,$14,$15,now(),$16,$17,$18,$19,$20)
+       VALUES ($1,$2,$3,$21,$22,$4,$5,$6,$7,$8,$9,false,0,$10,$11,$12,$13,$14,$15,now(),$16,$17,$18,$19,$20)
        RETURNING ${DOCTOR_COLS}`,
       [
         id,
@@ -561,15 +655,87 @@ export async function createDoctorUser(input: {
         input.about ?? null,
         input.registrationNo ?? null,
         input.clinicAddress?.trim() || "",
+        input.cadre,
+        input.skills ?? [],
       ],
     );
     return { user: mapUser(u.rows[0]), doctor: mapDoctor(d.rows[0]) };
   });
 }
 
+/** Doctor sign-up. Thin wrapper so existing call sites are untouched. */
+export async function createDoctorUser(
+  input: Omit<Parameters<typeof createProviderUser>[0], "cadre">,
+): Promise<{ user: UserRecord; doctor: Doctor }> {
+  return createProviderUser({ ...input, cadre: "doctor" });
+}
+
+/**
+ * Nurse sign-up. The nursing profile maps onto the provider columns rather
+ * than a JSONB blob, so nurses are searchable and filterable exactly as
+ * doctors are: the patient-facing title goes to `specialty`, the cadre
+ * (GNM/ANM/B.Sc) to `qualifications`, the state nursing-council number to
+ * `registration_no`, and the home-care services to `skills`.
+ */
+export async function createNurseUser(input: {
+  email: string;
+  passwordHash: string | null;
+  googleId?: string;
+  avatarUrl?: string;
+  fullName: string;
+  title?: string;
+  qualifications?: string;
+  registrationNo?: string;
+  gender?: string;
+  age?: number;
+  experienceYears?: number;
+  languages?: string[];
+  skills?: string[];
+  about?: string;
+  homeVisitFee?: number;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<{ user: UserRecord; doctor: Doctor }> {
+  return createProviderUser({
+    cadre: "nurse",
+    email: input.email,
+    passwordHash: input.passwordHash,
+    googleId: input.googleId,
+    avatarUrl: input.avatarUrl,
+    fullName: input.fullName,
+    specialty: input.title?.trim() || "Home Care Nurse",
+    // `kind` is a doctor-only distinction (resident vs practising); nurses take
+    // the neutral default so the column stays non-null.
+    kind: "practising",
+    gender: input.gender === "male" ? "male" : "female",
+    age: input.age,
+    experienceYears: Number(input.experienceYears) || 0,
+    languages: input.languages,
+    skills: input.skills,
+    qualifications: input.qualifications,
+    registrationNo: input.registrationNo,
+    about: input.about,
+    // Nurses do not take video consults, so there is no consult fee to set.
+    consultFee: 0,
+    homeVisitFee: Number(input.homeVisitFee) || 0,
+    lat: input.lat,
+    lng: input.lng,
+  });
+}
+
+// The postal address a provider navigates to, kept beside the short label the
+// patient's own header shows. Ships in schema.sql; this lazy ALTER covers
+// databases created before it, exactly as ensureChatColumn does.
+let addressFullReady: Promise<unknown> | null = null;
+const ensureAddressFullColumn = () =>
+  (addressFullReady ??= sql(
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS address_full TEXT`,
+  ));
+
 export async function getPatientProfile(id: string) {
+  await ensureAddressFullColumn();
   const r = await one(
-    `SELECT id, name, address, lat, lng, avatar_url, health_profile FROM users WHERE id = $1`,
+    `SELECT id, name, address, address_full, lat, lng, avatar_url, health_profile FROM users WHERE id = $1`,
     [id],
   );
   if (!r) return null;
@@ -577,6 +743,7 @@ export async function getPatientProfile(id: string) {
     id: r.id,
     name: r.name,
     address: r.address ?? "",
+    addressFull: r.address_full ?? "",
     lat: num(r.lat, MAP_CENTER.lat),
     lng: num(r.lng, MAP_CENTER.lng),
     avatarUrl: r.avatar_url ?? undefined,
@@ -594,13 +761,22 @@ export async function getPatientProfile(id: string) {
  */
 export async function setPatientLocation(
   id: string,
-  loc: { lat: number; lng: number; address?: string },
+  loc: { lat: number; lng: number; address?: string; addressFull?: string },
 ): Promise<void> {
+  await ensureAddressFullColumn();
   await sql(
     `UPDATE users
-        SET lat = $2, lng = $3, address = COALESCE($4, address)
+        SET lat = $2, lng = $3,
+            address = COALESCE($4, address),
+            address_full = COALESCE($5, address_full)
       WHERE id = $1 AND role = 'patient'`,
-    [id, loc.lat, loc.lng, loc.address ? loc.address.slice(0, 200) : null],
+    [
+      id,
+      loc.lat,
+      loc.lng,
+      loc.address ? loc.address.slice(0, 200) : null,
+      loc.addressFull ? loc.addressFull.slice(0, 200) : null,
+    ],
   );
 }
 
@@ -720,12 +896,16 @@ export async function setUserAvatar(
   dataUrl: string,
 ): Promise<void> {
   await sql(`UPDATE users SET avatar_url = $2 WHERE id = $1`, [userId, dataUrl]);
-  if (role === "doctor") {
+  // Both provider cadres carry the photo on their registry row as well as the
+  // account: that row is what every patient-facing read returns, and it is
+  // also what the "no photo, no roster" rule checks before letting them online.
+  if (role === "doctor" || role === "nurse") {
     await sql(`UPDATE doctors SET avatar_url = $2, last_seen = now() WHERE id = $1`, [userId, dataUrl]);
   }
 }
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {
+  await ensureProviderColumns();
   const r = await one(`SELECT ${DOCTOR_COLS} FROM doctors WHERE id = $1`, [id]);
   return r ? mapDoctor(r) : null;
 }
@@ -851,6 +1031,7 @@ export async function deleteDoctor(id: string): Promise<DoctorDeletion> {
 
 // ── Reads ────────────────────────────────────────────────────
 export async function getDoctors(near?: Near): Promise<Doctor[]> {
+  await ensureProviderColumns();
   if (!near) {
     const rows = await sql(`SELECT ${DOCTOR_COLS} FROM doctors ORDER BY last_seen DESC`);
     return rows.map(mapDoctor);
@@ -877,6 +1058,7 @@ const REQUEST_COLS = `r.*,
   EXISTS (SELECT 1 FROM reviews  rv WHERE rv.request_id = r.id) AS reviewed`;
 
 export async function getRequests(near?: Near): Promise<ConsultRequest[]> {
+  await ensureProviderColumns();
   const base = `SELECT ${REQUEST_COLS} FROM consult_requests r
                 LEFT JOIN users u ON u.id = r.patient_id`;
   const rows = near
@@ -973,13 +1155,26 @@ export async function createRequest(input: {
   mode?: string;
   scheduledAt?: string | null;
   gigId?: string | null;
+  /** Which cadre should see this. Ignored when a provider is named — their
+   *  own cadre wins, so a request can never be aimed at the wrong inbox. */
+  targetCadre?: string;
 }): Promise<ConsultRequest> {
+  await ensureProviderColumns();
   const doctorId = input.doctorId ?? null;
   const mode = coerceBookingMode(input.mode);
 
   return tx(async (c) => {
     let slot: ResolvedSlot | null = null;
     let hire: ResolvedHire | null = null;
+    let targetCadre: Cadre = input.targetCadre === "nurse" ? "nurse" : "doctor";
+
+    // A named provider settles the cadre themselves — trusting the client here
+    // would let a request be addressed to a nurse but tagged for doctors, and
+    // it would then be invisible to the only person who could answer it.
+    if (doctorId) {
+      const who = await c.query(`SELECT cadre FROM doctors WHERE id = $1`, [doctorId]);
+      if (who.rows[0]) targetCadre = who.rows[0].cadre === "nurse" ? "nurse" : "doctor";
+    }
 
     if (mode === "scheduled" || mode === "gig") {
       if (!doctorId) {
@@ -1021,8 +1216,8 @@ export async function createRequest(input: {
       `INSERT INTO consult_requests (
          id, patient_id, patient_name, doctor_id, type, status, symptoms, payment_method,
          fee, address, lat, lng, mode, gig_id, gig_title, broadcast,
-         scheduled_at, scheduled_end, slot_minutes, passed_by)
-       VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'{}')
+         scheduled_at, scheduled_end, slot_minutes, target_cadre, passed_by)
+       VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'{}')
        RETURNING *`,
       [
         uid("req"),
@@ -1046,6 +1241,7 @@ export async function createRequest(input: {
         slot?.scheduledAt ?? null,
         slot?.scheduledEnd ?? null,
         slot?.slotMinutes ?? hire?.durationMinutes ?? null,
+        targetCadre,
       ],
     );
     return mapRequest(r.rows[0]);
@@ -1059,10 +1255,16 @@ export async function createOrder(input: {
   total: number;
   address: string;
   darkStore: string;
+  /** Set when the basket came off a doctor's prescription. */
+  prescriptionId?: string | null;
 }): Promise<Order> {
   if (!Array.isArray(input.items) || input.items.length === 0) {
     throw new DomainError("The order has no items.");
   }
+  // The insert below names prescription_id, which a database predating
+  // prescriptions does not have — the same lazy DDL that creates the table
+  // adds the column.
+  await ensurePrescriptions();
   // Re-price from the catalog so a caller can never name their own total.
   let total = 0;
   const items = input.items.map((it) => {
@@ -1073,8 +1275,8 @@ export async function createOrder(input: {
     return { name: cat.name, qty };
   });
   const r = await one(
-    `INSERT INTO orders (id, patient_id, patient_name, status, items, total, address, dark_store, eta_mins)
-     VALUES ($1,$2,$3,'placed',$4::jsonb,$5,$6,$7,10) RETURNING *`,
+    `INSERT INTO orders (id, patient_id, patient_name, status, items, total, address, dark_store, eta_mins, prescription_id)
+     VALUES ($1,$2,$3,'placed',$4::jsonb,$5,$6,$7,10,$8) RETURNING *`,
     [
       uid("ord"),
       input.patientId,
@@ -1083,6 +1285,7 @@ export async function createOrder(input: {
       total,
       input.address,
       input.darkStore,
+      input.prescriptionId ?? null,
     ],
   );
   return mapOrder(r!);
@@ -1196,6 +1399,10 @@ export async function setDoctorStatus(id: string, status: string) {
 const DOCTOR_PATCH_COLS: Record<string, string> = {
   fullName: "full_name",
   specialty: "specialty",
+  // A nurse's home-care services. Allowlisted against NURSE_SERVICES by the
+  // action's sanitizer before it ever reaches here, so a hand-rolled POST
+  // cannot invent a capability patients then filter on.
+  skills: "skills",
   consultFee: "consult_fee",
   homeVisitFee: "home_visit_fee",
   age: "age",
@@ -1219,12 +1426,32 @@ export async function updateDoctor(id: string, patch: Record<string, unknown>) {
     // An empty languages array would wipe a doctor's list; the other backends
     // ignore it, so this one does too.
     if (key === "languages" && (!Array.isArray(v) || v.length === 0)) continue;
+    // Skills may legitimately be emptied (a nurse re-picking her services),
+    // so only the shape is enforced here, not a minimum.
+    if (key === "skills" && !Array.isArray(v)) continue;
     if ((key === "lat" || key === "lng") && typeof v !== "number") continue;
     vals.push(v);
     sets.push(`${col} = $${vals.length}`);
   }
   if (sets.length === 0) return;
   await sql(`UPDATE doctors SET ${sets.join(", ")}, last_seen = now() WHERE id = $1`, vals);
+}
+
+/**
+ * Ops decision on a provider's credentials.
+ *
+ * Deliberately NOT reachable through updateDoctor: `verified` is excluded from
+ * the provider-editable patch allowlist precisely so a provider can never mark
+ * themselves trusted. It matters most for nurses, who are not discoverable at
+ * all until this flips — nobody unvetted gets sent into a home.
+ */
+export async function verifyProvider(id: string, verified: boolean): Promise<boolean> {
+  await ensureProviderColumns();
+  const r = await one(
+    `UPDATE doctors SET verified = $2 WHERE id = $1 RETURNING id`,
+    [id, verified],
+  );
+  return Boolean(r);
 }
 
 export async function acceptRequest(id: string, doctorId: string): Promise<boolean> {
@@ -1630,9 +1857,16 @@ export async function reissueStartCode(id: string, patientId: string): Promise<s
   });
 }
 
+/**
+ * Close out a visit.
+ *
+ * Prescribing is deliberately NOT part of this: it goes through
+ * issuePrescription, which completes the visit itself. One act, one entry
+ * point — see the file-store repo for the full reasoning.
+ */
 export async function completeRequest(
   id: string,
-  opts?: { notes?: string; prescription?: { name: string; qty: number }[]; doctorId?: string },
+  opts?: { notes?: string; doctorId?: string },
 ) {
   await tx(async (c) => {
     const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [id]);
@@ -1673,6 +1907,149 @@ export async function completeRequest(
       }
     }
   });
+}
+
+// ── Prescriptions ────────────────────────────────────────────
+// The table and the orders.prescription_id link ship in schema.sql, but
+// setup() only runs on seed — so a database that has been live since before
+// prescriptions existed would answer every read with "relation does not
+// exist". This lazy DDL covers it without requiring a re-seed, exactly as
+// ensureProviderColumns and ensureChatColumn do. Every prescription read and
+// write goes through it, so a live database self-heals on first use.
+let prescriptionsReady: Promise<unknown> | null = null;
+const ensurePrescriptions = () =>
+  (prescriptionsReady ??= (async () => {
+    await sql(`CREATE TABLE IF NOT EXISTS prescriptions (
+      id                     TEXT PRIMARY KEY,
+      code                   TEXT NOT NULL,
+      request_id             TEXT NOT NULL,
+      patient_id             TEXT,
+      patient_name           TEXT NOT NULL DEFAULT 'Patient',
+      patient_age            INTEGER,
+      patient_gender         TEXT,
+      patient_allergies      TEXT,
+      doctor_id              TEXT NOT NULL,
+      doctor_name            TEXT NOT NULL DEFAULT '',
+      doctor_specialty       TEXT NOT NULL DEFAULT '',
+      doctor_qualifications  TEXT,
+      doctor_registration_no TEXT,
+      diagnosis              TEXT NOT NULL DEFAULT '',
+      items                  JSONB NOT NULL DEFAULT '[]'::jsonb,
+      advice                 TEXT NOT NULL DEFAULT '',
+      follow_up_days         INTEGER,
+      issued_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+      share_token            TEXT NOT NULL
+    )`);
+    await sql(`CREATE INDEX IF NOT EXISTS prescriptions_patient_idx ON prescriptions(patient_id, issued_at DESC)`);
+    await sql(`CREATE INDEX IF NOT EXISTS prescriptions_doctor_idx ON prescriptions(doctor_id, issued_at DESC)`);
+    await sql(`CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_request_uniq ON prescriptions(request_id)`);
+    await sql(`CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_token_uniq ON prescriptions(share_token)`);
+    await sql(`CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_code_uniq ON prescriptions(code)`);
+    await sql(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS prescription_id TEXT`);
+  })());
+
+/**
+ * A doctor issues the prescription that closes a consult. The only way a
+ * prescription comes into existence — see the file-store repo for why.
+ *
+ * Runs in a transaction with the consult row locked: the ownership check, the
+ * duplicate check and the insert must not interleave, or a double-tapped
+ * "Issue" would mint two documents with two codes for one visit. The unique
+ * index on request_id is the backstop under that lock.
+ */
+export async function issuePrescription(input: {
+  requestId: string;
+  doctorId: string;
+  draft: RxDraft;
+}): Promise<Prescription> {
+  await ensurePrescriptions();
+  const rx = await tx(async (c) => {
+    const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [
+      input.requestId,
+    ]);
+    if (!rq.rows[0]) throw new DomainError("That consult no longer exists.", 404);
+    const req = mapRequest(rq.rows[0]);
+    if (req.doctorId !== input.doctorId)
+      throw new DomainError("That consult isn't yours to prescribe for.", 403);
+    if (req.status !== "accepted" && req.status !== "completed")
+      throw new DomainError("You can only prescribe for a consult you are running.", 409);
+    const dupe = await c.query(`SELECT 1 FROM prescriptions WHERE request_id = $1`, [
+      input.requestId,
+    ]);
+    if (dupe.rows.length > 0)
+      throw new DomainError("A prescription has already been issued for this consult.", 409);
+
+    const draft = sanitizeRxDraft(input.draft);
+    const doc = await c.query(`SELECT * FROM doctors WHERE id = $1`, [input.doctorId]);
+    const doctor = doc.rows[0] ? mapDoctor(doc.rows[0]) : null;
+    const usr = req.patientId
+      ? await c.query(`SELECT health_profile FROM users WHERE id = $1`, [req.patientId])
+      : null;
+    const profile = (usr?.rows[0]?.health_profile as HealthProfile | null) ?? null;
+
+    const row = await c.query(
+      `INSERT INTO prescriptions
+         (id, code, request_id, patient_id, patient_name, patient_age, patient_gender,
+          patient_allergies, doctor_id, doctor_name, doctor_specialty, doctor_qualifications,
+          doctor_registration_no, diagnosis, items, advice, follow_up_days, share_token)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16,$17,$18)
+       RETURNING *`,
+      [
+        uid("rx"),
+        newRxCode(),
+        req.id,
+        req.patientId,
+        req.patientName,
+        ageFrom(profile?.dob) ?? null,
+        profile?.gender ?? null,
+        profile?.allergies || null,
+        input.doctorId,
+        doctor?.fullName ?? "Doceeto doctor",
+        doctor?.specialty ?? "",
+        doctor?.qualifications ?? null,
+        doctor?.registrationNo ?? null,
+        draft.diagnosis,
+        JSON.stringify(draft.items),
+        draft.advice,
+        draft.followUpDays,
+        newShareToken(),
+      ],
+    );
+    return { rx: mapPrescription(row.rows[0]), wasOpen: req.status === "accepted" };
+  });
+
+  // Issuing closes the visit when it was still open. Outside the transaction so
+  // a rejected prescription never silently ends a consult, and so completion
+  // takes its own lock exactly as a plain "Mark complete" would.
+  if (rx.wasOpen) {
+    await completeRequest(input.requestId, { doctorId: input.doctorId });
+  }
+  return rx.rx;
+}
+
+/** Every prescription, newest first. Callers scope by patient or doctor. */
+export async function getPrescriptions(): Promise<Prescription[]> {
+  await ensurePrescriptions();
+  const rows = await sql(`SELECT * FROM prescriptions ORDER BY issued_at DESC`);
+  return rows.map(mapPrescription);
+}
+
+/** One prescription by id. */
+export async function getPrescriptionById(id: string): Promise<Prescription | null> {
+  await ensurePrescriptions();
+  const r = await one(`SELECT * FROM prescriptions WHERE id = $1`, [id]);
+  return r ? mapPrescription(r) : null;
+}
+
+/**
+ * The shared-link lookup: the ONLY read that needs no session, because the
+ * token IS the credential. Nothing else about the patient is reachable from it.
+ */
+export async function getPrescriptionByToken(token: string): Promise<Prescription | null> {
+  if (!token) return null;
+  await ensurePrescriptions();
+  const r = await one(`SELECT * FROM prescriptions WHERE share_token = $1`, [token]);
+  return r ? mapPrescription(r) : null;
 }
 
 // ── Wallet / payments ────────────────────────────────────────

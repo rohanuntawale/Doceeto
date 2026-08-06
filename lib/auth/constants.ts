@@ -1,7 +1,7 @@
 /** Shared by Edge middleware and Node route handlers, so keep this file
  *  free of any server-only or next/headers imports. */
 
-export type SurfaceRole = "patient" | "doctor" | "ops";
+export type SurfaceRole = "patient" | "doctor" | "nurse" | "ops";
 
 /**
  * One cookie PER ROLE, each holding nothing but an opaque session id. Two
@@ -18,6 +18,7 @@ export type SurfaceRole = "patient" | "doctor" | "ops";
 export const SESSION_COOKIES: Record<SurfaceRole, string> = {
   patient: "iyashi_sid_patient",
   doctor: "iyashi_sid_doctor",
+  nurse: "iyashi_sid_nurse",
   ops: "iyashi_sid_ops",
 };
 
@@ -31,6 +32,7 @@ export const RETIRED_COOKIES = [
   "iyashi_session_patient",
   "iyashi_session_doctor",
   "iyashi_session_ops",
+  "iyashi_session_nurse",
 ];
 
 /**
@@ -58,14 +60,31 @@ export const SURFACE_PARAM = "surface";
 /** Set by the middleware so server components can see the current path. */
 export const PATH_HEADER = "x-iyashi-path";
 
-const ROLES: SurfaceRole[] = ["patient", "doctor", "ops"];
+const ROLES: SurfaceRole[] = ["patient", "doctor", "nurse", "ops"];
 
 export const isSurfaceRole = (v: string | null | undefined): v is SurfaceRole =>
   Boolean(v) && ROLES.includes(v as SurfaceRole);
 
+/**
+ * The roles that deliver care and therefore share the provider engine: they own
+ * a row in the `doctors` registry, appear on the map, take requests, run trips
+ * and hold a wallet.
+ *
+ * Guards should test this rather than `role === "doctor"`, so adding a cadre
+ * never silently locks it out of work it is allowed to do. The exception is
+ * prescribing, which stays doctor-only — see canPrescribe in lib/nurse.ts.
+ */
+export const PROVIDER_ROLES = ["doctor", "nurse"] as const;
+
+export type ProviderRole = (typeof PROVIDER_ROLES)[number];
+
+export const isProvider = (v: string | null | undefined): v is ProviderRole =>
+  v === "doctor" || v === "nurse";
+
 /** The surface a pathname belongs to — `/doctor/*` is the doctor's, and so on. */
 export function surfaceFromPath(pathname: string): SurfaceRole | null {
   if (pathname === "/doctor" || pathname.startsWith("/doctor/")) return "doctor";
+  if (pathname === "/nurse" || pathname.startsWith("/nurse/")) return "nurse";
   if (pathname === "/ops" || pathname.startsWith("/ops/")) return "ops";
   if (pathname === "/patient" || pathname.startsWith("/patient/")) return "patient";
   return null;
@@ -73,7 +92,7 @@ export function surfaceFromPath(pathname: string): SurfaceRole | null {
 
 /** Where a signed-in role lives. */
 export const homeFor = (role: SurfaceRole): string =>
-  role === "ops" ? "/ops" : role === "doctor" ? "/doctor" : "/patient";
+  role === "ops" ? "/ops" : role === "doctor" ? "/doctor" : role === "nurse" ? "/nurse" : "/patient";
 
 /** Where an unauthenticated visitor to a surface is sent to sign in. */
 export const signInFor = (role: SurfaceRole, next?: string): string => {

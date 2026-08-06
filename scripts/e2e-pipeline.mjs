@@ -128,6 +128,19 @@ const calendar = async (doctorId, cookie) => {
 };
 const allSlots = (cal) => (cal.days || []).flatMap((d) => d.slots);
 
+/**
+ * Start a consult the way the platform requires: the server mints a 4-digit
+ * arrival code that ONLY the patient can read, and the doctor types back what
+ * the patient reads out. Nothing can be completed — or prescribed for — until
+ * that has happened, so every test that closes a visit has to go through here
+ * rather than calling completeRequest straight after accepting.
+ */
+const startConsult = async (reqId, patCookie, docCookie) => {
+  const code = ((await get("requests", patCookie)).data || []).find((r) => r.id === reqId)?.startCode;
+  if (!code) return { status: 0, data: { error: "no start code on the patient's copy" } };
+  return act("verifyStartCode", { id: reqId, code }, docCookie);
+};
+
 let passed = 0;
 let failed = 0;
 const check = (name, cond, detail) => {
@@ -148,8 +161,14 @@ async function run() {
 
   // Clean slate: the "one active consult" rule blocks a new accept while an
   // earlier consult is still open, so finish any left over from a prior run.
+  //
+  // Completing needs the consult to have been STARTED with the patient's
+  // arrival code, so a consult left accepted-but-never-started cannot be
+  // completed at all — and one of those would poison every later check in
+  // this file permanently. Cancelling is the way out, so fall back to it.
   for (const r of ((await get("requests", docCookie)).data || []).filter((r) => r.status === "accepted" && r.doctorId === doctorId)) {
-    await act("completeRequest", { id: r.id }, docCookie);
+    const done = await act("completeRequest", { id: r.id }, docCookie);
+    if (done.status !== 200) await act("cancelRequest", { id: r.id, reason: "Clearing e2e state" }, docCookie);
   }
 
   // ── Reads: patient sees the doctor roster ──────────────────
@@ -176,6 +195,8 @@ async function run() {
   check("doctor with an active consult is blocked from a second accept (409)", blockedAccept.status === 409 && !!blockedAccept.data?.error, `status=${blockedAccept.status}`);
 
   // ── Complete the consult, then both sides rate each other ──
+  check("the arrival code reaches the patient and not the doctor", !!((await get("requests", patCookie)).data || []).find((r) => r.id === reqId)?.startCode && !((await get("requests", docCookie)).data || []).find((r) => r.id === reqId)?.startCode);
+  check("doctor starts the consult with the patient's code", (await startConsult(reqId, patCookie, docCookie)).status === 200);
   check("doctor completes the consult", (await act("completeRequest", { id: reqId }, docCookie)).status === 200);
   check("patient rates the doctor", (await act("createReview", { doctorId, requestId: reqId, rating: 5, comment: "great" }, patCookie)).status === 200);
   const ratedDoc = ((await get("doctors", patCookie)).data || []).find((d) => d.id === doctorId);
@@ -189,6 +210,7 @@ async function run() {
 
   // Now the earlier consult is closed, the doctor can accept the next one.
   check("doctor can accept again once free", (await act("acceptRequest", { id: reqId2 }, docCookie)).status === 200);
+  await startConsult(reqId2, patCookie, docCookie);
   await act("completeRequest", { id: reqId2 }, docCookie); // leave a clean slate
 
   // ══ Appointment scheduling ═════════════════════════════════
@@ -246,6 +268,7 @@ async function run() {
   check("a busy doctor can still confirm an appointment", (await act("acceptRequest", { id: apptId }, docCookie)).status === 200);
   check("a busy doctor cannot accept another urgent request (409)", (await act("acceptRequest", { id: urgent2.data?.id }, docCookie)).status === 409);
 
+  await startConsult(urgent1.data?.id, patCookie, docCookie);
   await act("completeRequest", { id: urgent1.data?.id }, docCookie);
   const freeFeed = (await get("requests", docCookie)).data || [];
   check("urgent requests return once the doctor is free", freeFeed.some((r) => r.id === urgent2.data?.id));
@@ -337,6 +360,7 @@ async function run() {
   check("trip advances to arrived", (await act("advanceTrip", { id: hireId }, docCookie)).data?.tripStage === "arrived");
   check("advancing past the last stage is refused (400)", (await act("advanceTrip", { id: hireId }, docCookie)).status === 400);
 
+  await startConsult(hireId, patCookie, docCookie);
   await act("completeRequest", { id: hireId }, docCookie);
   const freed = await calendar(doctorId, patCookie);
   check("completing the gig unpauses the doctor", freed.onGig === false && freed.gigsHireable === true, `onGig=${freed.onGig}`);
@@ -371,6 +395,78 @@ async function run() {
   const repooled = ((await get("requests", patCookie)).data || []).find((r) => r.id === bcId);
   check("a cancelled broadcast returns to the pool", repooled?.status === "pending" && repooled?.doctorId === null, `status=${repooled?.status} doctorId=${repooled?.doctorId}`);
   check("the canceller is not re-offered it", !((await get("requests", otherDoc)).data || []).some((r) => r.id === bcId));
+
+  // ══ Prescriptions ══════════════════════════════════════════
+  // Driven through a REAL consult rather than reusing an earlier one: the
+  // arrival handshake is what makes a prescription trustworthy, so the test
+  // has to prove that prescribing is impossible before the patient's code is
+  // entered, and possible immediately after.
+  const rxBooked = await act("createRequest", { type: "clinic", symptoms: "e2e prescription visit", fee: 350, address: "Clinic", lat: 21.15, lng: 79.09, doctorId }, patCookie);
+  const rxReqId = rxBooked.data?.id;
+  check("patient books the consult a prescription will close", rxBooked.status === 200 && !!rxReqId, rxReqId ?? rxBooked.data?.error);
+  check("doctor accepts it", (await act("acceptRequest", { id: rxReqId }, docCookie)).status === 200);
+
+  // Prescribing before the consult has started must be refused — otherwise the
+  // arrival code would be decoration, and a doctor could issue a document for
+  // a visit they never attended.
+  const earlyRx = await act("issuePrescription", { requestId: rxReqId, draft: { diagnosis: "Too early", items: [], advice: "" } }, docCookie);
+  check("prescribing before the consult starts is refused (409)", earlyRx.status === 409, `status=${earlyRx.status}`);
+
+  // The arrival code reaches the PATIENT only — that is the whole mechanism.
+  const rxCode = ((await get("requests", patCookie)).data || []).find((r) => r.id === rxReqId)?.startCode;
+  check("only the patient can see the arrival code", !!rxCode && !((await get("requests", docCookie)).data || []).find((r) => r.id === rxReqId)?.startCode);
+  check("doctor starts the consult with the patient's code", (await act("verifyStartCode", { id: rxReqId, code: rxCode }, docCookie)).status === 200);
+
+  const rxDraft = {
+    diagnosis: "Acute viral pharyngitis",
+    items: [
+      { name: "Paracetamol 650mg", dose: "1 tablet", schedule: "1-0-1", durationDays: 5, timing: "after_food" },
+      { name: "Rare Unstocked Syrup", dose: "10 ml", schedule: "1-1-1", durationDays: 3, timing: "anytime" },
+    ],
+    advice: "Warm salt-water gargle twice a day. Plenty of fluids.",
+    followUpDays: 5,
+  };
+  const issued = await act("issuePrescription", { requestId: rxReqId, draft: rxDraft }, docCookie);
+  const rxId = issued.data?.id;
+  const rxToken = issued.data?.shareToken;
+  check("doctor issues the prescription", issued.status === 200 && !!rxId, rxId ?? issued.data?.error);
+  check("the prescription carries a quotable code and a share token", /^RX-/.test(issued.data?.code ?? "") && (rxToken ?? "").length >= 24, issued.data?.code);
+
+  // Issuing IS completing — one act, so the visit must close with it and the
+  // doctor must be free again.
+  const closed = ((await get("requests", patCookie)).data || []).find((r) => r.id === rxReqId);
+  check("issuing the prescription completed the consult", closed?.status === "completed", `status=${closed?.status}`);
+  check("one prescription per consult (409 on a repeat)", (await act("issuePrescription", { requestId: rxReqId, draft: rxDraft }, docCookie)).status === 409);
+
+  const patRxList = (await get("prescriptions", patCookie)).data;
+  const patRx = (Array.isArray(patRxList) ? patRxList : []).find((x) => x.id === rxId);
+  check("the patient receives it without asking", !!patRx && patRx.items?.length === 2, `items=${patRx?.items?.length}`);
+  check("the dose schedule survives the round trip", patRx?.items?.[0]?.schedule === "1-0-1", patRx?.items?.[0]?.schedule);
+  check("the doctor's credentials are snapshotted onto it", patRx?.doctorName === dMe?.doctor?.fullName, patRx?.doctorName);
+
+  const otherRxList = (await get("prescriptions", otherDoc)).data;
+  check("another doctor cannot read it", !(Array.isArray(otherRxList) ? otherRxList : []).some((x) => x.id === rxId));
+  check("a patient cannot issue one (403)", (await act("issuePrescription", { requestId: rxReqId, draft: rxDraft }, patCookie)).status === 403);
+
+  // The shared link: the token IS the credential, so this must work with no
+  // session at all — that is the whole point of a link sent on WhatsApp.
+  const shared = await fetch(`${BASE}/rx/${rxToken}`, { cache: "no-store" });
+  const sharedHtml = shared.ok ? await shared.text() : "";
+  check("the share link opens with no session", shared.status === 200 && sharedHtml.includes(issued.data?.code ?? " "), `status=${shared.status}`);
+  check("the shared sheet carries what a chemist reads", sharedHtml.includes("Paracetamol 650mg") && sharedHtml.includes("1-0-1"));
+  const wrongToken = await fetch(`${BASE}/rx/not-a-real-token`, { cache: "no-store" });
+  check("a wrong token opens nothing", !(await wrongToken.text()).includes(issued.data?.code ?? " "));
+
+  // ── Medicine delivery: backend only, no UI yet ─────────────
+  // MEDICINE_ENABLED is false, so ordering must refuse rather than quietly
+  // create orders nobody can see. The basket read still prices the
+  // prescription, which is how this stays reviewable before it ships.
+  const basket = await get(`rxBasket&prescriptionId=${rxId}`, patCookie);
+  check("a prescription prices into a deliverable basket", basket.status === 200 && basket.data?.fulfillable === true, `subtotal=${basket.data?.subtotal}`);
+  check("an unstocked medicine is reported, not dropped", (basket.data?.unavailable || []).includes("Rare Unstocked Syrup"), JSON.stringify(basket.data?.unavailable));
+  check("a 5-day 1-0-1 course becomes one 10-tablet strip", basket.data?.lines?.[0]?.unitsNeeded === 10 && basket.data?.lines?.[0]?.packs === 1, `units=${basket.data?.lines?.[0]?.unitsNeeded} packs=${basket.data?.lines?.[0]?.packs}`);
+  const ordered = await act("orderFromPrescription", { prescriptionId: rxId }, patCookie);
+  check("ordering is refused while medicine delivery is dark (503)", ordered.status === 503, `status=${ordered.status}`);
 
   // ── Authorization: patient cannot act as ops/doctor ────────
   const spoof = await act("acceptRequest", { id: reqId }, patCookie);

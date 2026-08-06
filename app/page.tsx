@@ -13,9 +13,10 @@ import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
 import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
+import { NURSE_CADRES, NURSE_SERVICES, NURSE_TITLES } from "@/lib/nurse";
 import { cn } from "@/lib/utils/cn";
 
-type Role = "patient" | "doctor";
+type Role = "patient" | "doctor" | "nurse";
 
 // Kept in step with components/doctor/edit-profile-dialog.tsx.
 const SPECIALTIES = [
@@ -103,9 +104,82 @@ function OnboardingPanel() {
   const [homeVisitFee, setHomeVisitFee] = useState("900");
   const [clinicAddress, setClinicAddress] = useState("");
 
+  // Nurse onboarding mirrors the doctor's two steps. The fields differ because
+  // a nurse is found by what she can DO, not by a specialty: the title is the
+  // patient-facing headline, the cadre is the qualification, and the services
+  // are what the home-care search filters on.
+  const [nurseTitle, setNurseTitle] = useState(NURSE_TITLES[0]);
+  const [nurseCadre, setNurseCadre] = useState(NURSE_CADRES[0]);
+  const [councilNo, setCouncilNo] = useState("");
+  const [nurseFee, setNurseFee] = useState("600");
+  const [skills, setSkills] = useState<string[]>([]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (role === "nurse") {
+      // Step 1 → 2: same pre-check as the doctor path, so nobody fills in a
+      // whole professional profile only to bounce on a weak password.
+      if (step === 1) {
+        if (!name.trim()) return setError("Enter your full name.");
+        if (!isDemoMode) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            return setError("Enter a valid email address.");
+          }
+          if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+            return setError("Password must be 8+ characters and include a letter and a number.");
+          }
+        }
+        setStep(2);
+        return;
+      }
+
+      // Step 2 — the professional profile.
+      if (!gender) return setError("Select your gender.");
+      const languageList = languages.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 6);
+      if (languageList.length === 0) {
+        return setError("List at least one language you speak with patients.");
+      }
+      if (!councilNo.trim()) {
+        return setError("Add your nursing council registration number.");
+      }
+      if (skills.length === 0) {
+        return setError("Pick at least one service you can provide.");
+      }
+
+      setLoading(true);
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          role: "nurse",
+          email,
+          password,
+          fullName: name.trim() || "Nurse",
+          title: nurseTitle,
+          qualifications: nurseCadre,
+          registrationNo: councilNo.trim(),
+          gender,
+          age: Math.round(Number(age)) || undefined,
+          experienceYears: Math.max(0, Math.min(70, Math.round(Number(experienceYears)) || 0)),
+          languages: languageList,
+          skills,
+          homeVisitFee: Math.max(0, Number(nurseFee) || 600),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setLoading(false);
+      if (!res.ok) return setError(data.error ?? "Could not create the nurse account.");
+      toast.push({
+        tone: "success",
+        title: "Nurse account created",
+        desc: "Operations will verify your documents before you can take visits.",
+      });
+      router.push("/nurse");
+      router.refresh();
+      return;
+    }
 
     if (role === "doctor") {
       // Step 1 → 2: check the account basics here (mirroring the server's
@@ -253,7 +327,11 @@ function OnboardingPanel() {
           style={{ animationDelay: "40ms" }}
         >
           {step === 2 ? (
-            <>Your <span className="text-salmon">practice profile</span></>
+            role === "nurse" ? (
+              <>Your <span className="text-salmon">nursing profile</span></>
+            ) : (
+              <>Your <span className="text-salmon">practice profile</span></>
+            )
           ) : (
             <>Start your <span className="text-salmon">care journey</span></>
           )}
@@ -292,7 +370,7 @@ function OnboardingPanel() {
             {/* role toggle */}
             <div className="animate-rise mt-6" style={{ animationDelay: "150ms" }}>
               <div className="flex rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
-                {(["patient", "doctor"] as Role[]).map((r) => {
+                {(["patient", "doctor", "nurse"] as Role[]).map((r) => {
                   const active = role === r;
                   return (
                     <button
@@ -309,7 +387,7 @@ function OnboardingPanel() {
                           : "text-[var(--text-muted)] hover:text-cream",
                       )}
                     >
-                      {r === "patient" ? "I need care" : "I'm a doctor"}
+                      {r === "patient" ? "I need care" : r === "doctor" ? "I'm a doctor" : "I'm a nurse"}
                     </button>
                   );
                 })}
@@ -368,6 +446,136 @@ function OnboardingPanel() {
                   {showPw ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                 </button>
               </label>
+            </>
+          ) : role === "nurse" ? (
+            <>
+              {/* Step 2, nurse — what a patient reads on the home-care card,
+                  and what the search filters on. A nurse is chosen for what
+                  she can do, so the services are the important field here. */}
+              <Field label="Title">
+                <select
+                  className={inputCls}
+                  value={nurseTitle}
+                  onChange={(e) => setNurseTitle(e.target.value as typeof nurseTitle)}
+                  required
+                >
+                  {NURSE_TITLES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Qualification">
+                  <select
+                    className={inputCls}
+                    value={nurseCadre}
+                    onChange={(e) => setNurseCadre(e.target.value as typeof nurseCadre)}
+                    required
+                  >
+                    {NURSE_CADRES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Council reg. no.">
+                  <input
+                    className={inputCls}
+                    value={councilNo}
+                    onChange={(e) => setCouncilNo(e.target.value)}
+                    placeholder="MNC-11482"
+                    required
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Gender">
+                  <select
+                    className={inputCls}
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as "" | "female" | "male")}
+                    required
+                  >
+                    <option value="" disabled>
+                      Select…
+                    </option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </Field>
+                <Field label="Experience (years)">
+                  <input
+                    type="number"
+                    min={0}
+                    max={70}
+                    className={inputCls}
+                    value={experienceYears}
+                    onChange={(e) => setExperienceYears(e.target.value)}
+                    placeholder="6"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Languages (comma separated)">
+                <input
+                  className={inputCls}
+                  value={languages}
+                  onChange={(e) => setLanguages(e.target.value)}
+                  placeholder="Marathi, Hindi, English"
+                  required
+                />
+              </Field>
+
+              <div>
+                <span className="label">Services you provide</span>
+                <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                  {NURSE_SERVICES.map((s) => {
+                    const on = skills.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() =>
+                          setSkills((prev) =>
+                            on ? prev.filter((x) => x !== s.id) : [...prev, s.id],
+                          )
+                        }
+                        className={cn(
+                          "rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                          on
+                            ? "border-terracotta bg-terracotta/10 text-cream"
+                            : "border-[var(--border)] text-[var(--text-muted)] hover:text-cream",
+                        )}
+                      >
+                        {s.short}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Field label="Home visit fee (₹)">
+                <input
+                  type="number"
+                  min={0}
+                  className={inputCls}
+                  value={nurseFee}
+                  onChange={(e) => setNurseFee(e.target.value)}
+                  placeholder="600"
+                  required
+                />
+              </Field>
+
+              <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-xs leading-relaxed text-[var(--text-muted)]">
+                Operations will verify your council registration and documents before
+                patients can book you. Nurses provide care within their scope and do not
+                diagnose or prescribe.
+              </div>
             </>
           ) : (
             <>
@@ -561,9 +769,9 @@ function OnboardingPanel() {
                 ? "Setting up…"
                 : step === 2
                   ? "Join"
-                  : role === "doctor"
-                    ? "Continue"
-                    : "Start"}
+                  : role === "patient"
+                    ? "Start"
+                    : "Continue"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             <span
@@ -593,7 +801,9 @@ function OnboardingPanel() {
               ? "Patients see this on your profile — you can edit it anytime"
               : role === "doctor"
                 ? "Next: your specialty, credentials & fees"
-                : "as a patient — no card, no wait"}
+                : role === "nurse"
+                  ? "Next: your qualification, services & fee"
+                  : "as a patient — no card, no wait"}
           </p>
 
         </form>

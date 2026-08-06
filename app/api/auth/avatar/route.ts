@@ -3,12 +3,13 @@ import { getRequestSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { emitChange } from "@/lib/server/events";
 import { rateLimit, tooMany } from "@/lib/server/rate-limit";
+import { isProvider } from "@/lib/auth/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Set the signed-in user's profile photo (patient or doctor).
+ * Set the signed-in user's profile photo (patient, doctor or nurse).
  *
  * The photo arrives as a small data-URL: the client crops and downscales to a
  * 256px JPEG before sending, so a "photo" is a few tens of KB riding in the
@@ -22,8 +23,11 @@ const MAX_LENGTH = 300_000; // ~220KB decoded — far above what the client send
 export async function POST(req: Request) {
   const session = await getRequestSession(req);
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  if (session.role !== "patient" && session.role !== "doctor") {
-    return NextResponse.json({ error: "Only patients and doctors have profile photos." }, { status: 403 });
+  // Nurses need this as much as doctors do — more, in fact: a photo is the
+  // precondition for going online, so refusing it here would deadlock them off
+  // the platform entirely.
+  if (session.role !== "patient" && !isProvider(session.role)) {
+    return NextResponse.json({ error: "Only patients and providers have profile photos." }, { status: 403 });
   }
 
   if (!rateLimit(`avatar:${session.userId}`, 10, 10 * 60_000)) return tooMany();
@@ -45,8 +49,8 @@ export async function POST(req: Request) {
 
   await db.setUserAvatar(session.userId, session.role, dataUrl);
 
-  // Doctors wear their photo in public — every patient list should refresh.
-  if (session.role === "doctor") emitChange(["doctors"]);
+  // Providers wear their photo in public — every patient list should refresh.
+  if (isProvider(session.role)) emitChange(["doctors"]);
 
   return NextResponse.json({ ok: true, avatarUrl: dataUrl });
 }

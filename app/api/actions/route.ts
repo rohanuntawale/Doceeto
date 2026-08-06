@@ -8,6 +8,11 @@ import { ARRIVE_RADIUS_KM } from "@/lib/scheduling/trip";
 import { GIG_DESC_MAX, GIG_TITLE_MAX, sanitizeGigPatch } from "@/lib/gigs/rules";
 import { haversineKm } from "@/lib/utils/geo";
 import { rateLimit } from "@/lib/server/rate-limit";
+import { isProvider } from "@/lib/auth/constants";
+import { canPrescribe, NURSE_SERVICES } from "@/lib/nurse";
+import { draftHasContent, sanitizeRxDraft } from "@/lib/prescriptions/rules";
+import { basketFor, darkStoreFor } from "@/lib/medicine/fulfilment";
+import { MEDICINE_ENABLED } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,6 +72,13 @@ function sanitizeDoctorPatch(raw: unknown): Record<string, unknown> {
       .map((x) => String(x).trim())
       .filter(Boolean)
       .slice(0, 6);
+  }
+  // A nurse's home-care services, allowlisted against the catalogue rather
+  // than trusted: patients filter the roster on these, so an invented id would
+  // put someone in a list of people who can do something they cannot.
+  if (Array.isArray(p.skills)) {
+    const allowed = new Set<string>(NURSE_SERVICES.map((s) => s.id));
+    out.skills = p.skills.map((x) => String(x)).filter((x) => allowed.has(x)).slice(0, 8);
   }
   // Live device position from the cockpit's location publisher.
   if (typeof p.lat === "number") out.lat = p.lat;
@@ -136,6 +148,33 @@ export async function POST(req: Request) {
    * HERE, not just in the cockpit UI, for the same reason as the offline rule —
    * a stale tab or hand-rolled request must not publish around it.
    */
+  /**
+   * A visit can only be closed out once it was CONFIRMED started.
+   *
+   * This is what gives the arrival code teeth: without it a doctor could close
+   * (and bill, and prescribe for) a visit they never attended, and the
+   * handshake would be decoration. The patient-side start and the ops override
+   * are the ways out for the genuinely stuck.
+   *
+   * Shared by completeRequest and issuePrescription — issuing completes the
+   * visit, so a gap here would be a way around the handshake.
+   *
+   * Returns an error response to hand straight back, or null when it's fine.
+   */
+  const mustHaveStarted = async (requestId: string) => {
+    const req = (await repo.getRequests()).find((r) => r.id === requestId);
+    if (req && req.doctorId === me && req.tripStage !== "in_progress") {
+      return NextResponse.json(
+        {
+          error:
+            "Enter the patient's 4-digit code to start the consult before completing it.",
+        },
+        { status: 409 },
+      );
+    }
+    return null;
+  };
+
   const blockedWithoutPhoto = async () => {
     const doc = await repo.getDoctorById(me);
     if (doc?.avatarUrl) return null;
@@ -225,6 +264,9 @@ export async function POST(req: Request) {
             scheduledAt,
             gigId,
             doctorId,
+            // Which pool a broadcast reaches. Ignored by the repo when a
+            // provider is named — their own cadre wins there.
+            targetCadre: payload.targetCadre === "nurse" ? "nurse" : "doctor",
             paymentMethod: payload.paymentMethod === "cash" ? "cash" : "online",
             fee: mode === "gig" ? 0 : Math.round(fee),
             symptoms: String(payload.symptoms ?? "").slice(0, 1000),
@@ -242,8 +284,8 @@ export async function POST(req: Request) {
         // A doctor must give a reason — they are standing a patient down, and
         // the reason travels back to them. The repo enforces it too, and for a
         // broadcast it re-pools the request instead of ending it.
-        if (role !== "patient" && role !== "doctor")
-          return needs("patients or doctors");
+        if (role !== "patient" && !isProvider(role))
+          return needs("patients or providers");
         const reason = reasonOf(payload.reason);
         if (role === "doctor" && !reason)
           return bad("Tell the patient why you're cancelling.");
@@ -283,7 +325,7 @@ export async function POST(req: Request) {
         );
       case "ratePatient":
         // Doctor rates the patient after a completed consult they ran.
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         await repo.ratePatient({
           doctorId: me,
           doctorName: session.name,
@@ -312,12 +354,12 @@ export async function POST(req: Request) {
         // this fires every 30 seconds per doctor, and auditing or broadcasting
         // each one would bury the audit log and trigger a refetch storm. It
         // touches last_seen and says nothing else.
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         await repo.touchDoctor(me);
         return NextResponse.json({ ok: true });
       }
       case "setDoctorStatus": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         // An off-list status would defeat the offline-coordinate rule in
         // /api/data and break every status pill that indexes by it.
         const status = String(payload.status ?? "");
@@ -332,7 +374,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["doctors"]);
       }
       case "updateDoctor": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const patch = sanitizeDoctorPatch(payload.patch);
         await repo.updateDoctor(me, patch);
         // Delivery-app auto-arrival: the cockpit streams the doctor's live
@@ -433,7 +475,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["gigs"]);
       }
       case "acceptRequest": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         // Claiming a patient is a promise to show up; an offline doctor has
         // just said they can't.
         const offline = await blockedWhenOffline(OFFLINE_WORK);
@@ -451,7 +493,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["requests", "gigs"]);
       }
       case "declineRequest":
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         // Passing `me` makes the repo check the request is actually theirs
         // to decline — declining frees a slot someone else may own. For a
         // broadcast the repo records a pass and leaves it pending, so other
@@ -460,7 +502,7 @@ export async function POST(req: Request) {
         await repo.declineRequest(String(payload.id), me, reasonOf(payload.reason));
         return done({ ok: true }, ["requests"]);
       case "advanceTrip": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         // One step only, derived server-side — the client's idea of "next" is
         // ignored, exactly as with advanceSos and advanceOrder.
         const stage = await repo.advanceTrip(String(payload.id), me);
@@ -471,7 +513,7 @@ export async function POST(req: Request) {
 
       // ── Arrival confirmation (the ride-hailing handshake) ──
       case "verifyStartCode": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const code = String(payload.code ?? "").trim();
         if (!/^\d{4}$/.test(code)) return bad("Enter the 4-digit code from the patient.");
         const result = await repo.verifyStartCode(String(payload.id), me, code);
@@ -513,33 +555,92 @@ export async function POST(req: Request) {
       }
 
       case "completeRequest": {
-        if (role !== "doctor") return needs("doctors");
-        // A visit can only be completed once it was CONFIRMED started. This
-        // is what gives the code teeth: without it a doctor could close (and
-        // bill) a visit they never attended, and the handshake would be
-        // decoration. The patient-side start and ops override are the ways
-        // out for the genuinely stuck.
-        const req = (await repo.getRequests()).find((r) => r.id === String(payload.id));
-        if (req && req.doctorId === me && req.tripStage !== "in_progress") {
-          return NextResponse.json(
-            {
-              error:
-                "Enter the patient's 4-digit code to start the consult before completing it.",
-            },
-            { status: 409 },
-          );
-        }
+        if (!isProvider(role)) return needs("providers");
+        const startFirst = await mustHaveStarted(String(payload.id));
+        if (startFirst) return startFirst;
         await repo.completeRequest(String(payload.id), {
           doctorId: me,
           notes: payload.notes ? String(payload.notes) : undefined,
-          prescription: Array.isArray(payload.prescription)
-            ? payload.prescription
-            : undefined,
         });
         return done({ ok: true }, ["requests", "transactions"]);
       }
+
+      /**
+       * The doctor writes the prescription that closes the consult.
+       *
+       * Prescribing is the one capability the shared provider engine does NOT
+       * hand to every cadre: a nurse runs visits through the same rails but
+       * may not prescribe, and that is checked HERE rather than only in the UI,
+       * because the surface is not the security boundary.
+       *
+       * The repo completes the visit as part of issuing, so the same
+       * "was it really started?" rule that guards completeRequest guards this —
+       * otherwise prescribing would be a way around the arrival handshake.
+       */
+      case "issuePrescription": {
+        if (!isProvider(role)) return needs("providers");
+        if (!canPrescribe(role))
+          return NextResponse.json(
+            { error: "Only doctors can issue a prescription." },
+            { status: 403 },
+          );
+        const requestId = String(payload.requestId ?? "");
+        if (!requestId) return bad("Which consult is this for?");
+        const startFirst = await mustHaveStarted(requestId);
+        if (startFirst) return startFirst;
+        // Everything below the door is clamped by sanitizeRxDraft in the repo;
+        // this only refuses a document that would say nothing at all.
+        const draft = sanitizeRxDraft(payload.draft);
+        if (!draftHasContent(draft))
+          return bad("Add at least one medicine, a diagnosis, or some advice.");
+        const rx = await repo.issuePrescription({ requestId, doctorId: me, draft });
+        return done(rx, ["requests", "transactions", "prescriptions"]);
+      }
+
+      /**
+       * Order a prescription's medicines for delivery.
+       *
+       * ⚠ NO UI YET — medicine ordering is dark for patients (MEDICINE_ENABLED
+       * in lib/config.ts). The endpoint exists so switching that flag on is the
+       * only remaining work: authorization, catalog matching, pack maths and
+       * the partial-availability path are all decided here and in
+       * lib/medicine/fulfilment.ts. While the flag is off this answers 503
+       * rather than quietly creating orders nobody can see.
+       */
+      case "orderFromPrescription": {
+        if (role !== "patient") return needs("patients");
+        if (!MEDICINE_ENABLED)
+          return NextResponse.json(
+            { error: "Medicine delivery isn't live yet." },
+            { status: 503 },
+          );
+        const rx = await repo.getPrescriptionById(String(payload.prescriptionId ?? ""));
+        if (!rx || rx.patientId !== me)
+          return NextResponse.json({ error: "That prescription no longer exists." }, { status: 404 });
+        const basket = basketFor(rx);
+        if (!basket.fulfillable)
+          return bad("None of these medicines are stocked for delivery yet.");
+        // The address comes off the patient's own profile, never the payload —
+        // same anti-spoof rule as every other patient write.
+        const profile = await repo.getPatientProfile(me);
+        const address = String(payload.address ?? "").slice(0, 200) || profile?.addressFull || profile?.address || "";
+        if (!address) return bad("Add a delivery address first.");
+        const order = await repo.createOrder({
+          items: basket.items,
+          total: 0, // ignored — the repo re-prices every line from the catalog
+          address,
+          darkStore: darkStoreFor(rx.id),
+          patientId: me,
+          patientName: session.name,
+          prescriptionId: rx.id,
+        });
+        // The unstocked lines travel back with the order so the patient is told
+        // what they still have to buy elsewhere, rather than discovering a
+        // short delivery.
+        return done({ order, unavailable: basket.unavailable }, ["orders"]);
+      }
       case "requestPayout": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const ok = await repo.requestPayout(me);
         if (!ok)
           return NextResponse.json({ error: "Nothing to withdraw." }, { status: 400 });
@@ -621,6 +722,23 @@ export async function POST(req: Request) {
         if (!doctorId) return bad("Which doctor?");
         const result = await repo.deleteDoctor(doctorId);
         return done(result, ["doctors", "gigs", "reviews", "requests"]);
+      }
+
+      /**
+       * Ops signs off (or withdraws sign-off) on a provider's credentials.
+       *
+       * Ops-only and separate from updateDoctor by design — `verified` is not
+       * in the provider-editable allowlist, so this is the ONLY way the flag
+       * can move. For nurses it is also the gate on being discoverable at all:
+       * until it is true, no patient can find or book them.
+       */
+      case "verifyProvider": {
+        if (role !== "ops") return needs("ops");
+        const providerId = String(payload.doctorId ?? payload.providerId ?? "");
+        if (!providerId) return bad("Which provider?");
+        const ok = await repo.verifyProvider(providerId, payload.verified !== false);
+        if (!ok) return bad("That provider no longer exists.");
+        return done({ ok: true }, ["doctors"]);
       }
 
       default:

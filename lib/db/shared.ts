@@ -47,7 +47,7 @@ export interface UserRecord {
   email: string;
   /** Null when the account was created through Google and has no password. */
   passwordHash: string | null;
-  role: "patient" | "doctor" | "ops";
+  role: "patient" | "doctor" | "nurse" | "ops";
   name: string;
 }
 

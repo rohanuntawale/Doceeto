@@ -7,7 +7,14 @@ import { apiFetch } from "@/lib/api/client";
 export interface PatientIdentity {
   id: string;
   name: string;
+  /** The short label shown in this app's own header ("Sadar, Nagpur"). */
   address: string;
+  /**
+   * The full postal address, house number included. This is what travels on a
+   * booking, because it is what the provider has to find. Empty until a device
+   * fix has been reverse-geocoded.
+   */
+  addressFull?: string;
   lat: number;
   lng: number;
   /** Profile photo (a small data-URL, or a Google picture URL). */
@@ -72,7 +79,12 @@ function hydrateOnce() {
           // patient last was, and letting it overwrite a current fix is
           // exactly what pinned everyone to their sign-up address.
           const live = current.located
-            ? { lat: current.lat, lng: current.lng, address: current.address }
+            ? {
+                lat: current.lat,
+                lng: current.lng,
+                address: current.address,
+                addressFull: current.addressFull,
+              }
             : {};
           current = { ...DEFAULT, ...data.patient, ...live, located: current.located, ready: true };
         } else {

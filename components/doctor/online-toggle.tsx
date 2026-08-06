@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
+import { isNurse } from "@/lib/nurse";
 import type { Doctor } from "@/lib/types/domain";
 
 export function OnlineToggle({
@@ -30,14 +31,16 @@ export function OnlineToggle({
     const next = online ? "offline" : "online";
 
     // No photo, no roster (live mode; the server enforces it regardless).
-    // Caught here so the doctor lands on the fix, not just an error.
+    // Caught here so the provider lands on the fix, not just an error. The
+    // destination follows the cadre — sending a nurse to /doctor/profile would
+    // bounce her off the surface guard instead of onto the form she needs.
     if (next === "online" && !isDemoMode && !doctor.avatarUrl) {
       toast.push({
         tone: "error",
         title: "Add a profile photo first",
         desc: "Patients need to see who's treating them. Add one on your profile page.",
       });
-      router.push("/doctor/profile");
+      router.push(isNurse(doctor) ? "/nurse/profile" : "/doctor/profile");
       return;
     }
 

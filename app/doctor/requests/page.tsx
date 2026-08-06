@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { RequestCard } from "@/components/zumi/request-card";
 import { PatientBriefDialog } from "@/components/doctor/patient-brief-dialog";
+import { PrescriptionComposer } from "@/components/prescription/prescription-composer";
 import { StartCodeForDoctor } from "@/components/consult/start-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
@@ -19,7 +20,7 @@ import {
   isGig,
   isScheduled,
   ongoingConsultOf,
-  visibleToDoctor,
+  visibleToProvider,
 } from "@/lib/scheduling/slots";
 import { awaitingStartCode } from "@/lib/scheduling/trip";
 import { formatSlotRange } from "@/lib/scheduling/time";
@@ -32,6 +33,26 @@ export default function RequestsPage() {
   // Which accepted consult's patient brief is open (live mode only — the
   // brief comes from the account store, which demo mode doesn't have).
   const [briefFor, setBriefFor] = useState<string | null>(null);
+  /** Which accepted consult is being closed out with a prescription. */
+  const [prescribingFor, setPrescribingFor] = useState<string | null>(null);
+
+  /**
+   * "Medical history" on a request the doctor has NOT accepted yet. Whether to
+   * take a visit is itself a clinical decision — an allergy or a bleeding
+   * disorder can be the reason to say no — so the history belongs before the
+   * accept, not only after it. The server returns a clinical-only preview until
+   * the visit is actually held.
+   */
+  const briefButton = (r: (typeof requests)[number]) =>
+    !isDemoMode && r.patientId ? (
+      <button
+        onClick={() => setBriefFor(r.id)}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
+      >
+        <ClipboardList className="h-4 w-4 text-salmon" />
+        Medical history
+      </button>
+    ) : undefined;
 
   const doctorId = me?.id ?? "";
   const ongoing = doctorId ? ongoingConsultOf(requests, doctorId) : undefined;
@@ -39,12 +60,12 @@ export default function RequestsPage() {
 
   // The same visibility rule the server applies, re-run here so demo mode
   // (which has no server filter) hides exactly the same rows. Passing on a
-  // broadcast is persisted as `passedBy`, which visibleToDoctor honours — so
+  // broadcast is persisted as `passedBy`, which visibleToProvider honours — so
   // a dismissal survives a refresh instead of coming straight back.
   const inbox = requests.filter(
     (r) =>
       doctorId &&
-      visibleToDoctor(r, { doctorId, busy: Boolean(ongoing) }) &&
+      visibleToProvider(r, { doctorId, busy: Boolean(ongoing) }) &&
       r.status === "pending",
   );
   const gigHires = inbox.filter(isGig);
@@ -131,6 +152,7 @@ export default function RequestsPage() {
                 blockedReason="Finish your current gig before taking another."
                 onAccept={() => accept(r.id, r.patientName)}
                 onDecline={() => pass(r.id)}
+                footer={briefButton(r)}
               />
             ))}
           </div>
@@ -159,6 +181,7 @@ export default function RequestsPage() {
                 note={r.doctorId === doctorId ? "Chose you" : "Open to nearby doctors"}
                 onAccept={() => accept(r.id, r.patientName)}
                 onDecline={() => pass(r.id)}
+                footer={briefButton(r)}
               />
             ))}
           </div>
@@ -191,6 +214,7 @@ export default function RequestsPage() {
                   }
                   onAccept={() => accept(r.id, r.patientName)}
                   onDecline={() => pass(r.id)}
+                  footer={briefButton(r)}
                 />
               );
             })}
@@ -216,10 +240,9 @@ export default function RequestsPage() {
                     ? formatSlotRange(r.scheduledAt, r.scheduledEnd)
                     : undefined
                 }
-                onComplete={() => {
-                  actions.completeRequest(r.id);
-                  toast.push({ tone: "success", title: "Consult completed" });
-                }}
+                // Finishing a consult is writing its prescription — the
+                // composer owns both, including the "no medicine needed" exit.
+                onComplete={() => setPrescribingFor(r.id)}
                 footer={
                   <div className="space-y-2.5">
                     {/* The consult can't be completed until the patient's
@@ -251,6 +274,14 @@ export default function RequestsPage() {
           requestId={briefFor}
           open
           onClose={() => setBriefFor(null)}
+        />
+      )}
+
+      {prescribingFor && (
+        <PrescriptionComposer
+          request={requests.find((r) => r.id === prescribingFor)!}
+          open
+          onClose={() => setPrescribingFor(null)}
         />
       )}
     </>

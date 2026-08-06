@@ -10,10 +10,12 @@
 import type {
   AvailabilityWindow,
   BookingMode,
+  Cadre,
   ConsultRequest,
   Doctor,
   DoctorAvailability,
 } from "@/lib/types/domain";
+import { targetCadreOf } from "@/lib/nurse";
 import {
   addDaysToKey,
   dateKeyOf,
@@ -457,19 +459,27 @@ export function bookableState(
 const isSeedDoctor = (id: string | null | undefined) => Boolean(id?.startsWith("doc-seed-"));
 
 /**
- * Whether a doctor may see a request at all. Shared by /api/data (live) and
+ * Whether a provider may see a request at all. Shared by /api/data (live) and
  * the dashboards (demo), so both consoles hide exactly the same rows.
  *
- * The rule that matters here: while a doctor has a consult in progress, no
- * pending EMERGENCY reaches them — they could not take it anyway, and a
- * queue of unanswerable alerts is worse than silence. Appointments still
- * come through, because confirming next Tuesday costs nothing right now.
+ * Two rules matter here:
+ *
+ *  • CADRE first. A request aimed at nurses must never reach a doctor's inbox
+ *    or the reverse, and while it is still unclaimed `doctorId` is null so it
+ *    cannot say who it is for — `targetCadre` does. Own rows are exempt: once
+ *    someone holds a request they keep seeing it, so a mis-targeted row can
+ *    still be cancelled rather than becoming invisible work.
+ *  • While a provider has a consult in progress, no pending EMERGENCY reaches
+ *    them — they could not take it anyway, and a queue of unanswerable alerts
+ *    is worse than silence. Appointments still come through, because
+ *    confirming next Tuesday costs nothing right now.
  */
-export function visibleToDoctor(
+export function visibleToProvider(
   req: ConsultRequest,
-  ctx: { doctorId: string; busy: boolean },
+  ctx: { doctorId: string; busy: boolean; cadre?: Cadre },
 ): boolean {
   const mine = req.doctorId === ctx.doctorId;
+  if (!mine && targetCadreOf(req) !== (ctx.cadre ?? "doctor")) return false;
   // Anything already claimed (or finished) is only ever the owner's.
   if (req.status !== "pending") return mine;
   // A gig hire names one doctor and never broadcasts. It stays visible even
