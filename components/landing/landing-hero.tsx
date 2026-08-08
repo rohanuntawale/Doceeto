@@ -9,7 +9,10 @@ export function LandingHero() {
   return (
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden pt-20 pb-16 px-6">
       {/* Background ambient glow washes */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+      >
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-[rgb(var(--c-terracotta)/0.08)] blur-[140px]" />
         <div className="absolute -bottom-60 -left-40 w-[650px] h-[650px] rounded-full bg-[rgb(var(--c-salmon)/0.07)] blur-[160px]" />
         <div className="absolute inset-0 pattern-dots opacity-40 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_45%,#000_0%,transparent_75%)]" />
@@ -60,7 +63,8 @@ export function LandingHero() {
           transition={{ duration: 0.6, delay: 0.25 }}
           className="mt-7 text-lg sm:text-xl text-[var(--text-muted)] max-w-2xl leading-relaxed text-balance"
         >
-          Express what you need or offer your medical expertise. Doceeto creates the direct connection between patient care and doctor services.
+          Express what you need or offer your medical expertise. Doceeto creates
+          the direct connection between patient care and doctor services.
         </motion.p>
 
         {/* Dual Primary CTAs -> /login?tab=signup */}
@@ -70,16 +74,23 @@ export function LandingHero() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md"
         >
-          <Link href="/login?tab=signup" className="w-full sm:w-auto flex-1">
-            <Button size="lg" className="w-full h-13 px-7 text-base font-semibold shadow-soft group">
+          <Link href="/signup" className="w-full sm:w-auto flex-1">
+            <Button
+              size="lg"
+              className="w-full h-13 px-7 text-base font-semibold shadow-soft group"
+            >
               <HeartHandshake className="w-5 h-5 mr-2 text-on-accent" />
-              I need care
+              I need help
               <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
 
-          <Link href="/login?tab=signup" className="w-full sm:w-auto flex-1">
-            <Button variant="outline" size="lg" className="w-full h-13 px-7 text-base font-semibold border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)]">
+          <Link href="/signup?as=doctor" className="w-full sm:w-auto flex-1">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full h-13 px-7 text-base font-semibold border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)]"
+            >
               <UserCheck className="w-5 h-5 mr-2 text-[var(--accent)]" />
               I&apos;m a doctor
             </Button>
@@ -93,7 +104,9 @@ export function LandingHero() {
           transition={{ delay: 0.8, duration: 1 }}
           className="mt-16 flex flex-col items-center gap-2 text-[var(--text-faint)]"
         >
-          <span className="text-[10px] uppercase tracking-label font-medium">Scroll to explore</span>
+          <span className="text-[10px] uppercase tracking-label font-medium">
+            Scroll to explore
+          </span>
           <div className="w-px h-8 bg-gradient-to-b from-[var(--text-faint)] to-transparent" />
         </motion.div>
       </div>
