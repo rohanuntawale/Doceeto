@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Banknote,
+  Briefcase,
   ClipboardCheck,
   FileCheck2,
   LayoutDashboard,
@@ -19,11 +20,13 @@ import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { useT } from "@/lib/i18n";
+import { NURSE_ACCENT_VARS } from "@/lib/nurse";
 
 /**
  * Nurse shell — the same chrome as the doctor cockpit (mobile iOS tab pill,
- * desktop macOS dock), with a nurse's vocabulary and no gig shelf or calendar:
- * a nurse's availability is presence, not a bookable grid.
+ * desktop macOS dock), with a nurse's vocabulary. Gigs are the nurse's
+ * primary storefront (appointments are the fallback), mirroring the doctor
+ * cockpit exactly.
  *
  * Unlike the doctor console this one is TRANSLATED. Nurses in Nagpur read
  * Marathi and Hindi far more often than English, so every label here goes
@@ -32,6 +35,7 @@ import { useT } from "@/lib/i18n";
 const NAV = [
   { id: "home", href: "/nurse", key: "nurse.nav.home", icon: LayoutDashboard, color: "#0A84FF", exact: true },
   { id: "requests", href: "/nurse/requests", key: "nurse.nav.requests", icon: ClipboardCheck, color: "#FFD60A" },
+  { id: "gigs", href: "/nurse/gigs", key: "nurse.nav.gigs", icon: Briefcase, color: "#64D2FF" },
   { id: "active", href: "/nurse/active", key: "nurse.nav.active", icon: Activity, color: "#30D158" },
   { id: "earnings", href: "/nurse/earnings", key: "nurse.nav.earnings", icon: Banknote, color: "#BF5AF2" },
   { id: "verification", href: "/nurse/verification", key: "nurse.nav.verification", icon: FileCheck2, color: "#FF9F0A" },
@@ -84,7 +88,9 @@ export function NurseShell({ children }: { children: React.ReactNode }) {
   }, [active]);
 
   return (
-    <div className="min-h-screen">
+    // The whole nurse console runs the blue accent — including the shared gig
+    // cockpit page, which recolours through these vars with no fork.
+    <div className="min-h-screen" style={NURSE_ACCENT_VARS}>
       <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
         <Link href="/nurse" aria-label={t("nurse.homeAria")}>
           <Wordmark compact />

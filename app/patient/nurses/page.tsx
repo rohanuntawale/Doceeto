@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useToast } from "@/components/ui/toast";
-import { useActions, useNurses } from "@/lib/hooks/data";
+import { NurseEngagePanel } from "@/components/patient/nurse-booking-panel";
+import { useNurses } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { NURSE_SERVICES, skillsOf, type NurseService } from "@/lib/nurse";
+import { NURSE_ACCENT_VARS, NURSE_SERVICES, skillsOf, type NurseService } from "@/lib/nurse";
 import { formatINR, initials } from "@/lib/utils/format";
 import { haversineKm } from "@/lib/utils/geo";
 import { cn } from "@/lib/utils/cn";
@@ -24,9 +24,8 @@ import type { Doctor } from "@/lib/types/domain";
 
 /**
  * Home-care nurse search. The nurse equivalent of /patient/doctors, and
- * deliberately simpler: nurses publish no gigs and hold no calendar, so there
- * is no slot picker here — booking is a direct request to one nurse, which the
- * existing emergency path already handles.
+ * Nurses use the shared provider calendar for scheduled home visits, while
+ * keeping the direct urgent-request path available.
  *
  * Every row is a real provider row from the database. Only VERIFIED nurses are
  * returned by the server (an unvetted person must never be dispatched to a
@@ -35,11 +34,17 @@ import type { Doctor } from "@/lib/types/domain";
 export default function PatientNursesPage() {
   const nurses = useNurses();
   const { patient } = useCurrentPatient();
-  const actions = useActions();
-  const toast = useToast();
   const router = useRouter();
   const [service, setService] = useState<NurseService | null>(null);
-  const [booking, setBooking] = useState<string | null>(null);
+  const [selectedNurse, setSelectedNurse] = useState<string | null>(null);
+
+  // The symptom checker deep-links here with ?service=wound_dressing when a
+  // complaint is nurse-scope. Read via window (not useSearchParams) so the
+  // page needs no Suspense boundary.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("service");
+    if (raw && NURSE_SERVICES.some((s) => s.id === raw)) setService(raw as NurseService);
+  }, []);
 
   // Memoised so the sort below doesn't see a new object identity every render.
   const here = useMemo(
@@ -60,54 +65,10 @@ export default function PatientNursesPage() {
     );
   }, [nurses, service, here]);
 
-  async function book(nurse: Doctor) {
-    if (!patient) return;
-    if (!here) {
-      toast.push({
-        tone: "error",
-        title: "Set your location first",
-        desc: "A home visit needs somewhere to go. Add your address on your account page.",
-      });
-      return;
-    }
-    setBooking(nurse.id);
-    try {
-      await actions.createRequest({
-        patientId: patient.id,
-        patientName: patient.name,
-        type: "home_visit",
-        mode: "emergency",
-        doctorId: nurse.id,
-        targetCadre: "nurse",
-        symptoms: service
-          ? NURSE_SERVICES.find((s) => s.id === service)!.label
-          : "Home nursing visit",
-        fee: nurse.homeVisitFee,
-        // Full address, for the same reason as the emergency path: the nurse
-        // has to reach a door, not a suburb.
-        address: patient.addressFull || patient.address || "",
-        lat: here.lat,
-        lng: here.lng,
-      });
-      toast.push({
-        tone: "success",
-        title: "Request sent",
-        desc: `${nurse.fullName} will confirm shortly.`,
-      });
-      router.push("/patient");
-    } catch (e) {
-      toast.push({
-        tone: "error",
-        title: "Could not send the request",
-        desc: e instanceof Error ? e.message : "Please try again.",
-      });
-    } finally {
-      setBooking(null);
-    }
-  }
-
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
+    // Nurse surfaces run blue: the accent vars recolour every themed class
+    // (chips, prices, CTAs) inside without per-element edits.
+    <main style={NURSE_ACCENT_VARS} className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
       <Link
         href="/patient"
         className="text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -239,13 +200,20 @@ export default function PatientNursesPage() {
                     ))}
                   </div>
                   <button
-                    onClick={() => book(n)}
-                    disabled={booking === n.id || !patient}
+                    onClick={() => setSelectedNurse(selectedNurse === n.id ? null : n.id)}
+                    disabled={!patient}
                     className="rounded-full bg-terracotta px-4 py-2.5 text-sm font-semibold text-on-accent disabled:opacity-50"
                   >
-                    {booking === n.id ? "Sending…" : "Book a visit"}
+                    {selectedNurse === n.id ? "Close booking" : "Book a visit"}
                   </button>
                 </div>
+                {selectedNurse === n.id && patient && here && (
+                  <NurseEngagePanel
+                    nurse={n}
+                    patient={{ ...patient, lat: here.lat, lng: here.lng }}
+                    onDone={() => router.push("/patient")}
+                  />
+                )}
               </article>
             );
           })

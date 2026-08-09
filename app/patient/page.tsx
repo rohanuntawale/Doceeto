@@ -35,6 +35,7 @@ import { weeklyCareActivity } from "@/lib/health/metrics";
 import { realHealthScore } from "@/lib/health/score";
 import { bmiBand, bmiOf } from "@/lib/health/profile";
 import { BmiAdvisor } from "@/components/patient/bmi-advisor";
+import { NurseCareSection } from "@/components/patient/nurse-care-section";
 import { cn } from "@/lib/utils/cn";
 import { useT } from "@/lib/i18n";
 
@@ -265,6 +266,8 @@ export default function PatientHome() {
           <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
         )}
       </div>
+
+      <NurseCareSection patient={patient} />
 
       {/* Care activity + health score + goals */}
       <div className="lg:col-span-4">

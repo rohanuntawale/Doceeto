@@ -5,6 +5,7 @@
  * Pure and dependency-free (types only), so it is safe on the client and the
  * server — same contract as lib/gigs/rules.ts.
  */
+import type { CSSProperties } from "react";
 import type { Cadre, Doctor } from "@/lib/types/domain";
 
 export type NurseService =
@@ -73,6 +74,20 @@ export const NURSE_TITLES = [
   "Post-Operative Care Nurse",
   "Critical Care Nurse",
 ] as const;
+
+/**
+ * The nurse-blue accent, as RGB-triplet CSS variable overrides. The whole app
+ * colours itself off --c-terracotta/--c-salmon (see tailwind.config.ts), so
+ * setting these on any wrapper turns every themed class inside it blue —
+ * shared components (GigList, the gig cockpit) recolour without forks. Apply
+ * via `style={NURSE_ACCENT_VARS}` on a surface root.
+ */
+export const NURSE_ACCENT_VARS = {
+  "--c-terracotta": "47 123 196" /* #2F7BC4 — calm clinical blue */,
+  "--c-terracotta-700": "37 95 153" /* #255F99 — pressed */,
+  "--c-terracotta-300": "191 217 242" /* #BFD9F2 — light tint */,
+  "--c-salmon": "127 179 227" /* #7FB3E3 — secondary */,
+} as CSSProperties;
 
 export const isProviderRole = (role: string | null | undefined) => role === "doctor" || role === "nurse";
 export const isDoctorRole = (role: string | null | undefined) => role === "doctor";

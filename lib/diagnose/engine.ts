@@ -123,6 +123,16 @@ export interface DConclusion {
   /** Extra specialties the advice recommends that no cause covers, so the UI
    *  can still offer a booking button for them. */
   alsoSee?: Specialty[];
+  /**
+   * Set ONLY when the complaint is hands-on nursing work (dressing a wound,
+   * a prescribed injection, vitals collection, elder/bedridden care) — one of
+   * the NURSE_SERVICES ids. A doctor stays the primary recommendation; this
+   * adds a "a nurse can do this at home" path beside it. Never set for
+   * anything that needs diagnosis.
+   */
+  nurseService?: string;
+  /** One personalised sentence on why a nurse fits, shown on the nurse card. */
+  nurseWhy?: string;
 }
 
 export type DStep =

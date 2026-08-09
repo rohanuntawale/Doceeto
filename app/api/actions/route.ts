@@ -401,16 +401,23 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["doctors"]);
       }
       case "setAvailability": {
-        if (role !== "doctor") return needs("doctors");
+        // Both cadres run the same calendar: nurses take scheduled home visits
+        // exactly as doctors take appointments.
+        if (!isProvider(role)) return needs("providers");
         // normalizeAvailability is the same function the slot grid is built
         // from, so anything it lets through is guaranteed bookable.
         await repo.setDoctorAvailability(me, normalizeAvailability(payload.availability));
         return done({ ok: true }, ["doctors"]);
       }
 
-      // ── Gig listings (a doctor's own shelf) ──
+      // ── Gig listings (a provider's own shelf — both cadres) ──
+      // Gigs are the PRIMARY way patients engage a provider; appointments are
+      // the fallback. That holds for nurses exactly as for doctors, so every
+      // gate below is cadre-blind. The repo scopes each write to `me`, and the
+      // verification rule stays where it belongs: an unverified nurse's gigs
+      // are simply never shown to patients (see /api/data).
       case "createGig": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const offline = await blockedWhenOffline(OFFLINE_PUBLISH);
         if (offline) return offline;
         // Belt and braces: doctors who were online before the photo rule
@@ -438,7 +445,7 @@ export async function POST(req: Request) {
         );
       }
       case "updateGig": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const patch = sanitizeGigPatch(payload.patch);
         if (Object.keys(patch).length === 0) return bad("Nothing to update.");
         // Editing a paused listing while offline is fine — it isn't on show.
@@ -454,7 +461,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["gigs"]);
       }
       case "setGigStatus": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         const status = String(payload.status ?? "");
         if (!GIG_STATUSES.has(status)) return bad("Unknown gig status.");
         // Pausing and archiving stay open while offline; only going live is
@@ -469,7 +476,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, ["gigs"]);
       }
       case "deleteGig": {
-        if (role !== "doctor") return needs("doctors");
+        if (!isProvider(role)) return needs("providers");
         // The repo re-checks ownership and refuses while a hire is waiting.
         await repo.deleteGig(String(payload.id), me);
         return done({ ok: true }, ["gigs"]);

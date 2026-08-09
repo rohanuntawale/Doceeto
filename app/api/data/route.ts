@@ -172,20 +172,27 @@ export async function GET(req: Request) {
         // only ever sees what is actually hireable: active listings from a
         // doctor who is NOT already committed to a gig. Accepting a hire pulls
         // the whole shelf until it's completed — one gig at a time.
-        if (role === "doctor" && !forDoctor)
+        // Either cadre managing their own shelf needs paused/archived rows too.
+        if (isProvider(role) && !forDoctor)
           return NextResponse.json(gigs.filter((g) => g.doctorId === me));
         const active = gigs.filter((g) => g.status === "active");
         const [requests, doctors] = await Promise.all([
           repo.getRequests(),
           repo.getDoctors(),
         ]);
-        // An offline doctor's shelf goes offline with them — going offline
-        // takes the doctor off the platform as a whole, gigs included.
-        const offline = new Set(
-          doctors.filter((d) => d.status === "offline").map((d) => d.id),
+        // An offline provider's shelf goes offline with them, and an
+        // UNVERIFIED nurse's shelf is never shown at all — same rule that
+        // keeps the nurse herself out of patient search (nobody unvetted is
+        // dispatched to a home, via gig or otherwise).
+        const hidden = new Set(
+          doctors
+            .filter(
+              (d) => d.status === "offline" || (cadreOf(d) === "nurse" && !d.verified),
+            )
+            .map((d) => d.id),
         );
         return NextResponse.json(
-          active.filter((g) => !offline.has(g.doctorId) && !isOnGig(requests, g.doctorId)),
+          active.filter((g) => !hidden.has(g.doctorId) && !isOnGig(requests, g.doctorId)),
         );
       }
 

@@ -10,6 +10,7 @@ import {
   type HealthProfile,
 } from "@/lib/health/profile";
 import { idrsOf } from "@/lib/health/score";
+import { NURSE_SERVICES } from "@/lib/nurse";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,6 +142,19 @@ Conclusion rules — the differential is the point:
   NOT "cobalamin deficiency". If a technical term is unavoidable, put the plain phrase first.
 - If "advice" recommends another kind of doctor beyond the causes (e.g. suggesting a Gynecologist for heavy
   bleeding), spell that specialty EXACTLY as it appears in the list — the app turns it into a booking button.
+
+NURSE ROUTING — a strict, narrow rule. The app also has home-visit nurses, but they do practical
+hands-on care ONLY. Add "nurseService" to a conclusion ONLY when what the patient needs is one of
+these tasks, spelled exactly:
+- "wound_dressing"            → cleaning/dressing a minor cut, scratch, wound, or post-surgery dressing changes
+- "injection_iv"              → giving an injection or IV a doctor has ALREADY prescribed
+- "vitals_sample_collection"  → measuring BP/sugar/vitals or collecting a lab sample at home
+- "elderly_bedridden"         → day-to-day care of an elderly or bedridden person
+When you set it, also set "nurseWhy": one warm sentence on why a home nurse fits this, personalised.
+NEVER set nurseService when the problem needs diagnosing — fever, pain of unknown cause, infection,
+chest/breathing trouble, anything urgent or emergency. Nurses do not diagnose or prescribe. When in
+doubt, leave it out. "specialty" must STILL name the right doctor either way — for a simple wound
+that's usually "General Physician"; the nurse is an ADDITIONAL practical option, never a replacement.
 - Causes should span DIFFERENT specialties when the symptom genuinely could sit with more than one. Bone pain
   can be orthopaedic OR a nerve problem; chest tightness can be cardiac OR reflux. Show that.
 - Include a cheap, common, easily-missed cause where relevant (low haemoglobin, thyroid, vitamin D or B12
@@ -156,7 +170,7 @@ Conclusion rules — the differential is the point:
 
 Respond with STRICT JSON only, no prose and no markdown fences, in ONE of these two shapes:
 {"kind":"question","id":"<slug>","prompt":"<question>","hint":"<optional short hint>","options":[{"value":"<slug>","label":"<short>","emoji":"<optional>"}]}
-{"kind":"conclusion","summary":"<one or two sentences>","causes":[{"name":"<possibility>","likelihood":"likely|possible|less-likely","why":"<one sentence>","specialty":"<one of the list>"}],"specialty":"<same as first cause>","alt":"<optional second>","urgency":"routine|urgent|emergency","emergency":false,"advice":"<one or two sentences>"}`;
+{"kind":"conclusion","summary":"<one or two sentences>","causes":[{"name":"<possibility>","likelihood":"likely|possible|less-likely","why":"<one sentence>","specialty":"<one of the list>"}],"specialty":"<same as first cause>","alt":"<optional second>","urgency":"routine|urgent|emergency","emergency":false,"advice":"<one or two sentences>","nurseService":"<optional, one of wound_dressing|injection_iv|vitals_sample_collection|elderly_bedridden>","nurseWhy":"<required when nurseService is set>"}`;
 
 interface Body {
   seed?: string;
@@ -362,6 +376,25 @@ export async function POST(req: Request) {
       if (!Array.isArray(s.conditions) || s.conditions.length === 0)
         s.conditions = causes.map((c) => c.name);
       if (s.emergency === true) s.urgency = "emergency";
+      // Nurse routing is enforced HERE, not just in the prompt: only known
+      // service ids pass, never on urgent/emergency conclusions (a nurse is
+      // not an escalation path), and the card text must exist. Anything else
+      // the model invents is dropped.
+      const nurseService = typeof s.nurseService === "string" ? s.nurseService : "";
+      if (
+        NURSE_SERVICES.some((x) => x.id === nurseService) &&
+        s.urgency === "routine" &&
+        s.emergency !== true
+      ) {
+        s.nurseService = nurseService;
+        s.nurseWhy =
+          typeof s.nurseWhy === "string" && s.nurseWhy.trim()
+            ? s.nurseWhy.trim().slice(0, 240)
+            : "A home-visit nurse can take care of this at your place.";
+      } else {
+        delete s.nurseService;
+        delete s.nurseWhy;
+      }
     }
     // `data.model` is what actually served it (may be a fallback, not `model`).
     // `personalised` lets the UI say the answer used their health record.

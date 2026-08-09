@@ -136,6 +136,8 @@ function fromAiStep(s: Record<string, unknown>): DStep {
     alsoSee: (Array.isArray(s.alsoSee)
       ? (s.alsoSee as string[])
       : []) as DConclusion["alsoSee"],
+    nurseService: typeof s.nurseService === "string" ? s.nurseService : undefined,
+    nurseWhy: typeof s.nurseWhy === "string" ? s.nurseWhy : undefined,
     advice: String(
       s.advice ??
         "A doctor is a good fit for this. Book whenever you're ready.",
@@ -926,6 +928,8 @@ function ResultCard({
     summary,
     causes,
     alsoSee,
+    nurseService,
+    nurseWhy,
   } = conclusion;
   // Sessions saved before the differential existed replay from localStorage
   // with no `causes` — those fall back to the old condition chips.
@@ -1017,6 +1021,29 @@ function ResultCard({
       )}
 
       <p className="mt-3 text-sm text-[var(--text-muted)]">{advice}</p>
+
+      {/* Nurse path — only when the server confirmed this is hands-on nursing
+          work (wound dressing, prescribed injections, vitals, elder care).
+          Blue on purpose: nurse surfaces carry the blue accent app-wide. */}
+      {nurseService && (
+        <div className="mt-3 rounded-2xl border border-[#2F7BC4]/35 bg-[#2F7BC4]/[0.08] p-3">
+          <p className="flex items-start gap-2 text-sm text-cream">
+            <HeartPulse className="mt-0.5 h-4 w-4 shrink-0 text-[#8CC1E8]" />
+            <span>
+              <span className="font-semibold text-[#8CC1E8]">
+                A home nurse can do this at your place.
+              </span>{" "}
+              {nurseWhy}
+            </span>
+          </p>
+          <Link
+            href={`/patient/nurses?service=${encodeURIComponent(nurseService)}`}
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F7BC4] py-2.5 text-sm font-semibold text-white"
+          >
+            Find a nurse <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
 
       {differential.length === 0 && (
         <div className="mt-3">
