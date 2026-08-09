@@ -4,6 +4,7 @@ import { setSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 import { emitChange } from "@/lib/server/events";
+import { NURSE_SERVICES } from "@/lib/nurse";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,41 @@ export async function POST(req: Request) {
       await setSession({ id: user.id, role: "doctor", name: user.name });
       emitChange(["doctors"]); // patients' maps pick the new doctor up live
       return NextResponse.json({ ok: true, role: "doctor", doctor });
+    }
+
+    if (body.role === "nurse") {
+      // Same shape as the doctor branch above: the onboarding form's fields are
+      // capped here with the same limits the profile editor uses, so both paths
+      // agree. Skills are allowlisted against NURSE_SERVICES — a hand-rolled
+      // POST cannot invent a capability that patients would then filter on.
+      const age = Math.round(Number(body.age));
+      const languages = Array.isArray(body.languages)
+        ? body.languages.map((x: unknown) => String(x).trim()).filter(Boolean).slice(0, 6)
+        : undefined;
+      const allowedSkills = new Set<string>(NURSE_SERVICES.map((s) => s.id));
+      const skills = Array.isArray(body.skills)
+        ? body.skills.map((x: unknown) => String(x)).filter((x: string) => allowedSkills.has(x)).slice(0, 8)
+        : [];
+      const { user, doctor } = await db.createNurseUser({
+        email,
+        passwordHash,
+        fullName: String(body.fullName ?? "Nurse"),
+        title: String(body.title ?? "").trim().slice(0, 60) || undefined,
+        qualifications: String(body.qualifications ?? "").trim().slice(0, 200) || undefined,
+        registrationNo: String(body.registrationNo ?? "").trim().slice(0, 60) || undefined,
+        gender: body.gender === "male" ? "male" : "female",
+        age: age >= 18 && age <= 100 ? age : undefined,
+        experienceYears: Math.max(0, Math.min(70, Number(body.experienceYears) || 0)),
+        languages: languages?.length ? languages : undefined,
+        skills,
+        about: String(body.about ?? "").trim().slice(0, 600) || undefined,
+        homeVisitFee: Number(body.homeVisitFee ?? 600),
+        lat,
+        lng,
+      });
+      await setSession({ id: user.id, role: "nurse", name: user.name });
+      emitChange(["doctors"]); // the nurse roster and maps pick them up live
+      return NextResponse.json({ ok: true, role: "nurse", nurse: doctor });
     }
 
     const user = await db.createPatientUser({

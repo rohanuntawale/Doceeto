@@ -1,14 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { PrescriptionComposer } from "@/components/prescription/prescription-composer";
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { StarInput } from "@/components/ui/star-rating";
 import { useToast } from "@/components/ui/toast";
-import { useConsultRequests, useActions } from "@/lib/hooks/data";
+import { useConsultRequests, useActions, usePrescriptions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { consultStatusOf, consultTypeOf } from "@/lib/labels";
 import { formatINR, timeAgo } from "@/lib/utils/format";
@@ -22,6 +25,12 @@ export default function ConsultsPage() {
   const actions = useActions();
   const toast = useToast();
   const mounted = useMounted();
+  const prescriptions = usePrescriptions();
+  const [prescribingFor, setPrescribingFor] = useState<string | null>(null);
+
+  /** The prescription issued for a consult, if there is one. */
+  const rxFor = (requestId: string) =>
+    prescriptions.find((rx) => rx.requestId === requestId);
 
   const mine = requests
     .filter(
@@ -78,16 +87,32 @@ export default function ConsultsPage() {
                   </div>
                   <StatusPill tone={st.tone}>{st.label}</StatusPill>
                   {r.status === "accepted" && (
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      onClick={() => {
-                        actions.completeRequest(r.id);
-                        toast.push({ tone: "success", title: "Consult completed" });
-                      }}
-                    >
-                      Complete
+                    <Button size="sm" variant="subtle" onClick={() => setPrescribingFor(r.id)}>
+                      Finish consult
                     </Button>
+                  )}
+                  {/* A prescription is part of the record of a consult, so it
+                      belongs on the consult row. Issuing after the fact is
+                      allowed — a doctor who closed the visit and then
+                      remembered the antibiotic should not have to reopen
+                      anything to send it. */}
+                  {r.status === "completed" && (
+                    <div className="flex w-full justify-end sm:w-auto">
+                      {rxFor(r.id) ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 font-mono text-[10px] tracking-wider text-[var(--text-muted)]">
+                          <FileText className="h-3 w-3 text-status-ok" />
+                          {rxFor(r.id)!.code}
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPrescribingFor(r.id)}
+                        >
+                          <FileText className="h-3.5 w-3.5" /> Write prescription
+                        </Button>
+                      )}
+                    </div>
                   )}
                   {r.status === "completed" && (
                     <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
@@ -121,6 +146,14 @@ export default function ConsultsPage() {
             })}
           </div>
         </Card>
+      )}
+
+      {prescribingFor && (
+        <PrescriptionComposer
+          request={mine.find((r) => r.id === prescribingFor)!}
+          open
+          onClose={() => setPrescribingFor(null)}
+        />
       )}
     </>
   );

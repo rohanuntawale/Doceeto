@@ -463,3 +463,89 @@ body::after {
 .map-chip-overlay .leaflet-top {
   top: 3.5rem;
 }
+
+/* ── Printing a prescription ──────────────────────────────────
+   "Save as PDF" on every surface that shows a prescription goes through the
+   browser's own print pipeline — there is no PDF library in this app, and the
+   print dialog is what every desktop and phone already offers. So the printed
+   page has to be a first-class output, not an accident of the screen layout.
+
+   Three things happen here:
+     1. Everything except the .rx-sheet document is hidden — the dock, the
+        headers, the share buttons (.no-print), the app shell. A prescription
+        printed with a navigation bar across it does not look like a document.
+     2. The brand tokens are remapped to ink on paper for the duration of the
+        print, so a patient on any theme — including the dark ones — gets a
+        black-on-white sheet a chemist can read, rather than a page of toner.
+        Everything resolves through these variables, so this is the whole job.
+     3. The sheet is lifted out of the flow and given the full page width.
+   ──────────────────────────────────────────────────────────── */
+@media print {
+  /* Ink on paper, whatever theme the screen was using. */
+  :root,
+  [data-theme] {
+    --c-espresso: 255 255 255;
+    --c-espresso-800: 255 255 255;
+    --c-espresso-700: 255 255 255;
+    --c-espresso-600: 200 200 200;
+    --c-cream: 17 17 17;
+    --c-sand: 82 82 82;
+    --c-ink: 17 17 17;
+    --c-tan: 122 92 32;
+    --c-terracotta: 154 62 24;
+    --c-terracotta-700: 132 52 20;
+    --c-on-accent: 255 255 255;
+    --c-status-critical: 168 40 40;
+    --c-status-ok: 40 110 60;
+    --surface: #ffffff;
+    --border: rgb(0 0 0 / 0.22);
+    --text: #111111;
+    --text-muted: #525252;
+    --text-faint: #6b6b6b;
+    --elev-shadow: none;
+    --elev-shadow-strong: none;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Hide the app, keep the document. visibility (not display) so the sheet's
+     own ancestors stay in the layout and it can still be positioned. */
+  body * {
+    visibility: hidden;
+  }
+  .rx-sheet,
+  .rx-sheet * {
+    visibility: visible;
+  }
+
+  /* Controls are never part of the document, even inside it. */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  .rx-sheet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  /* Keep a medicine and its dose ledger together — a course split across a
+     page break is exactly the line someone will misread. */
+  .rx-sheet li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

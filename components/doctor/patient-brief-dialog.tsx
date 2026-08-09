@@ -60,6 +60,7 @@ export function PatientBriefDialog({
   onClose: () => void;
 }) {
   const [brief, setBrief] = useState<Brief | null>(null);
+  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -72,6 +73,7 @@ export function PatientBriefDialog({
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body.error ?? "Couldn't load the patient's details.");
         setBrief(body.brief);
+        setPreview(Boolean(body.preview));
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Couldn't load the patient's details."))
       .finally(() => setLoading(false));
@@ -87,6 +89,15 @@ export function PatientBriefDialog({
         <h2 className="flex items-center gap-2 text-lg font-semibold text-cream">
           <HeartPulse className="h-5 w-5 text-salmon" /> Patient details
         </h2>
+
+        {/* Says plainly that this is the pre-accept view, so nothing reads as
+            missing data when it is simply withheld until the visit is taken. */}
+        {preview && !loading && (
+          <p className="mt-2 rounded-lg border border-tan/30 bg-tan/10 px-3 py-2 text-xs leading-relaxed text-tan">
+            Medical history only. The address and emergency contact appear once you
+            accept the visit.
+          </p>
+        )}
 
         {loading && (
           <div className="grid place-items-center py-10 text-[var(--text-muted)]">

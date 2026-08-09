@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -145,47 +146,154 @@ export function GaugeCard({
 
 /* ── Weekly activity bars ── */
 
+/** Long-form day names, so a selected bar reads as a day rather than a letter. */
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/**
+ * A week of daily figures.
+ *
+ * Tapping a bar answers "what did I make on Thursday?" in place, which is the
+ * question the chart provokes and previously could not answer. After three
+ * taps it hands over to the wallet — by then the person is clearly auditing
+ * their money, and a seven-bar sparkline is the wrong tool for that. The hint
+ * appears before the jump, so the navigation is offered rather than sprung.
+ *
+ * `href` is optional: without it the card stays a read-only chart, which is
+ * what the patient dashboard wants.
+ */
 export function ActivityCard({
   title,
   caption,
   data,
   labels = ["S", "M", "T", "W", "T", "F", "S"],
   trend,
+  href,
+  formatValue = (n: number) => String(n),
+  dayNames = DAY_NAMES,
 }: {
   title: string;
   caption: string;
   data: number[];
   labels?: string[];
   trend?: number;
+  /** Where a third tap leads. Omit to keep the chart non-interactive. */
+  href?: string;
+  /** Renders the selected day's figure (e.g. as rupees). */
+  formatValue?: (n: number) => string;
+  dayNames?: string[];
 }) {
+  const router = useRouter();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [taps, setTaps] = useState(0);
+
   const max = Math.max(1, ...data);
   const peak = data.indexOf(max);
+  const interactive = Boolean(href);
+  // Two taps in, say what the third one does. Springing a navigation on
+  // someone without warning is how a chart starts feeling broken.
+  const hintNext = interactive && taps === 2;
+
+  function onPick(i: number) {
+    if (!interactive) return;
+    setSelected((prev) => (prev === i ? null : i));
+    const next = taps + 1;
+    setTaps(next);
+    if (next >= 3 && href) router.push(href);
+  }
+
   return (
-    <section className="fh-card relative flex h-full flex-col overflow-hidden rounded-3xl p-5">
+    <section className="fh-card relative flex h-full flex-col overflow-hidden rounded-3xl p-4 sm:p-5">
       <div className="pattern-dots pointer-events-none absolute inset-0" aria-hidden />
-      <div className="relative flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-cream">
-          <TrendingUp className="h-4 w-4 text-[rgb(var(--c-salmon))]" /> {title}
+      <div className="relative flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-cream">
+          <TrendingUp className="h-4 w-4 shrink-0 text-[rgb(var(--c-salmon))]" />
+          <span className="truncate">{title}</span>
         </h3>
         {trend !== undefined && <TrendBadge value={trend} />}
       </div>
-      <p className="relative mt-0.5 text-xs text-[var(--text-muted)]">{caption}</p>
-      <div className="relative mt-4 flex flex-1 items-end justify-between gap-2">
-        {data.map((v, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center gap-2">
-            <div className="flex h-24 w-full items-end">
-              <div
+
+      {/* The caption doubles as the readout: with a day selected it answers
+          that day, otherwise it describes the series. One line, one job. */}
+      <p className="relative mt-0.5 min-h-[1.25rem] text-xs text-[var(--text-muted)]">
+        {selected !== null ? (
+          <span className="flex flex-wrap items-baseline gap-x-1.5">
+            <span className="font-semibold text-cream">{formatValue(data[selected])}</span>
+            <span>on {dayNames[selected] ?? labels[selected]}</span>
+            <button
+              onClick={() => setSelected(null)}
+              className="text-[rgb(var(--c-salmon))] underline decoration-dotted underline-offset-2"
+            >
+              Show week
+            </button>
+          </span>
+        ) : (
+          caption
+        )}
+      </p>
+
+      <div className="relative mt-4 flex flex-1 items-end justify-between gap-1 sm:gap-2">
+        {data.map((v, i) => {
+          const on = selected === i;
+          // With nothing selected the peak is highlighted; once a day is
+          // picked, only that day is — two highlights would compete.
+          const lit = selected === null ? i === peak : on;
+          const Bar = (
+            <>
+              <div className="flex h-20 w-full items-end sm:h-24">
+                <div
+                  className={cn(
+                    "mx-auto w-full max-w-[1.75rem] rounded-full transition-all duration-200",
+                    lit
+                      ? "bg-[rgb(var(--c-terracotta))]"
+                      : "bg-[rgb(var(--c-espresso-600))]",
+                    interactive && !lit && "group-hover:bg-[rgb(var(--c-espresso-500))]",
+                  )}
+                  style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
+                />
+              </div>
+              <span
                 className={cn(
-                  "w-full rounded-full",
-                  i === peak ? "bg-[rgb(var(--c-terracotta))]" : "bg-[rgb(var(--c-espresso-600))]",
+                  "text-[10px] transition-colors",
+                  on ? "font-semibold text-cream" : "text-[var(--text-faint)]",
                 )}
-                style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
-              />
+              >
+                {labels[i]}
+              </span>
+            </>
+          );
+
+          return interactive ? (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onPick(i)}
+              aria-pressed={on}
+              aria-label={`${dayNames[i] ?? labels[i]}: ${formatValue(v)}`}
+              className="group flex flex-1 flex-col items-center gap-2 rounded-lg py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--c-terracotta))]"
+            >
+              {Bar}
+            </button>
+          ) : (
+            <div key={i} className="flex flex-1 flex-col items-center gap-2 py-1">
+              {Bar}
             </div>
-            <span className="text-[10px] text-[var(--text-faint)]">{labels[i]}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {hintNext && (
+        <p className="relative mt-2 text-center text-[10px] text-[var(--text-faint)]">
+          Tap once more to open your wallet
+        </p>
+      )}
     </section>
   );
 }

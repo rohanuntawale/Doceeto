@@ -43,17 +43,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid coordinates." }, { status: 400 });
   }
 
-  const address = await reverseGeocode(latN, lngN);
+  const resolved = await reverseGeocode(latN, lngN);
 
   let saved = false;
   if (session?.role === "patient") {
     await db.setPatientLocation(session.userId, {
       lat: latN,
       lng: lngN,
-      address: address ?? undefined,
+      address: resolved.short ?? undefined,
+      addressFull: resolved.full ?? undefined,
     });
     saved = true;
   }
 
-  return NextResponse.json({ address, saved });
+  // `address` stays the short label the header already renders; `addressFull`
+  // is what a provider needs to reach the door.
+  return NextResponse.json({
+    address: resolved.short,
+    addressFull: resolved.full,
+    saved,
+  });
 }

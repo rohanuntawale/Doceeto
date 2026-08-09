@@ -105,8 +105,13 @@ export default function CareNowPage() {
         type,
         fee: budget,
         symptoms: symptoms.trim() || "Needs to be seen now.",
+        // The FULL address travels on the booking — the doctor has to find a
+        // door, and the short header label ("Sadar, Nagpur") cannot get them
+        // there. Falls back to the label, then to a placeholder.
         address:
-          type === "home_visit" ? patient.address || "Your address" : "To be confirmed",
+          type === "home_visit"
+            ? patient.addressFull || patient.address || "Your address"
+            : "To be confirmed",
         lat: patient.lat,
         lng: patient.lng,
       });

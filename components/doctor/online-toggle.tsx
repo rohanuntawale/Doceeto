@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
+import { isNurse } from "@/lib/nurse";
 import type { Doctor } from "@/lib/types/domain";
 
 export function OnlineToggle({
@@ -30,14 +31,16 @@ export function OnlineToggle({
     const next = online ? "offline" : "online";
 
     // No photo, no roster (live mode; the server enforces it regardless).
-    // Caught here so the doctor lands on the fix, not just an error.
+    // Caught here so the provider lands on the fix, not just an error. The
+    // destination follows the cadre — sending a nurse to /doctor/profile would
+    // bounce her off the surface guard instead of onto the form she needs.
     if (next === "online" && !isDemoMode && !doctor.avatarUrl) {
       toast.push({
         tone: "error",
         title: "Add a profile photo first",
         desc: "Patients need to see who's treating them. Add one on your profile page.",
       });
-      router.push("/doctor/profile");
+      router.push(isNurse(doctor) ? "/nurse/profile" : "/doctor/profile");
       return;
     }
 
@@ -70,12 +73,21 @@ export function OnlineToggle({
       className={cn(
         "flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--c-terracotta))]",
-        online ? "bg-terracotta" : "bg-white/10",
+        // The OFF state must survive every theme. bg-white/10 vanished on the
+        // light cream shell — a white track on a white card, which is exactly
+        // what every NEW provider saw first (accounts start offline). The iOS
+        // switch-off grey reads on light and dark alike, and the inset ring
+        // keeps an edge even where the card behind is the same tone.
+        online
+          ? "bg-terracotta"
+          : "bg-[rgba(120,120,128,0.35)] ring-1 ring-inset ring-black/10",
       )}
     >
       <span
         className={cn(
-          "h-5 w-5 rounded-full bg-on-accent shadow transition-transform duration-200",
+          // Solid white knob with its own ring — never inherits an accent that
+          // could match the track.
+          "h-5 w-5 rounded-full bg-white shadow-md ring-1 ring-black/10 transition-transform duration-200",
           online ? "translate-x-5" : "translate-x-0",
         )}
       />

@@ -38,10 +38,17 @@ import type {
   GigStatus,
   Order,
   OrderStatus,
+  Prescription,
   Review,
   SosEvent,
   Transaction,
 } from "@/lib/types/domain";
+import {
+  newRxCode,
+  newShareToken,
+  sanitizeRxDraft,
+  type RxDraft,
+} from "@/lib/prescriptions/rules";
 
 /** Wallet balance for a doctor = sum of every ledger entry's net. */
 export function walletBalance(txns: Transaction[], doctorId: string): number {
@@ -58,6 +65,8 @@ export interface DemoState {
   orders: Order[];
   reviews: Review[];
   transactions: Transaction[];
+  /** Prescriptions doctors have issued, newest first. */
+  prescriptions: Prescription[];
 }
 
 type Listener = () => void;
@@ -100,6 +109,7 @@ function fresh(): DemoState {
     orders: [],
     reviews: [],
     transactions: [],
+    prescriptions: [],
   };
 }
 
@@ -639,6 +649,49 @@ export const demoStore = {
     commit();
   },
 
+  /**
+   * Doctor issues the prescription that closes a consult.
+   *
+   * Mirrors the server rule exactly — one prescription per consult, and
+   * issuing completes the visit — so the composer behaves identically whether
+   * or not a backend is configured. The demo has no accounts, so the doctor
+   * snapshot comes off the local doctor row.
+   */
+  issuePrescription(requestId: string, draft: RxDraft): Prescription {
+    const s = getState();
+    const req = s.requests.find((r) => r.id === requestId);
+    if (!req) throw new Error("That consult no longer exists.");
+    if (s.prescriptions.some((rx) => rx.requestId === requestId))
+      throw new Error("A prescription has already been issued for this consult.");
+    const clean = sanitizeRxDraft(draft);
+    const doctor = s.doctors.find((d) => d.id === req.doctorId);
+    const rx: Prescription = {
+      id: nextId("rx"),
+      code: newRxCode(),
+      requestId,
+      patientId: req.patientId ?? null,
+      patientName: req.patientName,
+      patientAge: null,
+      patientGender: null,
+      patientAllergies: null,
+      doctorId: req.doctorId ?? "",
+      doctorName: doctor?.fullName ?? "Doceeto doctor",
+      doctorSpecialty: doctor?.specialty ?? "",
+      doctorQualifications: doctor?.qualifications ?? null,
+      doctorRegistrationNo: doctor?.registrationNo ?? null,
+      diagnosis: clean.diagnosis,
+      items: clean.items,
+      advice: clean.advice,
+      followUpDays: clean.followUpDays,
+      issuedAt: new Date().toISOString(),
+      shareToken: newShareToken(),
+    };
+    s.prescriptions = [rx, ...s.prescriptions];
+    commit();
+    if (req.status === "accepted") demoStore.completeRequest(requestId);
+    return rx;
+  },
+
   /** Doctor withdraws their full wallet balance to their bank (instant). */
   requestPayout(doctorId: string) {
     const s = getState();
@@ -731,7 +784,12 @@ function setupClient() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as DemoState;
-      if (parsed && Array.isArray(parsed.doctors)) state = parsed;
+      // Merged over fresh(), not assigned: a payload written before
+      // prescriptions existed would otherwise deserialize with
+      // `prescriptions: undefined` and every read would have to guard. Merging
+      // once here does what bumping STORAGE_KEY used to do, without throwing
+      // away the doctors and bookings someone already created.
+      if (parsed && Array.isArray(parsed.doctors)) state = { ...fresh(), ...parsed };
     }
   } catch {
     /* corrupt payload - fall back to fresh() */

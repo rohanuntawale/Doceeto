@@ -10,7 +10,7 @@ import { labelsIn } from "@/lib/labels";
 import { useT } from "@/lib/i18n";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { useMounted } from "@/lib/hooks/use-mounted";
-import { useConsultRequests, useDoctors, useActions } from "@/lib/hooks/data";
+import { useConsultRequests, useDoctors, useActions, usePrescriptions } from "@/lib/hooks/data";
 import { isScheduled } from "@/lib/scheduling/slots";
 import { formatSlotRange } from "@/lib/scheduling/time";
 import { DoctorAvatar } from "@/components/ui/doctor-avatar";
@@ -95,6 +95,7 @@ function BookingRow({
   const L = labelsIn(t);
   const { cancelRequest } = useActions();
   const [cancelling, setCancelling] = useState(false);
+  const rx = usePrescriptions().find((x) => x.requestId === req.id);
   const st = L.consultStatus(req.status);
   const name = doctor?.fullName ?? "Doceeto doctor";
   const waiting = req.status === "pending";
@@ -199,6 +200,29 @@ function BookingRow({
             {cancelling ? "Cancelling…" : "Cancel booking"}
           </button>
         </div>
+      )}
+
+      {/* The prescription is the thing a patient comes back to a finished
+          consult FOR, so it sits on the consult rather than only in a separate
+          list — one tap from where they remember the visit happening. */}
+      {rx && (
+        <Link
+          href={`/patient/prescriptions/${rx.id}`}
+          className="mt-2.5 flex items-center gap-2.5 rounded-xl border border-terracotta/35 bg-terracotta/10 px-3 py-2.5 transition-colors hover:bg-terracotta/15"
+        >
+          <span className="font-serif text-base leading-none text-terracotta">℞</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-semibold text-terracotta">
+              {t("rx.viewPrescription")}
+            </span>
+            <span className="block truncate text-[11px] text-[var(--text-muted)]">
+              {rx.items.length > 0
+                ? rx.items.map((it) => it.name).join(" · ")
+                : rx.diagnosis || rx.code}
+            </span>
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-terracotta" />
+        </Link>
       )}
 
       {canRate && <RateDoctor req={req} doctorName={doctor?.fullName} />}

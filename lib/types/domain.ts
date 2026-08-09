@@ -6,7 +6,18 @@
  */
 
 /** The roles a session can carry. Matches UserRecord["role"] in lib/db/shared.ts. */
-export type Role = "patient" | "doctor" | "ops";
+export type Role = "patient" | "doctor" | "nurse" | "ops";
+
+/**
+ * Which kind of provider a `Doctor` row describes. The table is a PROVIDER
+ * registry rather than a doctors-only one, so nurses inherit gigs, availability,
+ * trips, the wallet and mutual ratings instead of needing a parallel stack.
+ *
+ * The distinction is a real permission boundary, unlike `DoctorKind`: only a
+ * doctor may prescribe (see canPrescribe in lib/nurse.ts), and patient-facing
+ * doctor search filters on it so a nurse never surfaces as a doctor.
+ */
+export type Cadre = "doctor" | "nurse";
 
 export type DoctorStatus = "online" | "offline" | "busy";
 
@@ -141,6 +152,17 @@ export interface Doctor {
   id: string;
   fullName: string;
   specialty: string;
+  /**
+   * Doctor or nurse. Absent on rows written before nurses existed — read it
+   * through cadreOf() in lib/nurse.ts, which defaults to "doctor", rather than
+   * testing this field raw.
+   */
+  cadre?: Cadre;
+  /**
+   * A nurse's home-care services, as ids from NURSE_SERVICES (lib/nurse.ts).
+   * Empty for doctors, who patients find by specialty instead.
+   */
+  skills?: string[];
   kind: DoctorKind;
   gender: Gender;
   experienceYears: number;
@@ -188,6 +210,14 @@ export interface Doctor {
   gigCount?: number;
   gigFromPrice?: number | null;
 }
+
+/**
+ * A provider of care — a doctor or a nurse. Structurally identical to `Doctor`
+ * because they share one table and one engine; the alias exists so new code can
+ * say what it means without a rename sweep across the repos, which would be
+ * churn for zero behaviour change.
+ */
+export type Provider = Doctor;
 
 /**
  * Everything ops can see about one doctor, assembled server-side in a single
@@ -270,6 +300,13 @@ export interface ConsultRequest {
   /** Which booking path this came from. Rows written before scheduling
    *  existed carry none — read it through bookingModeOf(), never raw. */
   mode?: BookingMode;
+  /**
+   * Which cadre this request is for. A nurse broadcast must never appear in a
+   * doctor's inbox, and `doctorId` cannot say so while it is still unclaimed.
+   * Absent on rows written before nurses existed — read it through cadreOf()
+   * in lib/nurse.ts, which defaults to "doctor".
+   */
+  targetCadre?: Cadre;
   /** The gig that was hired. Null for appointments and broadcasts. */
   gigId?: string | null;
   /** The gig's title at hire time, so later edits don't rewrite history and
@@ -333,6 +370,82 @@ export interface Order {
   darkStore: string;
   etaMins: number;
   createdAt: string; // ISO
+  /**
+   * The prescription this basket was filled from, when the patient ordered
+   * straight off a doctor's Rx rather than browsing the store. Null for a
+   * self-serve order. This is the link that lets fulfilment see what was
+   * prescribed against what was dispensed.
+   */
+  prescriptionId?: string | null;
+}
+
+/** Whether a medicine is taken before food, after food, or it doesn't matter. */
+export type RxTiming = "before_food" | "after_food" | "anytime";
+
+/**
+ * One medicine on a prescription.
+ *
+ * `schedule` is the "1-0-1" notation every Indian prescription is written in —
+ * morning-afternoon-night, one number per day-part. It is stored as the doctor
+ * writes it rather than as a derived doses-per-day count, because it says WHEN,
+ * not just how often, and when is what the patient needs at eight in the
+ * evening. lib/prescriptions/rules.ts owns parsing it.
+ */
+export interface RxItem {
+  /** The drug as written, e.g. "Paracetamol 650mg". */
+  name: string;
+  /** How much per dose, e.g. "1 tablet", "5 ml". */
+  dose: string;
+  /** Morning-afternoon-night, e.g. "1-0-1". */
+  schedule: string;
+  durationDays: number;
+  timing: RxTiming;
+  /** Anything specific to this medicine, e.g. "stop if the rash returns". */
+  notes?: string;
+}
+
+/**
+ * A prescription, issued by a doctor at the end of a consult.
+ *
+ * A SNAPSHOT, deliberately: the doctor's name, credentials and council
+ * registration are copied in at issue time rather than joined on read. This is
+ * a document that gets printed, forwarded and taken to a chemist months later —
+ * it has to keep saying what it said on the day, even if the doctor edits their
+ * profile or leaves the platform.
+ *
+ * Only doctors can produce one (canPrescribe in lib/nurse.ts).
+ */
+export interface Prescription {
+  id: string;
+  /** The short code a patient quotes, e.g. "RX-4KQ9-2NPX". An index, not a key. */
+  code: string;
+  /** The consult it closed. One prescription per request. */
+  requestId: string;
+  patientId: string | null;
+  patientName: string;
+  /** Age and gender at issue — printed on the sheet, as on a paper pad. */
+  patientAge?: number | null;
+  patientGender?: string | null;
+  /** Allergies carried over from the health profile, so a chemist sees them. */
+  patientAllergies?: string | null;
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialty: string;
+  doctorQualifications?: string | null;
+  /** Medical council registration — the line that makes the sheet a document. */
+  doctorRegistrationNo?: string | null;
+  diagnosis: string;
+  items: RxItem[];
+  advice: string;
+  /** Days until the doctor wants to see them again. Null = no follow-up. */
+  followUpDays: number | null;
+  issuedAt: string; // ISO
+  /**
+   * Unguessable segment behind /rx/<token> — how the sheet is shared on
+   * WhatsApp and opened by a chemist. Returned ONLY to the patient it belongs
+   * to and the doctor who wrote it; never in an ops or roster response.
+   */
+  shareToken: string;
 }
 
 export interface Review {

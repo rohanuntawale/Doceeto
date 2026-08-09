@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { getRequestSession } from "@/lib/auth/session";
 import { db as repo, type Near } from "@/lib/db";
-import { hasOngoingConsult, isOnGig, visibleToDoctor } from "@/lib/scheduling/slots";
+import { hasOngoingConsult, isOnGig, visibleToProvider } from "@/lib/scheduling/slots";
 import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
 import { withRealStatus } from "@/lib/presence";
+import { isProvider } from "@/lib/auth/constants";
+import { cadreOf } from "@/lib/nurse";
+import { basketFor } from "@/lib/medicine/fulfilment";
+import { MEDICINE_ENABLED } from "@/lib/config";
+import type { Cadre } from "@/lib/types/domain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,10 +41,17 @@ export async function GET(req: Request) {
   const near = parseNear(params);
   const me = session.userId;
   const role = session.role;
+  /** The caller's own cadre — decides which requests and roster they get. */
+  const myCadre: Cadre = role === "nurse" ? "nurse" : "doctor";
 
   try {
     switch (entity) {
       case "doctors": {
+        // Which roster is being asked for. Patients browse doctors and nurses
+        // on separate screens, so this defaults to doctors and a nurse search
+        // must opt in with ?cadre=nurse — otherwise nurses would silently
+        // appear in every existing doctor list and map.
+        const wantCadre: Cadre = params.get("cadre") === "nurse" ? "nurse" : "doctor";
         const all = await repo.getDoctors(near);
         // Availability that a patient cannot derive themselves (they only ever
         // receive their own requests) is attached here: whether each doctor is
@@ -68,7 +80,12 @@ export async function GET(req: Request) {
             gigFromPrice: gigFromPrice(live),
           };
         });
-        if (role === "ops") return NextResponse.json(decorated);
+        // Cadre split, applied before anything else. The caller's own row is
+        // always kept: a provider's cockpit reads it to render the dashboard
+        // and flip back online, and it must survive whichever roster is asked
+        // for.
+        const ofCadre = decorated.filter((d) => cadreOf(d) === wantCadre || d.id === me);
+        if (role === "ops") return NextResponse.json(ofCadre);
         // Offline means OFF the platform: an offline doctor is not
         // discoverable at all — no pin, no list row, no gig teasers, no
         // profile. Two carve-outs keep existing relationships intact:
@@ -82,8 +99,18 @@ export async function GET(req: Request) {
             : [],
         );
         return NextResponse.json(
-          decorated
+          ofCadre
             .filter((d) => d.status !== "offline" || d.id === me || mine.has(d.id))
+            // An UNVERIFIED nurse is not discoverable. Sending someone into a
+            // home is a different order of trust from a clinic consult, so
+            // ops sign-off is a precondition, not a badge. Enforced here
+            // rather than in the UI: the surface is not the security boundary.
+            // Their own row and any nurse a patient has already engaged still
+            // come through, so neither console nor history breaks.
+            .filter(
+              (d) =>
+                cadreOf(d) !== "nurse" || d.verified || d.id === me || mine.has(d.id),
+            )
             .map((d) => {
               // Stale coordinates never leave the server; a doctor mid-gig
               // has no hireable shelf, so their gig teasers vanish with it.
@@ -145,20 +172,27 @@ export async function GET(req: Request) {
         // only ever sees what is actually hireable: active listings from a
         // doctor who is NOT already committed to a gig. Accepting a hire pulls
         // the whole shelf until it's completed — one gig at a time.
-        if (role === "doctor" && !forDoctor)
+        // Either cadre managing their own shelf needs paused/archived rows too.
+        if (isProvider(role) && !forDoctor)
           return NextResponse.json(gigs.filter((g) => g.doctorId === me));
         const active = gigs.filter((g) => g.status === "active");
         const [requests, doctors] = await Promise.all([
           repo.getRequests(),
           repo.getDoctors(),
         ]);
-        // An offline doctor's shelf goes offline with them — going offline
-        // takes the doctor off the platform as a whole, gigs included.
-        const offline = new Set(
-          doctors.filter((d) => d.status === "offline").map((d) => d.id),
+        // An offline provider's shelf goes offline with them, and an
+        // UNVERIFIED nurse's shelf is never shown at all — same rule that
+        // keeps the nurse herself out of patient search (nobody unvetted is
+        // dispatched to a home, via gig or otherwise).
+        const hidden = new Set(
+          doctors
+            .filter(
+              (d) => d.status === "offline" || (cadreOf(d) === "nurse" && !d.verified),
+            )
+            .map((d) => d.id),
         );
         return NextResponse.json(
-          active.filter((g) => !offline.has(g.doctorId) && !isOnGig(requests, g.doctorId)),
+          active.filter((g) => !hidden.has(g.doctorId) && !isOnGig(requests, g.doctorId)),
         );
       }
 
@@ -175,18 +209,22 @@ export async function GET(req: Request) {
         if (role === "ops") return NextResponse.json(all.map(hideCode));
         if (role === "patient")
           return NextResponse.json(all.filter((r) => r.patientId === me));
-        // doctor: open broadcasts, directed-to-me, requests aimed at a
-        // display-only seed doctor (claimable by any online doctor since
-        // seed rows have no account), and my own accepted/history. While a
-        // consult is in progress, pending emergencies are withheld —
-        // visibleToDoctor() owns that rule for every surface.
+        if (!isProvider(role)) return NextResponse.json([]);
+        // provider: open broadcasts aimed at MY cadre, directed-to-me, requests
+        // aimed at a display-only seed doctor (claimable by any online doctor
+        // since seed rows have no account), and my own accepted/history. While
+        // a consult is in progress, pending emergencies are withheld —
+        // visibleToProvider() owns both that rule and the cadre split for
+        // every surface.
         //
         // `all` is already narrowed by ?near=, which would make "am I busy?"
         // depend on the map radius, so the live consult is looked up over
         // the unfiltered set.
         const busy = hasOngoingConsult(near ? await repo.getRequests() : all, me);
         return NextResponse.json(
-          all.filter((r) => visibleToDoctor(r, { doctorId: me, busy })).map(hideCode),
+          all
+            .filter((r) => visibleToProvider(r, { doctorId: me, busy, cadre: myCadre }))
+            .map(hideCode),
         );
       }
 
@@ -195,6 +233,9 @@ export async function GET(req: Request) {
         if (role === "ops") return NextResponse.json(all);
         if (role === "patient")
           return NextResponse.json(all.filter((s) => s.patientId === me));
+        // Emergency dispatch is doctor work: a nurse cannot answer a cardiac
+        // or trauma alert within their scope, so they are never shown one.
+        if (role !== "doctor") return NextResponse.json([]);
         // doctor: active emergencies they can respond to + their own. Same
         // rule as consults — a doctor mid-visit isn't shown alerts they
         // can't leave for; the ones they already own stay visible.
@@ -216,11 +257,50 @@ export async function GET(req: Request) {
         return NextResponse.json([]); // doctors don't see orders
       }
 
+      /**
+       * Prescriptions. Scoped hard, because this is the one entity that
+       * carries a share token — the credential that opens the document with no
+       * session at all. It reaches exactly two people: the patient it was
+       * written for, and the doctor who wrote it.
+       *
+       * Ops deliberately gets nothing here. An operator has no clinical reason
+       * to read what a patient was prescribed, and handing them a link that
+       * bypasses sign-in would make that worse. Ops sees the consult; the
+       * document belongs to the two people in it.
+       */
+      case "prescriptions": {
+        const all = await repo.getPrescriptions();
+        if (role === "patient")
+          return NextResponse.json(all.filter((rx) => rx.patientId === me));
+        if (isProvider(role))
+          return NextResponse.json(all.filter((rx) => rx.doctorId === me));
+        return NextResponse.json([]);
+      }
+
+      /**
+       * A prescription priced as a deliverable basket.
+       *
+       * ⚠ NO UI YET — medicine ordering is dark for patients (MEDICINE_ENABLED).
+       * This is the read half of the delivery backend, kept alongside the
+       * `orderFromPrescription` write so the flow is complete and reviewable
+       * before anything renders it. Patient-only, and only for their own
+       * prescription.
+       */
+      case "rxBasket": {
+        if (role !== "patient")
+          return NextResponse.json({ error: "Patients only." }, { status: 403 });
+        const rx = await repo.getPrescriptionById(params.get("prescriptionId") ?? "");
+        if (!rx || rx.patientId !== me)
+          return NextResponse.json({ error: "Prescription not found." }, { status: 404 });
+        return NextResponse.json({ ...basketFor(rx), enabled: MEDICINE_ENABLED });
+      }
+
       case "transactions": {
-        // A doctor sees only their own wallet ledger; ops sees all.
+        // A provider sees only their own wallet ledger; ops sees all. Nurses
+        // earn through the same ledger as doctors, so this is cadre-blind.
         const all = await repo.getTransactions();
         if (role === "ops") return NextResponse.json(all);
-        if (role === "doctor")
+        if (isProvider(role))
           return NextResponse.json(all.filter((t) => t.doctorId === me));
         return NextResponse.json([]);
       }

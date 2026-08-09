@@ -123,6 +123,16 @@ export interface DConclusion {
   /** Extra specialties the advice recommends that no cause covers, so the UI
    *  can still offer a booking button for them. */
   alsoSee?: Specialty[];
+  /**
+   * Set ONLY when the complaint is hands-on nursing work (dressing a wound,
+   * a prescribed injection, vitals collection, elder/bedridden care) — one of
+   * the NURSE_SERVICES ids. A doctor stays the primary recommendation; this
+   * adds a "a nurse can do this at home" path beside it. Never set for
+   * anything that needs diagnosis.
+   */
+  nurseService?: string;
+  /** One personalised sentence on why a nurse fits, shown on the nurse card. */
+  nurseWhy?: string;
 }
 
 export type DStep =
@@ -1072,7 +1082,11 @@ function conclude(s: DState, emergency = false): DConclusion {
 /** Loose reverse-map so history conditions can nudge scores. */
 function conditionToSpecialty(c: string): Specialty | null {
   const t = c.toLowerCase();
-  if (/heart|cardiac|palpitation/.test(t)) return "Cardiologist";
+  // Chronic-profile priors: a hypertensive patient's ambiguous chest branch
+  // should lean cardiac; diabetes/thyroid/asthma are GP-managed long-term.
+  if (/heart|cardiac|palpitation|blood pressure|hypertens|cholesterol/.test(t))
+    return "Cardiologist";
+  if (/diabet|sugar|thyroid|asthma|copd/.test(t)) return "General Physician";
   if (/skin/.test(t)) return "Dermatologist";
   if (/bone|joint|muscle/.test(t)) return "Orthopedic";
   if (/migraine|nerve|neuro|seizure|epilep|tremor|numbness|paralys|stroke/.test(t))

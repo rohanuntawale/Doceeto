@@ -13,6 +13,17 @@ import { setSseConnected } from "@/lib/hooks/data";
  * can't connect (serverless, proxy, offline) polling stays at full
  * speed and nothing breaks. Renders nothing.
  */
+/**
+ * One live connection per tab, tracked outside React.
+ *
+ * In development React mounts effects twice, which opened two EventSources and
+ * — worse — let the first one's cleanup set the shared "SSE is connected" flag
+ * to false while the second was still streaming. The read hooks use that flag
+ * to decide their poll interval, so the app quietly fell back to polling while
+ * believing it was live.
+ */
+let connections = 0;
+
 export function RealtimeBridge() {
   const qc = useQueryClient();
 
@@ -24,6 +35,7 @@ export function RealtimeBridge() {
     let es: EventSource | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
+    connections += 1;
 
     const connect = () => {
       if (stopped) return;
@@ -58,7 +70,10 @@ export function RealtimeBridge() {
     connect();
     return () => {
       stopped = true;
-      setSseConnected(false);
+      connections -= 1;
+      // Only the LAST bridge to unmount may declare the app offline. Without
+      // this the dev double-mount immediately marked it disconnected.
+      if (connections <= 0) setSseConnected(false);
       es?.close();
       if (retry) clearTimeout(retry);
     };

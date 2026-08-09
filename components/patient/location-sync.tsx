@@ -63,7 +63,12 @@ export function PatientLocationSync() {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.address) updatePatient({ address: data.address });
+        if (data?.address || data?.addressFull) {
+          updatePatient({
+            ...(data.address ? { address: data.address } : {}),
+            ...(data.addressFull ? { addressFull: data.addressFull } : {}),
+          });
+        }
       })
       .catch(() => {
         // Naming the place is a nicety; the coordinates are already applied.

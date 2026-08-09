@@ -10,6 +10,7 @@ import type {
   Doctor,
   Gig,
   Order,
+  Prescription,
   Review,
   SosEvent,
   Transaction,
@@ -37,10 +38,13 @@ export interface StoredUser extends UserRecord {
   /** Google's `sub` once this account has been linked to a Google identity. */
   googleId?: string;
   avatarUrl?: string;
-  /** Patient health profile (lib/health/profile.ts); absent for doctors/ops. */
+  /** Patient health profile (lib/health/profile.ts); absent for providers. */
   healthProfile?: import("@/lib/health/profile").HealthProfile;
   /** Symptom-checker chat history (lib/care/history.ts); patients only. */
   chatHistory?: import("@/lib/care/history").CheckSession[];
+  /** The postal address a provider navigates to, beside the short label the
+   *  patient's own header shows. Mirrors users.address_full in Postgres. */
+  addressFull?: string;
   /** Aggregate rating this patient received from doctors (mutual ratings). */
   rating?: number;
   ratingCount?: number;
@@ -80,7 +84,8 @@ export interface FileData {
   patientReviews: StoredPatientReview[];
   transactions: Transaction[];
   consults: Record<string, unknown>[];
-  prescriptions: Record<string, unknown>[];
+  /** Issued prescriptions, newest first. Mirrors the Postgres table. */
+  prescriptions: Prescription[];
   audits: Record<string, unknown>[];
   /** Longitudinal vitals log — one row per measurement, never overwritten.
    *  Only weight today; the shape leaves room for BP/glucose later. */
@@ -129,6 +134,7 @@ const g = globalThis as unknown as { __iyashiFileDb?: FileData };
 const TEST_PASSWORD_HASH = "$2b$10$wq6p.lQQ00xR/227k.juJetPb5YH/iQpnl3zXhH0ZQ3PUrt9bJRjy";
 const TEST_DOCTOR_EMAIL = "doctor@gmail.com";
 const TEST_PATIENT_EMAIL = "patient@gmail.com";
+const TEST_NURSE_EMAIL = "nurse@gmail.com";
 
 function ensureTestAccounts(d: FileData): boolean {
   let changed = false;
@@ -161,6 +167,18 @@ function ensureTestAccounts(d: FileData): boolean {
     d.users.push(docUser);
     changed = true;
   }
+  let nurseUser = d.users.find((u) => u.email === TEST_NURSE_EMAIL);
+  if (!nurseUser) {
+    nurseUser = {
+      id: "nurse-test-1",
+      email: TEST_NURSE_EMAIL,
+      passwordHash: TEST_PASSWORD_HASH,
+      role: "nurse",
+      name: "Ananya Sharma",
+    };
+    d.users.push(nurseUser);
+    changed = true;
+  }
   if (!d.doctors.some((x) => x.id === docUser!.id)) {
     d.doctors.push({
       id: docUser.id,
@@ -187,10 +205,39 @@ function ensureTestAccounts(d: FileData): boolean {
     });
     changed = true;
   }
+  // The test nurse needs a PROVIDER row like the test doctor, not just a
+  // login: without one she has no coordinates, no wallet and no inbox, and
+  // the nurse console renders empty.
+  if (!d.doctors.some((x) => x.id === nurseUser!.id)) {
+    d.doctors.push({
+      id: nurseUser.id,
+      fullName: "Ananya Sharma",
+      specialty: "Home Care Nurse",
+      cadre: "nurse",
+      skills: ["wound_dressing", "vitals_sample_collection", "injection_iv"],
+      kind: "practising",
+      gender: "female",
+      age: 29,
+      experienceYears: 6,
+      languages: ["English", "Hindi", "Marathi"],
+      qualifications: "GNM",
+      registrationNo: "MNC-11482",
+      status: "online",
+      verified: true,
+      rating: 0,
+      consultFee: 0,
+      homeVisitFee: 650,
+      avatarColor: "#3E826E",
+      lat: MAP_CENTER.lat - 0.012,
+      lng: MAP_CENTER.lng + 0.008,
+      lastSeen: new Date().toISOString(),
+    });
+    changed = true;
+  }
 
   // Converge the password so "test1234" always works, even if it was
   // changed or the account was created earlier with another hash.
-  for (const u of [patient, docUser]) {
+  for (const u of [patient, docUser, nurseUser]) {
     if (u.passwordHash !== TEST_PASSWORD_HASH) {
       u.passwordHash = TEST_PASSWORD_HASH;
       changed = true;
@@ -209,6 +256,7 @@ export function data(): FileData {
     if (!g.__iyashiFileDb.patientReviews) g.__iyashiFileDb.patientReviews = [];
     if (!g.__iyashiFileDb.transactions) g.__iyashiFileDb.transactions = [];
     if (!g.__iyashiFileDb.gigs) g.__iyashiFileDb.gigs = [];
+    if (!g.__iyashiFileDb.prescriptions) g.__iyashiFileDb.prescriptions = [];
     // Heal a live server whose in-memory copy predates the test accounts.
     if (ensureTestAccounts(g.__iyashiFileDb)) persist();
     return g.__iyashiFileDb;
@@ -218,6 +266,13 @@ export function data(): FileData {
     if (fs.existsSync(FILE)) {
       const parsed = JSON.parse(fs.readFileSync(FILE, "utf8"));
       d = { ...empty(), ...parsed };
+      // An earlier version wrote prescriptions as untyped stubs (no code, no
+      // share token, no doctor snapshot) from inside completeRequest. Those
+      // rows cannot render a sheet and cannot be shared, so they are dropped
+      // rather than surfaced as broken documents.
+      d.prescriptions = (d.prescriptions ?? []).filter(
+        (rx) => rx && typeof rx === "object" && "code" in rx && "shareToken" in rx,
+      );
     }
   } catch {
     /* corrupt file → start empty */

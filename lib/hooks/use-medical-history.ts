@@ -173,12 +173,15 @@ export function recentConditions(limit = 5): string[] {
   return out;
 }
 
+/**
+ * The server snapshot MUST be referentially stable. Returning a fresh `[]` on
+ * every call makes React see a changed store on each render, which it reports
+ * as "getServerSnapshot should be cached to avoid an infinite loop".
+ */
+const NO_SESSIONS: CheckSession[] = [];
+
 export function useMedicalHistory() {
-  const list = useSyncExternalStore(
-    subscribe,
-    () => sessions,
-    () => [] as CheckSession[],
-  );
+  const list = useSyncExternalStore(subscribe, () => sessions, () => NO_SESSIONS);
   const save = useCallback((s: CheckSession) => saveSession(s), []);
   return {
     sessions: list,

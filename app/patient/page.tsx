@@ -11,6 +11,7 @@ import {
   Video,
   Zap,
   Briefcase,
+  HeartPulse,
 } from "lucide-react";
 import { CareStatus } from "@/components/patient/care-status";
 import { LocationChip } from "@/components/patient/location-chip";
@@ -28,12 +29,13 @@ import {
 } from "@/components/dashboard/cards";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useMedicalHistory } from "@/lib/hooks/use-medical-history";
-import { useConsultRequests, useDoctors, useOrders } from "@/lib/hooks/data";
+import { useConsultRequests, useDoctors, useOrders, usePrescriptions } from "@/lib/hooks/data";
 import { MEDICINE_ENABLED } from "@/lib/config";
 import { weeklyCareActivity } from "@/lib/health/metrics";
 import { realHealthScore } from "@/lib/health/score";
 import { bmiBand, bmiOf } from "@/lib/health/profile";
 import { BmiAdvisor } from "@/components/patient/bmi-advisor";
+import { NurseCareSection } from "@/components/patient/nurse-care-section";
 import { cn } from "@/lib/utils/cn";
 import { useT } from "@/lib/i18n";
 
@@ -48,6 +50,10 @@ export default function PatientHome() {
   // bars and the health score below (no decorative numbers).
   const myRequests = useConsultRequests().filter((r) => r.patientId === patient.id);
   const myOrders = useOrders().filter((o) => o.patientId === patient.id);
+  // Newest first from the server, so the first row is the current one.
+  const latestRx = usePrescriptions().filter(
+    (rx) => !rx.patientId || rx.patientId === patient.id,
+  )[0];
 
   // Header stats, all live: the same doctors list the map renders (so the
   // count agrees with what the patient can actually reach), and the checks
@@ -247,16 +253,21 @@ export default function PatientHome() {
         <MapCard patient={patient} />
       </div>
 
-      {/* The three ways to get care, plus medicine. "Care now" broadcasts to
-          whoever is free; "Find a doctor" is where gigs and slots are picked. */}
+      {/* The ways to get care. "Care now" broadcasts to whoever is free;
+          "Find a doctor" is where gigs and slots are picked; "Nurse at home"
+          is the home-care cadre, which is a different job from a consult —
+          dressings, injections, elderly care — so it gets its own door. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-12">
         <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
         <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
+        <CareChip href="/patient/nurses" icon={<HeartPulse className="h-5 w-5" />} label="Nurse at home" color="#3E826E" />
         <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#5E7C8B" />
         {MEDICINE_ENABLED && (
           <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
         )}
       </div>
+
+      <NurseCareSection patient={patient} />
 
       {/* Care activity + health score + goals */}
       <div className="lg:col-span-4">
@@ -351,6 +362,36 @@ export default function PatientHome() {
       <div className="lg:col-span-12">
         <PatientConsultTracker patient={patient} />
       </div>
+
+      {/* The latest prescription. Only once there IS one — an empty card
+          promising future documents would be furniture. The newest is on the
+          dashboard because "what am I meant to be taking?" is a question
+          people come back to the app to answer, not one they browse a list
+          for. */}
+      {latestRx && (
+        <section className="lg:col-span-12">
+          <Link
+            href={`/patient/prescriptions/${latestRx.id}`}
+            className="group flex items-center gap-3.5 rounded-3xl border border-terracotta/30 bg-terracotta/[0.07] p-4 transition-colors hover:bg-terracotta/[0.12] sm:p-5"
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-terracotta/15 font-serif text-xl text-terracotta">
+              ℞
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="label block text-terracotta">{t("rx.latest")}</span>
+              <span className="mt-0.5 block truncate text-sm font-semibold text-cream">
+                {latestRx.items.length > 0
+                  ? latestRx.items.map((it) => it.name).join(" · ")
+                  : latestRx.diagnosis || t("rx.consultationRecord")}
+              </span>
+              <span className="block truncate text-xs text-[var(--text-muted)]">
+                {latestRx.doctorName}
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-terracotta transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </section>
+      )}
 
       {/* Your care today */}
       <section className="lg:col-span-6">

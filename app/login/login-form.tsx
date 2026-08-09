@@ -54,7 +54,7 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
     // from) is honored only when it belongs to that space — otherwise a doctor
     // sent to /patient/... would ping-pong between the guard and this page.
     const home =
-      data.role === "ops" ? "/ops" : data.role === "patient" ? "/patient" : "/doctor";
+      data.role === "ops" ? "/ops" : data.role === "patient" ? "/patient" : data.role === "nurse" ? "/nurse" : "/doctor";
     const dest = next.startsWith(home) ? next : home;
     router.push(dest);
     router.refresh();
@@ -75,13 +75,16 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
           <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center shadow-card">
             <div className="label mb-2">DEMO MODE</div>
             <p className="text-sm text-[var(--text-muted)]">
-              This is demo mode, so login is skipped. Sign in as a doctor or a
+              This is demo mode, so login is skipped. Sign in as a doctor, nurse, or
               patient. Set <span className="font-mono">NEXT_PUBLIC_BACKEND=neo4j</span>{" "}
               with Neo4j credentials to turn on real accounts.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <Button className="flex-1" onClick={() => router.push("/doctor")}>
                 Sign in as Doctor
+              </Button>
+              <Button className="flex-1 bg-[#2d7d66] hover:bg-[#236b58]" onClick={() => router.push("/nurse")}>
+                Sign in as Nurse
               </Button>
               <Button
                 variant="outline"
@@ -118,6 +121,8 @@ function LoginInner({ googleEnabled }: { googleEnabled: boolean }) {
               <p className="mb-4 rounded-lg border border-[var(--border)] bg-espresso px-3 py-2 text-xs text-[var(--text-muted)]">
                 {wantedSurface === "doctor"
                   ? "The doctor cockpit needs a doctor account. Signing in here won't sign you out of the patient app."
+                  : wantedSurface === "nurse"
+                    ? "The nurse workspace needs a nurse account. Signing in here won't sign you out of the patient app."
                   : "The patient app needs a patient account. Signing in here won't sign you out of the doctor cockpit."}
               </p>
             )}

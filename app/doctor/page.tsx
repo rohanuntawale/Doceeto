@@ -33,13 +33,13 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { FaqCard, HistoryCard } from "@/components/dashboard/extras";
 import { NewsCarousel } from "@/components/dashboard/news-carousel";
 import { GaugeCard, ActivityCard, GoalsCard } from "@/components/dashboard/cards";
-import { formatINRCompact } from "@/lib/utils/format";
+import { formatINR, formatINRCompact } from "@/lib/utils/format";
 import {
   activeGigHireOf,
   isScheduled,
   ongoingConsultOf,
   pendingGigHires,
-  visibleToDoctor,
+  visibleToProvider,
 } from "@/lib/scheduling/slots";
 import { activeGigs } from "@/lib/gigs/rules";
 import { cn } from "@/lib/utils/cn";
@@ -82,7 +82,7 @@ export default function DoctorHome() {
       doctorId &&
       r.status === "pending" &&
       !passed.has(r.id) &&
-      visibleToDoctor(r, { doctorId, busy: Boolean(ongoing) }),
+      visibleToProvider(r, { doctorId, busy: Boolean(ongoing) }),
   );
   const myCompleted = requests.filter(
     (r) => r.status === "completed" && r.doctorId === me?.id,
@@ -384,7 +384,14 @@ export default function DoctorHome() {
 
       {/* Earnings + acceptance + setup goals */}
       <div className="lg:col-span-4">
-        <ActivityCard title="Earnings this week" caption="Daily net (₹)" data={earningsWeek} trend={weekTrend} />
+        <ActivityCard
+          title="Earnings this week"
+          caption="Daily net (₹) — tap a day"
+          data={earningsWeek}
+          trend={weekTrend}
+          href="/doctor/earnings"
+          formatValue={formatINR}
+        />
       </div>
       <div className="lg:col-span-4">
         <GaugeCard
