@@ -223,7 +223,7 @@ export default function PatientNursesPage() {
       <div className="mt-6 flex items-start gap-3 rounded-card border border-[var(--border)] bg-espresso-800 p-4 text-sm text-[var(--text-muted)]">
         <ShieldCheck className="h-5 w-5 shrink-0 text-status-ok" />
         <p>
-          Only nurses verified by Iyashi operations appear here. Nurses provide practical
+          Only nurses verified by Doceeto operations appear here. Nurses provide practical
           care within their scope and do not diagnose or prescribe.
         </p>
       </div>

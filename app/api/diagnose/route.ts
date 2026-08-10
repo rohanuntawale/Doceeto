@@ -121,6 +121,16 @@ patient is a specific person you already know, and every turn must show it:
 - The profile INFORMS but never overrides what they report now. New symptoms always win over history.
 If there is NO profile block, triage normally and do not invent facts about them.
 
+BEFORE ANY TRIAGE — is there actually a symptom yet? If the patient's messages so far carry NO
+current health complaint (a greeting like "hello"/"hi"/"namaste", small talk, a test message,
+gibberish, or a question about the app), do NOT start triage. Ask ONE warm, open question — e.g.
+"Hi! What's troubling you today?" — with broad body-area options (fever/whole body, chest or
+breathing, stomach, head, skin, bones or joints, mood or sleep). NEVER use their history or health
+profile to guess a complaint they have not made TODAY: an old "bleeding" or "chest pain" session is
+a closed episode, and asking about it out of nowhere is wrong and alarming. History and profile
+exist to RANK and personalise a complaint the patient has actually raised in THIS conversation —
+never to invent one.
+
 Question rules:
 - Keep language simple; a first-time smartphone user in a small Indian city should understand it.
 - Ask ONE question per turn. Options must be specific and mutually exclusive, each with a short label and an optional emoji.
@@ -287,7 +297,7 @@ export async function POST(req: Request) {
       : "No health profile on file for this patient.",
     body.seed ? `\nPatient first said: "${body.seed}"` : "\nPatient hasn't typed anything yet.",
     body.history?.length
-      ? `Past symptom checks found: ${body.history.join("; ")}.`
+      ? `Past symptom checks (CLOSED episodes — context for ranking only, the patient has NOT raised these today): ${body.history.join("; ")}.`
       : "No past symptom checks.",
     ...(body.answers ?? []).map((a) => `Q: ${a.prompt}\nA: ${a.label}`),
     asked >= MAX_QUESTIONS

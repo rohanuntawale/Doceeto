@@ -46,7 +46,12 @@ export function SiteMenu({ className }: { className?: string }) {
 
       {open && (
         <>
-          <div className="absolute right-0 z-50 mt-2 w-60 animate-fade-up overflow-hidden rounded-card border border-[var(--border)] bg-espresso-800 p-1.5 shadow-card">
+          {/* Solid rgb() background on purpose: the panel floats over page
+              content, so it must stay opaque under every theme. */}
+          <div
+            className="absolute right-0 z-50 mt-2 w-60 animate-fade-up overflow-hidden rounded-card border border-[var(--border)] p-1.5 shadow-card"
+            style={{ background: "rgb(var(--c-espresso-800))" }}
+          >
             {LINKS.map((l) => (
               <Link
                 key={l.href}

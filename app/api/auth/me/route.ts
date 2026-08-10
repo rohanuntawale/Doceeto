@@ -1,9 +1,31 @@
 import { NextResponse } from "next/server";
-import { getRequestSession } from "@/lib/auth/session";
+import { getRequestSession, type SessionRecord } from "@/lib/auth/session";
+import { SESSION_COOKIES } from "@/lib/auth/constants";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Re-issue the surface cookie stamped with the session row's CURRENT expiry.
+ * Sessions slide server-side (getSessionById extends the row while it's in
+ * use), but the browser would still drop the cookie at its original stamp —
+ * silently signing out an active user. Every surface calls /me on load, so
+ * refreshing here keeps the cookie in lockstep with the row: nobody is signed
+ * out by time while they keep using the app. Only their own logout (or ops
+ * deleting the account) ends a session.
+ */
+function withFreshCookie<T>(body: T, session: SessionRecord): NextResponse {
+  const res = NextResponse.json(body);
+  res.cookies.set(SESSION_COOKIES[session.role], session.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: new Date(session.expiresAt),
+  });
+  return res;
+}
 
 /**
  * Who the CALLING SURFACE is signed in as. The patient app asks and gets the
@@ -17,11 +39,11 @@ export async function GET(req: Request) {
 
   if (session.role === "doctor") {
     const doctor = await db.getDoctorById(session.userId);
-    return NextResponse.json({ role: "doctor", doctor });
+    return withFreshCookie({ role: "doctor", doctor }, session);
   }
   if (session.role === "patient") {
     const patient = await db.getPatientProfile(session.userId);
-    return NextResponse.json({ role: "patient", patient });
+    return withFreshCookie({ role: "patient", patient }, session);
   }
   if (session.role === "nurse") {
     // A nurse IS a provider row, read exactly as a doctor's is — that record
@@ -30,7 +52,7 @@ export async function GET(req: Request) {
     // provider component (the tracker, the map, the request cards) can take it
     // without a second shape to handle.
     const nurse = await db.getDoctorById(session.userId);
-    return NextResponse.json({ role: "nurse", nurse, doctor: nurse });
+    return withFreshCookie({ role: "nurse", nurse, doctor: nurse }, session);
   }
-  return NextResponse.json({ role: "ops", name: session.name });
+  return withFreshCookie({ role: "ops", name: session.name }, session);
 }

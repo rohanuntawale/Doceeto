@@ -8,7 +8,6 @@ import {
   Banknote,
   Briefcase,
   ClipboardCheck,
-  FileCheck2,
   LayoutDashboard,
   LogOut,
   UserRound,
@@ -38,7 +37,6 @@ const NAV = [
   { id: "gigs", href: "/nurse/gigs", key: "nurse.nav.gigs", icon: Briefcase, color: "#64D2FF" },
   { id: "active", href: "/nurse/active", key: "nurse.nav.active", icon: Activity, color: "#30D158" },
   { id: "earnings", href: "/nurse/earnings", key: "nurse.nav.earnings", icon: Banknote, color: "#BF5AF2" },
-  { id: "verification", href: "/nurse/verification", key: "nurse.nav.verification", icon: FileCheck2, color: "#FF9F0A" },
   { id: "profile", href: "/nurse/profile", key: "nurse.nav.profile", icon: UserRound, color: "#8E8E93" },
 ];
 

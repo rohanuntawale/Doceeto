@@ -80,12 +80,22 @@ export interface PendingSignup {
   email: string;
   name: string;
   avatarUrl: string | null;
-  role: "patient" | "doctor";
+  role: "patient" | "doctor" | "nurse";
   expiresAt: string;
 }
 
-/** How long a new session stays valid. */
-export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * How long a session stays valid WITHOUT any activity. Sessions SLIDE: every
+ * authenticated read past the halfway mark extends the row another full TTL
+ * (see getSessionById in both repos) and /api/auth/me re-issues the cookie to
+ * match — so an active user is never signed out by time. Only this much total
+ * inactivity, an explicit logout, or ops deleting the account ends a session.
+ */
+export const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+/** Renew once less than half the TTL remains — one write per ~45 days per
+ *  active session, not one per request. */
+export const SESSION_RENEW_BELOW_MS = SESSION_TTL_MS / 2;
 
 /** Long enough to fill in a practice profile without rushing. */
 export const PENDING_SIGNUP_TTL_MS = 60 * 60 * 1000;

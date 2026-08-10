@@ -7,6 +7,7 @@ import { AVATAR_COLORS, MED_CATALOG } from "@/lib/catalog";
 import {
   DomainError,
   PENDING_SIGNUP_TTL_MS,
+  SESSION_RENEW_BELOW_MS,
   SESSION_TTL_MS,
   newSessionId,
   newStartCode,
@@ -335,9 +336,19 @@ export async function getSessionById(id: string): Promise<SessionRecord | null> 
     [id],
   );
   if (!r) return null;
-  if (new Date(iso(r.expires_at)).getTime() <= Date.now()) {
+  let expiresAt = iso(r.expires_at);
+  const remaining = new Date(expiresAt).getTime() - Date.now();
+  if (remaining <= 0) {
     await deleteSession(id);
     return null;
+  }
+  // Sliding session: using the app keeps you signed in. Renewed at the
+  // halfway mark rather than every request, so the write is rare; only a
+  // long-dead session (or an explicit logout) ever ends one.
+  if (remaining < SESSION_RENEW_BELOW_MS) {
+    const next = new Date(Date.now() + SESSION_TTL_MS);
+    await sql(`UPDATE sessions SET expires_at = $2 WHERE id = $1`, [id, next]);
+    expiresAt = next.toISOString();
   }
   return {
     id: r.id,
@@ -345,7 +356,7 @@ export async function getSessionById(id: string): Promise<SessionRecord | null> 
     role: r.role,
     name: r.name,
     createdAt: iso(r.created_at),
-    expiresAt: iso(r.expires_at),
+    expiresAt,
   };
 }
 
@@ -450,7 +461,7 @@ export async function createPendingSignup(input: {
   email: string;
   name: string;
   avatarUrl?: string | null;
-  role: "patient" | "doctor";
+  role: "patient" | "doctor" | "nurse";
 }): Promise<PendingSignup> {
   const row: PendingSignup = {
     id: newSessionId(),

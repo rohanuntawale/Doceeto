@@ -26,7 +26,9 @@ const b64url = (b: Buffer) => b.toString("base64url");
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const role = url.searchParams.get("role") === "doctor" ? "doctor" : "patient";
+  const raw = url.searchParams.get("role");
+  // Both provider cadres onboard through Google; anything else is a patient.
+  const role = raw === "doctor" ? "doctor" : raw === "nurse" ? "nurse" : "patient";
   const next = url.searchParams.get("next") ?? "";
 
   if (!googleConfigured()) {

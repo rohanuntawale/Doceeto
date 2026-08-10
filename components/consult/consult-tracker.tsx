@@ -22,6 +22,8 @@ import { StartCodeForDoctor, StartCodeForPatient } from "@/components/consult/st
 import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
 import { PrescriptionComposer } from "@/components/prescription/prescription-composer";
 import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
+import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
+import { isNurse } from "@/lib/nurse";
 import {
   requestDeviceLocation,
   startDeviceLocation,
@@ -402,14 +404,40 @@ export function TripRail({ req }: { req: ConsultRequest }) {
  * buttons to babysit. Everything else is just "Mark complete" and Cancel.
  */
 export function TripControls({ req }: { req: ConsultRequest }) {
-  const { advanceTrip } = useActions();
+  const { advanceTrip, completeRequest } = useActions();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [prescribing, setPrescribing] = useState(false);
+  // Only doctors prescribe (canPrescribe in lib/nurse.ts — the server already
+  // drops a nurse-sent prescription). The UI must agree: a nurse finishing a
+  // visit completes it directly and never sees the composer.
+  const me = useCurrentDoctor();
+  const nursing = isNurse(me);
 
   const { t } = useT();
   const L = labelsIn(t);
+
+  async function finishWithoutPrescribing() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await completeRequest(req.id);
+      toast.push({
+        tone: "success",
+        title: t("trip.completedToast"),
+        desc: t("trip.completedToastDesc"),
+      });
+    } catch (err) {
+      toast.push({
+        tone: "error",
+        title: t("common.retry"),
+        desc: err instanceof Error ? err.message : "Could not complete the visit.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
   const stage = tripStageOfRequest(req);
   const startJourney = req.type === "home_visit" && stage === "accepted";
   const travelling = req.type === "home_visit" && stage === "enroute";
@@ -465,13 +493,18 @@ export function TripControls({ req }: { req: ConsultRequest }) {
         </Button>
       ) : (
         /**
-         * Finishing a consult IS writing the prescription, so this opens the
-         * composer rather than closing the visit outright. Completing with
-         * nothing prescribed is still one tap — it lives at the bottom of the
-         * composer, where a doctor who has just decided "no medicine" is
-         * already looking.
+         * For a DOCTOR, finishing a consult IS writing the prescription, so
+         * this opens the composer rather than closing the visit outright
+         * (completing with nothing prescribed is still one tap, at the bottom
+         * of the composer). A NURSE cannot prescribe at all — her finish
+         * completes the visit directly, no composer, no dead option.
          */
-        <Button size="sm" className="flex-1" onClick={() => setPrescribing(true)}>
+        <Button
+          size="sm"
+          className="flex-1"
+          disabled={busy}
+          onClick={() => (nursing ? void finishWithoutPrescribing() : setPrescribing(true))}
+        >
           <Check className="h-3.5 w-3.5" /> {t("trip.finishConsult")}
         </Button>
       )}
@@ -505,7 +538,7 @@ export function TripControls({ req }: { req: ConsultRequest }) {
         open={cancelling}
         onClose={() => setCancelling(false)}
       />
-      {prescribing && (
+      {prescribing && !nursing && (
         <PrescriptionComposer
           request={req}
           open

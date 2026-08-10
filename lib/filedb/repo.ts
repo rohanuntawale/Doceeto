@@ -3,6 +3,7 @@ import { data, persist, type StoredUser } from "@/lib/filedb/store";
 import {
   DomainError,
   PENDING_SIGNUP_TTL_MS,
+  SESSION_RENEW_BELOW_MS,
   SESSION_TTL_MS,
   newSessionId,
   newStartCode,
@@ -93,9 +94,16 @@ export async function getSessionById(id: string): Promise<SessionRecord | null> 
   if (!id) return null;
   const found = data().sessions.find((s) => s.id === id);
   if (!found) return null;
-  if (new Date(found.expiresAt).getTime() <= Date.now()) {
+  const remaining = new Date(found.expiresAt).getTime() - Date.now();
+  if (remaining <= 0) {
     await deleteSession(id);
     return null;
+  }
+  // Sliding session — mirrors the Postgres store: activity keeps you signed
+  // in, renewed at the halfway mark so the write stays rare.
+  if (remaining < SESSION_RENEW_BELOW_MS) {
+    found.expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+    persist();
   }
   return found;
 }
@@ -165,7 +173,7 @@ export async function createPendingSignup(input: {
   email: string;
   name: string;
   avatarUrl?: string | null;
-  role: "patient" | "doctor";
+  role: "patient" | "doctor" | "nurse";
 }): Promise<PendingSignup> {
   const row: PendingSignup = {
     id: newSessionId(),

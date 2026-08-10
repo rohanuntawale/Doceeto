@@ -25,6 +25,16 @@ export function LandingFinalCta() {
               I&apos;m a doctor
             </Button>
           </Link>
+
+          <Link href="/signup?as=nurse" className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full border-[#2F7BC4]/50 text-[#2F7BC4] hover:border-[#2F7BC4] sm:w-auto"
+            >
+              I&apos;m a nurse
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { setSession } from "@/lib/auth/session";
 import { PENDING_SIGNUP_COOKIE } from "@/lib/auth/constants";
 import { db } from "@/lib/db";
+import { NURSE_SERVICES } from "@/lib/nurse";
 import { emitChange } from "@/lib/server/events";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
   }
 
   const pending = await db.getPendingSignup(pendingId);
-  if (!pending || pending.role !== "doctor") {
+  if (!pending || (pending.role !== "doctor" && pending.role !== "nurse")) {
     jar.delete(PENDING_SIGNUP_COOKIE);
     return NextResponse.json(
       { error: "That sign-up has expired. Please start again with Google." },
@@ -49,6 +50,72 @@ export async function POST(req: Request) {
   }
 
   const str = (v: unknown, cap: number) => (typeof v === "string" ? v.trim().slice(0, cap) : "");
+
+  // ── Nurse: same trust model as the doctor branch below — identity from the
+  // pending row, the professional profile from this submit, nothing invented.
+  // Field rules mirror /api/auth/register's nurse branch exactly.
+  if (pending.role === "nurse") {
+    const fullName = str(body.fullName, 80);
+    const gender = body.gender === "male" ? "male" : body.gender === "female" ? "female" : "";
+    const age = Math.round(Number(body.age));
+    const languages = Array.isArray(body.languages)
+      ? body.languages.map((l) => String(l).trim()).filter(Boolean).slice(0, 6)
+      : [];
+    const allowedSkills = new Set<string>(NURSE_SERVICES.map((s) => s.id));
+    const skills = Array.isArray(body.skills)
+      ? body.skills.map((x) => String(x)).filter((x) => allowedSkills.has(x)).slice(0, 8)
+      : [];
+    const registrationNo = str(body.registrationNo, 60);
+
+    if (!fullName) return bad("Enter your full name.");
+    if (!gender) return bad("Select your gender.");
+    if (!Number.isFinite(age) || age < 18 || age > 100) return bad("Enter your age (18–100).");
+    if (languages.length === 0) return bad("List at least one language you work in.");
+    if (skills.length === 0) return bad("Pick at least one service you offer.");
+    if (!registrationNo) return bad("Add your nursing council registration number.");
+
+    if (await db.findUserByEmail(pending.email)) {
+      jar.delete(PENDING_SIGNUP_COOKIE);
+      await db.deletePendingSignup(pending.id);
+      return NextResponse.json(
+        { error: "An account with this email already exists. Sign in instead." },
+        { status: 409 },
+      );
+    }
+
+    try {
+      const { user } = await db.createNurseUser({
+        email: pending.email,
+        passwordHash: null, // Google account: no password to store
+        googleId: pending.googleId,
+        avatarUrl: pending.avatarUrl ?? undefined,
+        fullName,
+        title: str(body.title, 60) || undefined,
+        qualifications: str(body.qualifications, 200) || undefined,
+        registrationNo,
+        gender,
+        age,
+        experienceYears: Math.max(0, Math.min(70, Math.round(Number(body.experienceYears)) || 0)),
+        languages,
+        skills,
+        about: str(body.about, 600) || undefined,
+        homeVisitFee: Math.max(0, Math.min(100_000, Number(body.homeVisitFee) || 600)),
+        lat: null,
+        lng: null,
+      });
+
+      await db.deletePendingSignup(pending.id);
+      jar.delete(PENDING_SIGNUP_COOKIE);
+      await setSession({ id: user.id, role: "nurse", name: user.name });
+      emitChange(["doctors"]);
+
+      return NextResponse.json({ ok: true, role: "nurse" });
+    } catch (err) {
+      console.error("google nurse sign-up failed:", err);
+      return NextResponse.json({ error: "Could not create the account." }, { status: 500 });
+    }
+  }
+
   const fullName = str(body.fullName, 80);
   const specialty = str(body.specialty, 60);
   const qualifications = str(body.qualifications, 200);

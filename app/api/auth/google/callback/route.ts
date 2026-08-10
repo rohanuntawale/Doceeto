@@ -73,7 +73,8 @@ export async function GET(req: Request) {
     return fail(origin, "That sign-in could not be verified. Please try again.");
   }
 
-  const role: SurfaceRole = pending.role === "doctor" ? "doctor" : "patient";
+  const role: SurfaceRole =
+    pending.role === "doctor" ? "doctor" : pending.role === "nurse" ? "nurse" : "patient";
 
   try {
     const identity = await exchangeCode({
@@ -105,24 +106,24 @@ export async function GET(req: Request) {
       if (!identity.emailVerified) {
         return fail(origin, "Google hasn't verified that email address, so it can't be used to sign in here.");
       }
-      if (role === "doctor") {
+      if (role === "doctor" || role === "nurse") {
         /*
-         * NO ACCOUNT YET — on purpose.
+         * NO ACCOUNT YET — on purpose, for BOTH provider cadres.
          *
          * Google proves who someone is; it says nothing about their specialty,
-         * qualifications, registration number or fees. Filling those in on
-         * their behalf would put invented credentials in front of patients
-         * choosing who to trust with their care. So the verified identity is
-         * parked here and the doctor is sent to the same profile form the
-         * password sign-up uses; the account exists only once they submit it.
-         * Abandon it and the pending row simply expires.
+         * skills, registration number or fees. Filling those in on their
+         * behalf would put invented credentials in front of patients choosing
+         * who to trust with their care. So the verified identity is parked
+         * here and the provider is sent to the same profile form the password
+         * sign-up uses; the account exists only once they submit it. Abandon
+         * it and the pending row simply expires.
          */
         const pending = await db.createPendingSignup({
           googleId: identity.googleId,
           email: identity.email,
           name: identity.name,
           avatarUrl: identity.picture ?? null,
-          role: "doctor",
+          role,
         });
         cookies().set(PENDING_SIGNUP_COOKIE, pending.id, {
           httpOnly: true,
@@ -133,7 +134,9 @@ export async function GET(req: Request) {
         });
         // The name is a prefill only — a convenience so they don't retype it.
         // Identity is read from the pending row server-side, never from this.
-        const to = new URL("/?google=doctor", origin);
+        // /signup, not "/": the root became the marketing landing, which
+        // ignores the google= param — landing there dead-ended the sign-up.
+        const to = new URL(`/signup?google=${role}`, origin);
         to.searchParams.set("name", identity.name);
         return NextResponse.redirect(to);
       } else {

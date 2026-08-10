@@ -67,7 +67,6 @@ export function NurseDashboard({ page = "home" }: { page?: string }) {
   if (page === "history") return <History />;
   if (page === "earnings") return <Earnings />;
   if (page === "profile") return <Profile />;
-  if (page === "verification") return <Verification />;
   return <Home />;
 }
 
@@ -675,39 +674,6 @@ function CredLine({
         <div className="break-words text-sm text-cream">{value}</div>
       </div>
     </div>
-  );
-}
-
-function Verification() {
-  const { t } = useT();
-  const { me } = useNurseData();
-  const verified = Boolean(me?.verified);
-
-  return (
-    <Page
-      eyebrow={t("nurse.trustSafety")}
-      title={t("nurse.verificationTitle")}
-      intro={t("nurse.verificationIntro")}
-    >
-      <Card>
-        <div className="flex items-start gap-3 p-4">
-          <ShieldCheck
-            className={cn(
-              "h-5 w-5 shrink-0",
-              verified ? "text-status-ok" : "text-[var(--text-faint)]",
-            )}
-          />
-          <div>
-            <p className="font-semibold text-cream">
-              {verified ? t("nurse.verified") : t("nurse.notVerified")}
-            </p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {verified ? t("nurse.verifiedDesc") : t("nurse.notVerifiedDesc")}
-            </p>
-          </div>
-        </div>
-      </Card>
-    </Page>
   );
 }
 

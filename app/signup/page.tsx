@@ -13,9 +13,16 @@ import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
 import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
+import {
+  NURSE_ACCENT_VARS,
+  NURSE_CADRES,
+  NURSE_SERVICES,
+  NURSE_TITLES,
+  type NurseService,
+} from "@/lib/nurse";
 import { cn } from "@/lib/utils/cn";
 
-type Role = "patient" | "doctor";
+type Role = "patient" | "doctor" | "nurse";
 
 // Kept in step with components/doctor/edit-profile-dialog.tsx.
 const SPECIALTIES = [
@@ -77,11 +84,18 @@ function OnboardingPanel() {
    * no account exists yet, and none will until this form is submitted.
    */
   const googleDoctor = params.get("google") === "doctor";
+  const googleNurse = params.get("google") === "nurse";
+  /** Arrived back from Google as either provider cadre — no step 1, profile only. */
+  const googleProvider = googleDoctor || googleNurse;
   const [role, setRole] = useState<Role>(
-    googleDoctor || params.get("as") === "doctor" ? "doctor" : "patient",
+    googleDoctor || params.get("as") === "doctor"
+      ? "doctor"
+      : googleNurse || params.get("as") === "nurse"
+        ? "nurse"
+        : "patient",
   );
   const [name, setName] = useState(
-    googleDoctor ? (params.get("name") ?? "") : "",
+    googleProvider ? (params.get("name") ?? "") : "",
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,7 +105,7 @@ function OnboardingPanel() {
 
   // Doctor onboarding is two steps: account basics, then the full practice
   // profile — everything a patient reads on the doctor's card and detail page.
-  const [step, setStep] = useState<1 | 2>(googleDoctor ? 2 : 1);
+  const [step, setStep] = useState<1 | 2>(googleProvider ? 2 : 1);
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
   const [kind, setKind] = useState<"practising" | "resident">("practising");
   const [gender, setGender] = useState<"" | "female" | "male">("");
@@ -104,6 +118,19 @@ function OnboardingPanel() {
   const [consultFee, setConsultFee] = useState("400");
   const [homeVisitFee, setHomeVisitFee] = useState("900");
   const [clinicAddress, setClinicAddress] = useState("");
+
+  // Nurse-only profile fields. Nurses reuse gender/age/experience/languages/
+  // registrationNo from above; these are the parts that differ from a doctor.
+  const [nurseTitle, setNurseTitle] = useState<string>(NURSE_TITLES[0]);
+  const [nurseCadre, setNurseCadre] = useState<string>(NURSE_CADRES[1]); // GNM
+  const [nurseSkills, setNurseSkills] = useState<NurseService[]>([]);
+  const [nurseFee, setNurseFee] = useState("600");
+
+  function toggleSkill(id: NurseService) {
+    setNurseSkills((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -228,6 +255,97 @@ function OnboardingPanel() {
       return;
     }
 
+    if (role === "nurse") {
+      // Step 1 → 2: same account checks as the doctor path. (A Google nurse
+      // never sees step 1 — identity is already parked server-side.)
+      if (step === 1) {
+        if (!isDemoMode) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            return setError("Enter a valid email address.");
+          }
+          if (
+            password.length < 8 ||
+            !/[a-zA-Z]/.test(password) ||
+            !/\d/.test(password)
+          ) {
+            return setError(
+              "Password must be 8+ characters and include a letter and a number.",
+            );
+          }
+        }
+        setStep(2);
+        return;
+      }
+
+      // Step 2 — the nurse profile. Patients filter on skills, so at least
+      // one is required; the server allowlists them against NURSE_SERVICES.
+      if (isDemoMode) {
+        return setError("Nurse signup needs the live backend.");
+      }
+      const ageNum = Math.round(Number(age));
+      if (!gender) return setError("Select your gender.");
+      if (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 100) {
+        return setError("Enter your age (18–100).");
+      }
+      const languageList = languages
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 6);
+      if (languageList.length === 0) {
+        return setError("List at least one language you work in.");
+      }
+      if (nurseSkills.length === 0) {
+        return setError("Pick at least one service you offer.");
+      }
+      if (!registrationNo.trim()) {
+        return setError("Add your nursing council registration number.");
+      }
+
+      const nurseProfile = {
+        fullName: name.trim() || "Nurse",
+        title: nurseTitle,
+        qualifications: nurseCadre,
+        registrationNo: registrationNo.trim(),
+        gender,
+        age: ageNum,
+        experienceYears: Math.max(
+          0,
+          Math.min(70, Math.round(Number(experienceYears)) || 0),
+        ),
+        languages: languageList,
+        skills: nurseSkills,
+        homeVisitFee: Math.max(0, Number(nurseFee) || 600),
+      };
+
+      setLoading(true);
+      // Google nurse: identity is parked server-side, so this submit carries
+      // the profile only. Password path registers the account whole.
+      const res = googleNurse
+        ? await fetch("/api/auth/google/complete", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(nurseProfile),
+          })
+        : await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ role: "nurse", email, password, ...nurseProfile }),
+          });
+      const data = await res.json().catch(() => ({}));
+      setLoading(false);
+      if (!res.ok)
+        return setError(data.error ?? "Could not create the account.");
+      toast.push({
+        tone: "success",
+        title: "Welcome to Doceeto",
+        desc: "Your profile is in — verification comes next, then you can go online.",
+      });
+      router.push("/nurse");
+      router.refresh();
+      return;
+    }
+
     // Patient — the effortless path. Demo keeps identity in the browser;
     // live creates the real account on the backend and sets the session.
     if (isDemoMode) {
@@ -322,8 +440,12 @@ function OnboardingPanel() {
                   label={
                     role === "doctor"
                       ? "Continue with Google as a doctor"
-                      : "Continue with Google"
+                      : role === "nurse"
+                        ? "Continue with Google as a nurse"
+                        : "Continue with Google"
                   }
+                  // Whichever toggle is active decides what kind of account
+                  // Google's identity creates — all three roles ride through.
                   href={
                     googleEnabled && !isDemoMode
                       ? `/api/auth/google/start?role=${role}`
@@ -351,7 +473,7 @@ function OnboardingPanel() {
               style={{ animationDelay: "150ms" }}
             >
               <div className="flex rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
-                {(["patient", "doctor"] as Role[]).map((r) => {
+                {(["patient", "doctor", "nurse"] as Role[]).map((r) => {
                   const active = role === r;
                   return (
                     <button
@@ -361,6 +483,9 @@ function OnboardingPanel() {
                         setRole(r);
                         setError(null);
                       }}
+                      // Nurse surfaces carry the blue accent app-wide; the
+                      // active chip says so from the very first tap.
+                      style={r === "nurse" && active ? NURSE_ACCENT_VARS : undefined}
                       className={cn(
                         "flex-1 rounded-full px-3 py-2 font-medium transition-colors",
                         active
@@ -368,7 +493,7 @@ function OnboardingPanel() {
                           : "text-[var(--text-muted)] hover:text-cream",
                       )}
                     >
-                      {r === "patient" ? "I need care" : "I'm a doctor"}
+                      {r === "patient" ? "I need care" : r === "doctor" ? "Doctor" : "Nurse"}
                     </button>
                   );
                 })}
@@ -432,6 +557,149 @@ function OnboardingPanel() {
                 </button>
               </label>
             </>
+          ) : role === "nurse" ? (
+            <div style={NURSE_ACCENT_VARS} className="space-y-4">
+              {/* Step 2 (nurse) — what patients read on the nurse's card.
+                  Blue accent from the first screen: nurse surfaces are blue
+                  everywhere in the app. */}
+
+              {/* A Google nurse never saw step 1 — same treatment as the
+                  Google doctor: identity is proved, the profile is theirs
+                  to state, starting with the name they practise under. */}
+              {googleNurse && (
+                <>
+                  <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-left text-xs leading-relaxed text-[var(--text-muted)]">
+                    Signed in with Google. Your account isn&rsquo;t created yet
+                    — patients choose a nurse on what&rsquo;s below, so it has
+                    to come from you.
+                  </div>
+                  <Field label="Full name">
+                    <input
+                      className={inputCls}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your full name"
+                      autoComplete="name"
+                      required
+                    />
+                  </Field>
+                </>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Title patients see">
+                  <select
+                    className={inputCls}
+                    value={nurseTitle}
+                    onChange={(e) => setNurseTitle(e.target.value)}
+                  >
+                    {NURSE_TITLES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Nursing qualification">
+                  <select
+                    className={inputCls}
+                    value={nurseCadre}
+                    onChange={(e) => setNurseCadre(e.target.value)}
+                  >
+                    {NURSE_CADRES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Services you offer (pick all that apply)">
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {NURSE_SERVICES.map((s) => {
+                    const on = nurseSkills.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleSkill(s.id)}
+                        className={cn(
+                          "rounded-full border px-3 py-2 text-xs font-medium transition-colors",
+                          on
+                            ? "border-terracotta bg-terracotta/15 text-cream"
+                            : "border-[var(--border)] text-[var(--text-muted)] hover:text-cream",
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Gender">
+                  <select
+                    className={inputCls}
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as "" | "female" | "male")}
+                    required
+                  >
+                    <option value="" disabled>Select…</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </Field>
+                <Field label="Age">
+                  <input
+                    className={inputCls}
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="29"
+                    required
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Experience (years)">
+                  <input
+                    className={inputCls}
+                    value={experienceYears}
+                    onChange={(e) => setExperienceYears(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="6"
+                  />
+                </Field>
+                <Field label="Nursing council reg. no.">
+                  <input
+                    className={inputCls}
+                    value={registrationNo}
+                    onChange={(e) => setRegistrationNo(e.target.value)}
+                    placeholder="MNC-11482"
+                    required
+                  />
+                </Field>
+              </div>
+
+              <Field label="Languages (comma-separated)">
+                <input
+                  className={inputCls}
+                  value={languages}
+                  onChange={(e) => setLanguages(e.target.value)}
+                  placeholder="Marathi, Hindi, English"
+                  required
+                />
+              </Field>
+
+              <Field label="Home visit fee (₹)">
+                <input
+                  className={inputCls}
+                  value={nurseFee}
+                  onChange={(e) => setNurseFee(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="600"
+                />
+              </Field>
+            </div>
           ) : (
             <>
               {/* Step 2 — the profile patients will read. Everything here
@@ -632,9 +900,9 @@ function OnboardingPanel() {
                 ? "Setting up…"
                 : step === 2
                   ? "Join"
-                  : role === "doctor"
-                    ? "Continue"
-                    : "Start"}
+                  : role === "patient"
+                    ? "Start"
+                    : "Continue"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             <span
@@ -645,7 +913,7 @@ function OnboardingPanel() {
 
           {/* A Google doctor has no step 1 to go back to — their email and
               identity came from Google, not from a form. */}
-          {step === 2 && !googleDoctor && (
+          {step === 2 && !googleProvider && (
             <button
               type="button"
               onClick={() => {
@@ -664,7 +932,9 @@ function OnboardingPanel() {
               ? "Patients see this on your profile — you can edit it anytime"
               : role === "doctor"
                 ? "Next: your specialty, credentials & fees"
-                : "as a patient — no card, no wait"}
+                : role === "nurse"
+                  ? "Next: your services, credentials & fee"
+                  : "as a patient — no card, no wait"}
           </p>
         </form>
 

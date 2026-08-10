@@ -14,7 +14,7 @@ import "server-only";
  */
 
 const ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
-const UA = "Iyashi/1.0 (healthcare app; reverse geocoding for patient location)";
+const UA = "Doceeto/1.0 (healthcare app; reverse geocoding for patient location)";
 
 /** Cache keyed on ~110m-resolution coordinates: walking around a
  *  neighbourhood should not re-query for every step. */

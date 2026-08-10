@@ -97,6 +97,22 @@ export function LandingHero() {
           </Link>
         </motion.div>
 
+        {/* Nurses join through the same door — blue, like every nurse surface. */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="mt-4 text-sm text-[var(--text-muted)]"
+        >
+          Are you a nurse?{" "}
+          <Link
+            href="/signup?as=nurse"
+            className="font-semibold text-[#2F7BC4] underline-offset-4 hover:underline"
+          >
+            Join as a home-care nurse →
+          </Link>
+        </motion.p>
+
         {/* Subtle scroll cue */}
         <motion.div
           initial={{ opacity: 0 }}

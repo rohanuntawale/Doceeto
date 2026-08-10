@@ -485,7 +485,9 @@ function CareInner() {
           ref={scrollRef}
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-4"
         >
-          {fresh ? (
+          {/* Once concluded, the chat recedes — the assessment IS the page,
+              and the Q&A lives inside its "Review your answers" disclosure. */}
+          {activeConclusion ? null : fresh ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
                 <Sparkles className="h-7 w-7" />
@@ -568,8 +570,10 @@ function CareInner() {
           )}
 
           {activeConclusion && (
-            <ResultCard
+            <ConclusionView
               conclusion={activeConclusion}
+              seed={view.seed}
+              answers={view.answers}
               onBook={(spec) =>
                 router.push(
                   `/patient/doctors?specialty=${encodeURIComponent(spec)}`,
@@ -583,8 +587,10 @@ function CareInner() {
 
         {/* Composer — pill input (ChatGPT-style). shrink-0 keeps it on screen
             no matter how long the transcript gets; 16px text stops iOS from
-            zooming the whole page when the input is focused. */}
-        {viewed ? (
+            zooming the whole page when the input is focused. The whole strip
+            disappears once the assessment is on screen — its actions live on
+            the sheet itself. */}
+        {activeConclusion ? null : viewed ? (
           <button
             onClick={newCheck}
             className="mb-1 flex shrink-0 items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
@@ -734,48 +740,24 @@ function CareInner() {
         >
           <div
             ref={scrollRef2}
-            className="pointer-events-auto mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-6"
+            className={cn(
+              "pointer-events-auto mx-auto min-h-0 w-full flex-1 overflow-y-auto px-6",
+              // The assessment sheet earns a wider measure than chat bubbles.
+              activeConclusion ? "max-w-3xl" : "max-w-2xl",
+            )}
           >
-            <div className="flex min-h-full flex-col justify-end gap-3 py-3">
-              {fresh ? (
-                <div className="flex flex-col items-center pb-6 text-center">
-                  <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
-                    <Sparkles className="h-8 w-8" />
-                  </span>
-                  <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">
-                    {t("care.subtitle")}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
-                  {view.answers.map((a, i) =>
-                    a.questionId === "free" ? (
-                      <Bubble key={i} who="me">
-                        {a.label}
-                      </Bubble>
-                    ) : (
-                      <div key={i} className="space-y-3">
-                        <Bubble who="bot">{a.prompt}</Bubble>
-                        <Bubble who="me">{a.label}</Bubble>
-                      </div>
-                    ),
-                  )}
-                </>
+            <div
+              className={cn(
+                "flex min-h-full flex-col gap-3 py-3",
+                // Chat hugs the composer; the assessment reads from the top.
+                activeConclusion ? "justify-start" : "justify-end",
               )}
-              {!viewed && thinking && (
-                <div className="flex justify-start">
-                  <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
-                    <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
-                  </div>
-                </div>
-              )}
-              {!viewed && !thinking && step?.kind === "question" && !fresh && (
-                <Bubble who="bot">{step.question.prompt}</Bubble>
-              )}
-              {activeConclusion && (
-                <ResultCard
+            >
+              {activeConclusion ? (
+                <ConclusionView
                   conclusion={activeConclusion}
+                  seed={view.seed}
+                  answers={view.answers}
                   onBook={(spec) =>
                     router.push(
                       `/patient/doctors?specialty=${encodeURIComponent(spec)}`,
@@ -784,11 +766,52 @@ function CareInner() {
                   onRestart={newCheck}
                   readOnly={!!viewed}
                 />
+              ) : (
+                <>
+                  {fresh ? (
+                    <div className="flex flex-col items-center pb-6 text-center">
+                      <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
+                        <Sparkles className="h-8 w-8" />
+                      </span>
+                      <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">
+                        {t("care.subtitle")}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
+                      {view.answers.map((a, i) =>
+                        a.questionId === "free" ? (
+                          <Bubble key={i} who="me">
+                            {a.label}
+                          </Bubble>
+                        ) : (
+                          <div key={i} className="space-y-3">
+                            <Bubble who="bot">{a.prompt}</Bubble>
+                            <Bubble who="me">{a.label}</Bubble>
+                          </div>
+                        ),
+                      )}
+                    </>
+                  )}
+                  {!viewed && thinking && (
+                    <div className="flex justify-start">
+                      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md fh-tile px-4 py-3">
+                        <Dot /> <Dot delay="0.15s" /> <Dot delay="0.3s" />
+                      </div>
+                    </div>
+                  )}
+                  {!viewed && !thinking && step?.kind === "question" && !fresh && (
+                    <Bubble who="bot">{step.question.prompt}</Bubble>
+                  )}
+                </>
               )}
             </div>
           </div>
 
-          {/* option chips + pill input */}
+          {/* option chips + pill input — gone once the assessment is up; its
+              actions live on the sheet itself. */}
+          {activeConclusion ? null : (
           <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-0">
             {fresh && step?.kind === "question" && (
               <p className="mb-3 text-center text-[15px] font-medium text-cream">
@@ -839,6 +862,7 @@ function CareInner() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </>
@@ -907,13 +931,26 @@ function Bubble({
   );
 }
 
-function ResultCard({
+/**
+ * The conclusion is not a chat message — it's the point of the whole flow, so
+ * it takes the page. Chat bubbles disappear, and what renders is a full-width
+ * assessment sheet in the app's own voice: serif headline, a ruled ledger for
+ * the differential (likelihood as a small-caps rail — rank is information, so
+ * it gets the structural position), and the actions in one clear column. The
+ * conversation that produced it folds into a disclosure instead of framing
+ * the result in boxes-in-boxes.
+ */
+function ConclusionView({
   conclusion,
+  seed,
+  answers,
   onBook,
   onRestart,
   readOnly,
 }: {
   conclusion: DConclusion;
+  seed: string;
+  answers: { prompt: string; label: string; questionId?: string }[];
   onBook: (specialty: string) => void;
   onRestart: () => void;
   readOnly?: boolean;
@@ -931,11 +968,10 @@ function ResultCard({
     nurseService,
     nurseWhy,
   } = conclusion;
+  const [showAnswers, setShowAnswers] = useState(false);
   // Sessions saved before the differential existed replay from localStorage
-  // with no `causes` — those fall back to the old condition chips.
+  // with no `causes` — those fall back to the condition chips.
   const differential = causes ?? [];
-  // One booking row per distinct specialty across the differential, so a case
-  // that spans orthopaedics and neurology offers both rather than burying one.
   const specialties = Array.from(
     new Set([
       specialty,
@@ -943,15 +979,22 @@ function ResultCard({
       ...(alsoSee ?? []),
     ]),
   );
+  // The summary leads; without one, the advice steps up so the headline and
+  // the body never repeat each other.
+  const headline = summary ?? advice;
+
+  const railTone = (l: DCause["likelihood"]) =>
+    l === "likely"
+      ? "text-[rgb(var(--c-terracotta))]"
+      : l === "possible"
+        ? "text-tan"
+        : "text-[var(--text-faint)]";
 
   return (
-    <div
-      className={cn(
-        "glass-card animate-fade-up rounded-3xl p-4",
-        emergency && "!border-status-critical/40",
-      )}
-    >
-      <div className="flex items-center gap-2">
+    <div className="animate-fade-up mx-auto w-full max-w-3xl px-1 py-2">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="label">Assessment · symptom check</p>
         <span
           className={cn(
             "rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
@@ -960,74 +1003,101 @@ function ResultCard({
         >
           {urgency}
         </span>
-        {emergency && (
-          <AlertTriangle className="h-4 w-4 text-status-critical" />
-        )}
       </div>
 
-      {summary && (
-        <p className="mt-3 text-[15px] font-medium leading-snug text-cream">
-          {summary}
-        </p>
+      <h2 className="mt-3 font-serif text-2xl leading-snug text-cream sm:text-[1.75rem]">
+        {headline}
+      </h2>
+
+      {/* ── Emergency first: the actions ride with the warning ── */}
+      {emergency && (
+        <div className="mt-5 rounded-2xl bg-status-critical/10 p-4 ring-1 ring-inset ring-status-critical/30">
+          <p className="flex items-start gap-2 text-sm font-medium text-status-critical">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            This needs medical help straight away. Call your local emergency
+            number or get to the nearest hospital now.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <a
+              href="tel:112"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-status-critical py-3 text-sm font-semibold text-white"
+            >
+              Call 112 now
+            </a>
+            <Link
+              href="/patient/now"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-status-critical/40 py-3 text-sm font-semibold text-status-critical"
+            >
+              Get emergency care
+            </Link>
+          </div>
+        </div>
       )}
 
+      {/* ── Differential — a ruled ledger, not stacked boxes ── */}
       {differential.length > 0 ? (
-        <div className="mt-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-faint)]">
-            What this could be
-          </p>
-          <ol className="space-y-2">
+        <div className="mt-7">
+          <p className="label">What this could be</p>
+          <ol className="mt-2 divide-y divide-[var(--border)] border-y border-[var(--border)]">
             {differential.map((c, i) => (
-              <li key={`${c.name}-${i}`} className="rounded-2xl fh-tile p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold leading-snug text-cream">
+              <li
+                key={`${c.name}-${i}`}
+                className="grid gap-x-5 gap-y-1 py-4 sm:grid-cols-[7.5rem_1fr]"
+              >
+                <p
+                  className={cn(
+                    "pt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]",
+                    railTone(c.likelihood),
+                  )}
+                >
+                  {likelihoodLabel(c.likelihood)}
+                </p>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold leading-snug text-cream">
                     {c.name}
                   </p>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      likelihoodTone(c.likelihood),
-                    )}
-                  >
-                    {likelihoodLabel(c.likelihood)}
-                  </span>
-                </div>
-                {c.why && (
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
-                    {c.why}
+                  {c.why && (
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-muted)]">
+                      {c.why}
+                    </p>
+                  )}
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-[rgb(var(--c-terracotta))]">
+                    <Stethoscope className="h-3.5 w-3.5 shrink-0" />
+                    Treated by {c.specialty}
                   </p>
-                )}
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[rgb(var(--c-terracotta))]">
-                  <Stethoscope className="h-3 w-3 shrink-0" />
-                  Treated by {c.specialty}
-                </p>
+                </div>
               </li>
             ))}
           </ol>
         </div>
       ) : (
-        conditions.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {conditions.map((c) => (
-              <span
-                key={c}
-                className="rounded-full fh-tile px-2.5 py-1 text-xs text-[var(--text-muted)]"
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        )
+        <div className="mt-6 border-y border-[var(--border)] py-4">
+          <p className="label">Best fit</p>
+          <p className="mt-1 text-base font-semibold text-cream">
+            {specialty}
+            {alt ? (
+              <span className="font-normal text-[var(--text-faint)]"> · or {alt}</span>
+            ) : null}
+          </p>
+          {conditions.length > 0 && (
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              {conditions.join(" · ")}
+            </p>
+          )}
+        </div>
       )}
 
-      <p className="mt-3 text-sm text-[var(--text-muted)]">{advice}</p>
+      {/* Advice as its own line only when the summary already leads. */}
+      {summary && (
+        <p className="mt-5 text-[15px] leading-relaxed text-[var(--text-muted)]">
+          {advice}
+        </p>
+      )}
 
-      {/* Nurse path — only when the server confirmed this is hands-on nursing
-          work (wound dressing, prescribed injections, vitals, elder care).
-          Blue on purpose: nurse surfaces carry the blue accent app-wide. */}
+      {/* Nurse path — blue, like every nurse surface. */}
       {nurseService && (
-        <div className="mt-3 rounded-2xl border border-[#2F7BC4]/35 bg-[#2F7BC4]/[0.08] p-3">
-          <p className="flex items-start gap-2 text-sm text-cream">
+        <div className="mt-5 rounded-2xl border border-[#2F7BC4]/35 bg-[#2F7BC4]/[0.08] p-4">
+          <p className="flex items-start gap-2.5 text-sm leading-relaxed text-cream">
             <HeartPulse className="mt-0.5 h-4 w-4 shrink-0 text-[#8CC1E8]" />
             <span>
               <span className="font-semibold text-[#8CC1E8]">
@@ -1038,67 +1108,23 @@ function ResultCard({
           </p>
           <Link
             href={`/patient/nurses?service=${encodeURIComponent(nurseService)}`}
-            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F7BC4] py-2.5 text-sm font-semibold text-white"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2F7BC4] py-3 text-sm font-semibold text-white sm:w-auto sm:px-6"
           >
             Find a nurse <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
 
-      {differential.length === 0 && (
-        <div className="mt-3">
-          <p className="text-xs font-medium text-[var(--text-muted)]">
-            Best fit
-          </p>
-          <p className="text-base font-semibold text-cream">
-            {specialty}
-            {alt ? (
-              <span className="text-[var(--text-faint)]"> · or {alt}</span>
-            ) : null}
-          </p>
-        </div>
-      )}
-
-      {/* Red-flag wording still escalates the urgency and says so plainly —
-          it just routes to a doctor now rather than raising an alert. */}
-      {emergency && (
-        <div className="mt-3 rounded-2xl bg-status-critical/10 p-3">
-          <p className="flex items-start gap-2 text-sm font-medium text-status-critical">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            This needs medical help straight away. Call your local emergency
-            number or get to the nearest hospital now.
-          </p>
-          {/* The words must come with the actions — a warning with no dial
-              button is a dead end at the worst possible moment. */}
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <a
-              href="tel:112"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-status-critical py-2.5 text-sm font-semibold text-white"
-            >
-              Call 112 now
-            </a>
-            <Link
-              href="/patient/now"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-status-critical/40 py-2.5 text-sm font-semibold text-status-critical"
-            >
-              Get emergency care
-            </Link>
-          </div>
-        </div>
-      )}
-
-      <div className="mt-4 space-y-2">
+      {/* ── Next step ── */}
+      <div className="mt-7">
         <button
           onClick={() => onBook(specialty)}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[15px] font-semibold text-on-accent"
         >
           Find a {specialty} <ArrowRight className="h-4 w-4" />
         </button>
-
-        {/* Secondary specialties from the differential — the whole point is
-            that the patient can choose which line to pursue. */}
         {specialties.length > 1 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             {specialties.slice(1).map((sp) => (
               <button
                 key={sp}
@@ -1110,20 +1136,53 @@ function ResultCard({
             ))}
           </div>
         )}
-
-        {!readOnly && (
-          <button
-            onClick={onRestart}
-            className="w-full rounded-2xl px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-cream"
-          >
-            Start over
-          </button>
-        )}
       </div>
 
-      <p className="mt-2 text-[10px] text-[var(--text-faint)]">
-        Possibilities to check with a doctor — not a diagnosis.
-      </p>
+      {/* ── The conversation, folded away ── */}
+      {(seed || answers.length > 0) && (
+        <div className="mt-6 border-t border-[var(--border)] pt-1">
+          <button
+            onClick={() => setShowAnswers((v) => !v)}
+            className="flex w-full items-center justify-between py-3 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-cream"
+          >
+            Review your answers
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform",
+                showAnswers && "rotate-90",
+              )}
+            />
+          </button>
+          {showAnswers && (
+            <dl className="space-y-3 pb-3">
+              {seed && (
+                <div>
+                  <dt className="text-xs text-[var(--text-faint)]">You said</dt>
+                  <dd className="text-sm text-cream">{seed}</dd>
+                </div>
+              )}
+              {answers.map((a, i) => (
+                <div key={i}>
+                  <dt className="text-xs text-[var(--text-faint)]">{a.prompt}</dt>
+                  <dd className="text-sm text-cream">{a.label}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+
+      <div className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+        <p className="text-[11px] text-[var(--text-faint)]">
+          Possibilities to check with a doctor — not a diagnosis.
+        </p>
+        <button
+          onClick={onRestart}
+          className="shrink-0 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-cream"
+        >
+          {readOnly ? "New check" : "Start over"}
+        </button>
+      </div>
     </div>
   );
 }
