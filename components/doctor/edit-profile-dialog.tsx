@@ -158,10 +158,12 @@ export function EditProfileDialog({
           <Field label="Clinic address (optional)">
             <input
               value={form.clinicAddress}
-              onChange={(e) => setForm({ ...form, clinicAddress: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, clinicAddress: e.target.value })
+              }
               className={inputCls}
               maxLength={160}
-              placeholder="Shivaji Nagar, Pune — near City Hospital"
+              placeholder="Shivaji Nagar, Nagpur — near City Hospital"
             />
           </Field>
 
@@ -185,7 +187,10 @@ export function EditProfileDialog({
                 max={100}
                 value={form.age}
                 onChange={(e) =>
-                  setForm({ ...form, age: e.target.value === "" ? "" : Number(e.target.value) })
+                  setForm({
+                    ...form,
+                    age: e.target.value === "" ? "" : Number(e.target.value),
+                  })
                 }
                 className={inputCls}
                 placeholder="34"
@@ -195,7 +200,9 @@ export function EditProfileDialog({
               <Field label="Med. reg. no.">
                 <input
                   value={form.registrationNo}
-                  onChange={(e) => setForm({ ...form, registrationNo: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, registrationNo: e.target.value })
+                  }
                   className={inputCls}
                   placeholder="MH-12345"
                 />
@@ -215,7 +222,9 @@ export function EditProfileDialog({
           <Field label="Qualifications">
             <input
               value={form.qualifications}
-              onChange={(e) => setForm({ ...form, qualifications: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, qualifications: e.target.value })
+              }
               className={inputCls}
               placeholder="MBBS, MD (General Medicine)"
             />

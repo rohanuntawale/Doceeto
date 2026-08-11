@@ -25,6 +25,7 @@ export function Wordmark({
         className={compact ? "h-[34px] w-[34px]" : "h-10 w-10"}
         reduced={compact}
       />
+
       {compact ? (
         <Name className="text-xl" />
       ) : (
@@ -45,7 +46,12 @@ export function Wordmark({
 /** The "doc·ee·to" lockup with the middle pair in brand gold. */
 export function Name({ className }: { className?: string }) {
   return (
-    <span className={cn("font-serif font-bold lowercase tracking-tight text-[var(--text)]", className)}>
+    <span
+      className={cn(
+        "font-serif font-bold lowercase tracking-tight text-[var(--text)]",
+        className,
+      )}
+    >
       doc<span style={{ color: BRAND.gold }}>ee</span>to
     </span>
   );
@@ -73,12 +79,7 @@ export function BrandMark({
       aria-label="Doceeto"
     >
       {/* Background */}
-      <rect
-        width="512"
-        height="512"
-        rx="80"
-        fill="#EAE6DC"
-      />
+      <rect width="512" height="512" rx="80" fill="#EAE6DC" />
 
       {/* Main green D-shaped logo */}
       <path
@@ -106,12 +107,7 @@ export function BrandMark({
       />
 
       {/* Inner green circle */}
-      <circle
-        cx="245"
-        cy="256"
-        r="38"
-        fill="#153D32"
-      />
+      <circle cx="245" cy="256" r="38" fill="#153D32" />
 
       {/* Top gold arc */}
       <path
@@ -132,20 +128,10 @@ export function BrandMark({
       />
 
       {/* Gold node on bottom arc */}
-      <circle
-        cx="285"
-        cy="292"
-        r="15"
-        fill="#C9A13F"
-      />
+      <circle cx="285" cy="292" r="15" fill="#C9A13F" />
 
       {/* Floating gold dot */}
-      <circle
-        cx="420"
-        cy="256"
-        r="28"
-        fill="#C9A13F"
-      />
+      <circle cx="420" cy="256" r="28" fill="#C9A13F" />
     </svg>
   );
 }

@@ -28,7 +28,11 @@ import { useActions, useReviews } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { doctorStatusOf } from "@/lib/labels";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
-import { doctorQualification, doctorEducation, doctorAbout } from "@/lib/utils/doctor";
+import {
+  doctorQualification,
+  doctorEducation,
+  doctorAbout,
+} from "@/lib/utils/doctor";
 import { useMounted } from "@/lib/hooks/use-mounted";
 
 export default function ProfilePage() {
@@ -88,7 +92,11 @@ export default function ProfilePage() {
               >
                 {me.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={me.avatarUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   initials(me.fullName.replace("Dr. ", ""))
                 )}
@@ -96,7 +104,9 @@ export default function ProfilePage() {
             </AvatarUploader>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="truncate font-serif text-2xl text-cream">{me.fullName}</h2>
+                <h2 className="truncate font-serif text-2xl text-cream">
+                  {me.fullName}
+                </h2>
                 {me.verified && (
                   <BadgeCheck className="h-5 w-5 shrink-0 text-status-ok" />
                 )}
@@ -114,12 +124,15 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <FeeTile label="Video / clinic consult" value={formatINR(me.consultFee)} />
+            <FeeTile
+              label="Video / clinic consult"
+              value={formatINR(me.consultFee)}
+            />
             <FeeTile label="Home visit" value={formatINR(me.homeVisitFee)} />
           </div>
 
           <p className="mt-4 flex items-center gap-1.5 text-xs text-[var(--text-faint)]">
-            <MapPin className="h-3.5 w-3.5" /> Serving Pune ·{" "}
+            <MapPin className="h-3.5 w-3.5" /> Serving Nagpur ·{" "}
             {me.lat.toFixed(3)}, {me.lng.toFixed(3)}
           </p>
 
@@ -138,12 +151,36 @@ export default function ProfilePage() {
             <p className="text-sm leading-relaxed text-[var(--text-muted)]">
               {doctorAbout(me)}
             </p>
-            <CredLine icon={<MapPin className="h-4 w-4 text-salmon" />} label="Clinic address" value={me.clinicAddress || "Not added yet"} />
-            <CredLine icon={<Award className="h-4 w-4 text-salmon" />} label="Qualifications" value={doctorQualification(me)} />
-            <CredLine icon={<GraduationCap className="h-4 w-4 text-salmon" />} label="Academic background" value={doctorEducation(me)} />
-            <CredLine icon={<Briefcase className="h-4 w-4 text-salmon" />} label="Experience" value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`} />
-            <CredLine icon={<LanguagesIcon className="h-4 w-4 text-salmon" />} label="Languages" value={me.languages.join(", ") || "—"} />
-            <CredLine icon={<ShieldCheck className="h-4 w-4 text-salmon" />} label="Medical reg. no." value={me.registrationNo || "Not added yet"} />
+            <CredLine
+              icon={<MapPin className="h-4 w-4 text-salmon" />}
+              label="Clinic address"
+              value={me.clinicAddress || "Not added yet"}
+            />
+            <CredLine
+              icon={<Award className="h-4 w-4 text-salmon" />}
+              label="Qualifications"
+              value={doctorQualification(me)}
+            />
+            <CredLine
+              icon={<GraduationCap className="h-4 w-4 text-salmon" />}
+              label="Academic background"
+              value={doctorEducation(me)}
+            />
+            <CredLine
+              icon={<Briefcase className="h-4 w-4 text-salmon" />}
+              label="Experience"
+              value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`}
+            />
+            <CredLine
+              icon={<LanguagesIcon className="h-4 w-4 text-salmon" />}
+              label="Languages"
+              value={me.languages.join(", ") || "—"}
+            />
+            <CredLine
+              icon={<ShieldCheck className="h-4 w-4 text-salmon" />}
+              label="Medical reg. no."
+              value={me.registrationNo || "Not added yet"}
+            />
           </div>
 
           {!me.avatarUrl && (
@@ -161,7 +198,10 @@ export default function ProfilePage() {
 
         {/* Anchor target for the dashboard's Rating tile. */}
         <Card id="reviews" className="scroll-mt-24">
-          <CardHeader label="DOCEETO · REVIEWS" title={`Patient reviews (${mine.length})`} />
+          <CardHeader
+            label="DOCEETO · REVIEWS"
+            title={`Patient reviews (${mine.length})`}
+          />
           {mine.length === 0 ? (
             <div className="p-4">
               <EmptyState title="No reviews yet" />

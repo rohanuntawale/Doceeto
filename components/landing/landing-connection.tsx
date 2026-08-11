@@ -1,56 +1,126 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { ArrowRight, User, Stethoscope, ShieldCheck, Heart } from "lucide-react";
+
 export function LandingConnection() {
   return (
-    <section id="how-it-works" className="relative overflow-hidden bg-[var(--surface)] py-24 sm:py-28">
-      <div className="absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.12),transparent_60%)]" aria-hidden />
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+    <section id="how-it-works" className="relative overflow-hidden bg-[var(--surface)] py-28 sm:py-36 border-y-2 border-[var(--border)]">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          {/* Left Narrative Column */}
           <div className="max-w-xl">
-            <p className="label">How it works</p>
-            <h2 className="mt-4 text-4xl font-serif tracking-tight text-[var(--text)] sm:text-5xl">
-              Patient need meets doctor expertise through one seamless connection.
+            <span className="label border-l-2 border-[var(--accent)] pl-3 text-xs tracking-[0.2em] mb-4 inline-block">
+              03 / HOW IT WORKS
+            </span>
+
+            <h2 className="text-4xl sm:text-5xl font-serif font-bold tracking-tight text-[var(--text)] leading-tight">
+              A single connection bridging patient need and clinical expertise.
             </h2>
-            <div className="mt-8 space-y-6 text-lg leading-relaxed text-[var(--text-muted)]">
+
+            <div className="mt-8 space-y-6 text-lg leading-relaxed text-[var(--text-muted)] font-sans">
               <p>
-                Patients describe their need and doctors publish their practice profile. Doceeto routes the right match, gives both sides a shared view, and keeps the signup path simple.
+                Whether you need urgent consultation or specialized home nursing, your request enters Doceeto&apos;s intelligent matching ring.
               </p>
               <p>
-                The platform is the bridge — a single portal that converts care requests into trusted consultations and verified expertise into meaningful patient support.
+                Practitioners see structured patient requirements in real-time, accept consultations directly, and provide verified care — eliminating middleman delays.
               </p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-2 gap-6 pt-6 border-t border-[var(--border)]">
+              <div>
+                <div className="font-serif text-2xl font-bold text-[var(--accent)]">Direct Door</div>
+                <div className="text-xs text-[var(--text-muted)] mt-1">Single signup portal for all roles</div>
+              </div>
+              <div>
+                <div className="font-serif text-2xl font-bold text-tan">Verified Care</div>
+                <div className="text-xs text-[var(--text-muted)] mt-1">Certified state registration checks</div>
+              </div>
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-espresso-900/50 p-8 shadow-card">
-            <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(circle at 20% 10%, rgba(255,255,255,0.08), transparent 24%), radial-gradient(circle at 80% 18%, rgba(201,162,74,0.18), transparent 20%)" }} aria-hidden />
-            <div className="relative h-[420px] w-full">
-              <svg viewBox="0 0 720 420" className="h-full w-full" aria-hidden>
-                <defs>
-                  <linearGradient id="line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgb(255,255,255)" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="rgb(201,162,74)" stopOpacity="0.9" />
-                  </linearGradient>
-                </defs>
-                <path d="M 120 340 C 220 240 320 230 380 230" fill="none" stroke="url(#line-gradient)" strokeWidth="5" strokeLinecap="round" />
-                <path d="M 520 190 C 580 190 620 200 660 130" fill="none" stroke="url(#line-gradient)" strokeWidth="5" strokeLinecap="round" />
-                <circle cx="120" cy="340" r="30" fill="rgba(255,255,255,0.08)" stroke="rgb(255,255,255,0.28)" strokeWidth="2" />
-                <circle cx="120" cy="340" r="12" fill="rgb(255,255,255)" />
-                <circle cx="380" cy="230" r="42" fill="rgba(201,162,74,0.15)" stroke="rgb(201,162,74,0.4)" strokeWidth="3" />
-                <circle cx="380" cy="230" r="16" fill="rgb(255,255,255)" />
-                <circle cx="660" cy="130" r="30" fill="rgba(255,255,255,0.08)" stroke="rgb(255,255,255,0.28)" strokeWidth="2" />
-                <circle cx="660" cy="130" r="12" fill="rgb(255,255,255)" />
-                <text x="120" y="286" textAnchor="middle" className="text-[14px] fill-[var(--text-muted)]" style={{ fontFamily: "Inter, ui-sans-serif, system-ui" }}>
-                  Need
-                </text>
-                <text x="380" y="190" textAnchor="middle" className="text-[14px] fill-[var(--text-muted)]" style={{ fontFamily: "Inter, ui-sans-serif, system-ui" }}>
-                  Doceeto
-                </text>
-                <text x="660" y="90" textAnchor="middle" className="text-[14px] fill-[var(--text-muted)]" style={{ fontFamily: "Inter, ui-sans-serif, system-ui" }}>
-                  Expertise
-                </text>
-                <circle cx="220" cy="260" r="10" fill="rgb(255,255,255)" opacity="0.5" />
-                <circle cx="320" cy="250" r="8" fill="rgb(255,255,255)" opacity="0.4" />
-                <circle cx="500" cy="180" r="10" fill="rgb(255,255,255)" opacity="0.5" />
-                <circle cx="600" cy="170" r="8" fill="rgb(255,255,255)" opacity="0.4" />
-              </svg>
+          {/* Right SVG Connection Diagram Box */}
+          <div className="relative overflow-hidden rounded-[2.5rem] border-2 border-[var(--border)] bg-[var(--bg)]/90 p-8 shadow-card">
+            {/* Ambient backdrop glow */}
+            <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: "radial-gradient(circle at 50% 50%, rgba(190,100,45,0.15), transparent 70%)" }} aria-hidden />
+
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-full flex items-center justify-between text-xs font-mono text-[var(--text-faint)] mb-6 border-b border-[var(--border)] pb-4">
+                <span>CONNECTION FLOW</span>
+                <span className="flex items-center gap-1 text-status-ok"><ShieldCheck className="w-3.5 h-3.5" /> E2E Encrypted</span>
+              </div>
+
+              {/* Animated Connection Diagram Nodes */}
+              <div className="w-full grid grid-cols-3 gap-4 items-center text-center my-6">
+                {/* Node 1: Patient Need */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5 }}
+                  className="flex flex-col items-center p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-soft"
+                >
+                  <div className="h-12 w-12 rounded-full bg-[var(--accent)]/15 border border-[var(--accent)]/30 grid place-items-center mb-3">
+                    <User className="h-6 w-6 text-[var(--accent)]" />
+                  </div>
+                  <span className="font-serif text-sm font-bold text-[var(--text)]">Patient</span>
+                  <span className="text-[11px] text-[var(--text-muted)] mt-1">Express Need</span>
+                </motion.div>
+
+                {/* Node 2: Doceeto Engine (Center Node) */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="flex flex-col items-center p-5 rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface)] shadow-card relative"
+                >
+                  <div className="absolute -top-3 rounded-full bg-[var(--accent)] text-[var(--c-on-accent)] px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider">
+                    Core Ring
+                  </div>
+                  <div className="h-14 w-14 rounded-full bg-[var(--accent)] grid place-items-center mb-2 text-white shadow-glow">
+                    <Heart className="h-7 w-7 text-white fill-white animate-pulse" />
+                  </div>
+                  <span className="font-serif text-base font-extrabold text-[var(--text)]">Doceeto</span>
+                  <span className="text-[11px] text-[var(--text-muted)] mt-0.5">Match &amp; Direct</span>
+                </motion.div>
+
+                {/* Node 3: Medical Expertise */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="flex flex-col items-center p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-soft"
+                >
+                  <div className="h-12 w-12 rounded-full bg-[#2F7BC4]/15 border border-[#2F7BC4]/30 grid place-items-center mb-3">
+                    <Stethoscope className="h-6 w-6 text-[#2F7BC4]" />
+                  </div>
+                  <span className="font-serif text-sm font-bold text-[var(--text)]">Practitioner</span>
+                  <span className="text-[11px] text-[var(--text-muted)] mt-1">Doctor / Nurse</span>
+                </motion.div>
+              </div>
+
+              {/* Connecting Animation Bar */}
+              <div className="w-full relative h-2 bg-espresso-700 rounded-full overflow-hidden my-4 border border-[var(--border)]">
+                <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-[var(--accent)] via-tan to-[#2F7BC4] rounded-full animate-marquee-left" />
+              </div>
+
+              {/* Workflow Steps Bullet Points */}
+              <div className="w-full grid sm:grid-cols-3 gap-3 mt-4 text-xs text-[var(--text-muted)]">
+                <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                  <span className="font-mono font-bold text-[var(--accent)] block mb-1">01. REQUEST</span>
+                  Patient posts symptoms &amp; location
+                </div>
+                <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                  <span className="font-mono font-bold text-tan block mb-1">02. ROUTE</span>
+                  Matched to nearest doctor or nurse
+                </div>
+                <div className="p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                  <span className="font-mono font-bold text-[#2F7BC4] block mb-1">03. CARE</span>
+                  Consultation &amp; medicine delivered
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -330,7 +330,12 @@ function OnboardingPanel() {
         : await fetch("/api/auth/register", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ role: "nurse", email, password, ...nurseProfile }),
+            body: JSON.stringify({
+              role: "nurse",
+              email,
+              password,
+              ...nurseProfile,
+            }),
           });
       const data = await res.json().catch(() => ({}));
       setLoading(false);
@@ -485,7 +490,9 @@ function OnboardingPanel() {
                       }}
                       // Nurse surfaces carry the blue accent app-wide; the
                       // active chip says so from the very first tap.
-                      style={r === "nurse" && active ? NURSE_ACCENT_VARS : undefined}
+                      style={
+                        r === "nurse" && active ? NURSE_ACCENT_VARS : undefined
+                      }
                       className={cn(
                         "flex-1 rounded-full px-3 py-2 font-medium transition-colors",
                         active
@@ -493,7 +500,11 @@ function OnboardingPanel() {
                           : "text-[var(--text-muted)] hover:text-cream",
                       )}
                     >
-                      {r === "patient" ? "I need care" : r === "doctor" ? "Doctor" : "Nurse"}
+                      {r === "patient"
+                        ? "I need care"
+                        : r === "doctor"
+                          ? "Doctor"
+                          : "Nurse"}
                     </button>
                   );
                 })}
@@ -594,7 +605,9 @@ function OnboardingPanel() {
                     onChange={(e) => setNurseTitle(e.target.value)}
                   >
                     {NURSE_TITLES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
                     ))}
                   </select>
                 </Field>
@@ -605,7 +618,9 @@ function OnboardingPanel() {
                     onChange={(e) => setNurseCadre(e.target.value)}
                   >
                     {NURSE_CADRES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
                 </Field>
@@ -639,10 +654,14 @@ function OnboardingPanel() {
                   <select
                     className={inputCls}
                     value={gender}
-                    onChange={(e) => setGender(e.target.value as "" | "female" | "male")}
+                    onChange={(e) =>
+                      setGender(e.target.value as "" | "female" | "male")
+                    }
                     required
                   >
-                    <option value="" disabled>Select…</option>
+                    <option value="" disabled>
+                      Select…
+                    </option>
                     <option value="female">Female</option>
                     <option value="male">Male</option>
                   </select>
@@ -878,7 +897,7 @@ function OnboardingPanel() {
                   className={inputCls}
                   value={clinicAddress}
                   onChange={(e) => setClinicAddress(e.target.value)}
-                  placeholder="Shivaji Nagar, Pune — near City Hospital"
+                  placeholder="Vaishali Nagar, Nagpur — near City Hospital"
                   autoComplete="off"
                   maxLength={160}
                 />

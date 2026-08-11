@@ -61,7 +61,7 @@ const ROSTER: SeedDoctor[] = [
     fullName: "Dr. Neha Kulkarni", specialty: "General Physician", kind: "resident", gender: "female",
     experienceYears: 3, languages: ["English", "Hindi"], status: "online", verified: false,
     rating: 4.5, consultFee: 300, homeVisitFee: 700,
-    qualifications: "MBBS", education: "BJ Medical College, Pune (2019)",
+    qualifications: "MBBS", education: "BJ Medical College, Nagpur (2019)",
     about: "Junior physician taking home visits alongside hospital duty. Friendly with first-time patients and students.",
     registrationNo: "MMC-2019-71140", dLat: 0.009, dLng: -0.006,
   },
