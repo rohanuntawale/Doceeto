@@ -2,68 +2,32 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
 import { COMPANY } from "@/lib/legal/company";
 import { FOOTER_BAR_LINKS } from "@/lib/legal/documents";
+import { FOOTER_SITEMAP } from "@/lib/legal/site-map";
 
-const FOOTER_LINKS = [
-  {
-    heading: "Product",
-    links: [
-      // Rooted at "/" deliberately. The footer renders on every page, so a bare
-      // "#how-it-works" resolves against the *current* path — from a legal page
-      // it becomes /legal/privacy#how-it-works, an anchor to nothing.
-      { label: "How it works", href: "/#how-it-works" },
-      { label: "For Patients", href: "/#patient-doctor" },
-      { label: "For Doctors", href: "/#patient-doctor" },
-      { label: "Product Showcase", href: "/#showcase" },
-    ],
-  },
-  {
-    heading: "Company",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Contact", href: "/contact" },
-      { label: "Sign in / Register", href: "/login?tab=signup" },
-    ],
-  },
-  {
-    heading: "Legal",
-    links: [
-      { label: "Privacy Policy", href: "/legal/privacy" },
-      { label: "Terms of Use", href: "/legal/terms" },
-      { label: "Medical Disclaimer", href: "/legal/medical-disclaimer" },
-      { label: "Grievance Redressal", href: "/legal/grievance" },
-      { label: "All policies", href: "/legal" },
-    ],
-  },
-];
-
+/**
+ * The footer carries the site map.
+ *
+ * It used to be three columns of section anchors — "How it works", "Product
+ * Showcase" — which described the landing page rather than the product, and
+ * pointed a visitor at nothing they could actually use. The columns now come
+ * from lib/legal/site-map.ts, grouped by who is reading, so every link is a
+ * real destination and a new page only has to be added in one place.
+ */
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors">
-      <div className="mx-auto max-w-6xl px-6 py-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Brand column */}
-        <div className="space-y-4">
-          <Wordmark compact={false} />
-          <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xs">
-            Connecting patient needs with doctor expertise — India&apos;s single front door to care.
-          </p>
-          {/* The one line worth repeating on every page of a healthcare site. */}
-          <p className="max-w-xs text-xs leading-relaxed text-[var(--text-faint)]">
-            Not for emergencies. Call{" "}
-            <span className="font-semibold text-[var(--text-muted)]">112</span> or{" "}
-            <span className="font-semibold text-[var(--text-muted)]">108</span> if
-            life is at risk.
-          </p>
-        </div>
-
-        {/* Link columns */}
-        {FOOTER_LINKS.map((group) => (
+      <nav
+        aria-label="Site map"
+        className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+      >
+        {FOOTER_SITEMAP.map((group) => (
           <div key={group.heading}>
             <h4 className="text-xs font-semibold uppercase tracking-label text-[var(--text-faint)] mb-3">
               {group.heading}
             </h4>
             <ul className="space-y-2.5">
               {group.links.map((l) => (
-                <li key={l.label}>
+                <li key={`${group.heading}-${l.label}`}>
                   <Link
                     href={l.href}
                     className="text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
@@ -75,6 +39,27 @@ export function SiteFooter() {
             </ul>
           </div>
         ))}
+      </nav>
+
+      {/* Brand sits under the map, the way a masthead closes a page. */}
+      <div className="mx-auto max-w-6xl px-6 pb-12">
+        <div className="flex flex-col gap-4 border-t border-[var(--border)] pt-10 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-3">
+            <Wordmark compact={false} />
+            <p className="max-w-sm text-sm leading-relaxed text-[var(--text-muted)]">
+              Connecting patient needs with doctor expertise — India&apos;s
+              single front door to care.
+            </p>
+          </div>
+          {/* The one line worth repeating on every page of a healthcare site. */}
+          <p className="max-w-xs text-xs leading-relaxed text-[var(--text-faint)] sm:text-right">
+            Not for emergencies. Call{" "}
+            <span className="font-semibold text-[var(--text-muted)]">112</span>{" "}
+            or{" "}
+            <span className="font-semibold text-[var(--text-muted)]">108</span>{" "}
+            if life is at risk.
+          </p>
+        </div>
       </div>
 
       {/* Bottom bar: copyright, then the condensed legal strip. */}

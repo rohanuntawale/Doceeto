@@ -41,13 +41,25 @@ const NAV_ITEMS: AnimatedNavigationTab[] = [
   { id: "nurses", tile: "Nurses", href: "/try/nurses" },
   { id: "urgent", tile: "Urgent care", href: "/try/urgent" },
   { id: "checker", tile: "Symptom check", href: "/try/checker" },
-  // The one item aimed at the other side of the marketplace: the signup page
-  // opens directly on the doctor form.
-  { id: "providers", tile: "For providers", href: "/signup?as=doctor" },
+];
+
+/**
+ * The two links that are not things a patient came here to get.
+ *
+ * They sit beside Log in rather than in the rail, which is how every
+ * marketplace with two sides handles it: the centre belongs to what you can
+ * buy, the edge to joining the other side of it and to finding a human. Six
+ * tabs in one rail also forced the whole nav to `lg:` — below that width it
+ * collided with the buttons and had to be hidden outright, so a tablet got no
+ * navigation at all. Four fits from `md:` up.
+ */
+const SECONDARY_NAV = [
+  // The signup page opens directly on the doctor form.
+  { label: "For providers", href: "/signup?as=doctor" },
   // The company, the mechanism, the policies and the ways to reach a person.
   // Not the bare contact form it used to be — most people who click "Support"
   // want an answer, not a text box.
-  { id: "support", tile: "Support", href: "/support" },
+  { label: "Support", href: "/support" },
 ];
 
 export default function Page() {
@@ -109,11 +121,24 @@ export default function Page() {
           <AnimatedNavigationTabs
             items={NAV_ITEMS}
             activeId={null}
-            className="hidden lg:block text-xs font-semibold uppercase tracking-wider"
+            className="hidden md:block text-xs font-semibold uppercase tracking-wider"
           />
 
           {/* Right Action Cluster */}
           <div className="flex items-center gap-3">
+            {SECONDARY_NAV.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="hidden text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] lg:inline-block"
+              >
+                {l.label}
+              </Link>
+            ))}
+            <span
+              aria-hidden
+              className="hidden h-4 w-px bg-[var(--border)] lg:inline-block"
+            />
             <Link href="/login" className="hidden sm:inline-block">
               <Button
                 variant="ghost"
