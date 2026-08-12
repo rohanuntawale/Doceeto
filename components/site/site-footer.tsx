@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
+import { COMPANY } from "@/lib/legal/company";
+import { FOOTER_BAR_LINKS } from "@/lib/legal/documents";
 
 const FOOTER_LINKS = [
   {
     heading: "Product",
     links: [
-      { label: "How it works", href: "#how-it-works" },
-      { label: "For Patients", href: "#patient-doctor" },
-      { label: "For Doctors", href: "#patient-doctor" },
-      { label: "Product Showcase", href: "#showcase" },
+      // Rooted at "/" deliberately. The footer renders on every page, so a bare
+      // "#how-it-works" resolves against the *current* path — from a legal page
+      // it becomes /legal/privacy#how-it-works, an anchor to nothing.
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "For Patients", href: "/#patient-doctor" },
+      { label: "For Doctors", href: "/#patient-doctor" },
+      { label: "Product Showcase", href: "/#showcase" },
     ],
   },
   {
@@ -22,8 +27,11 @@ const FOOTER_LINKS = [
   {
     heading: "Legal",
     links: [
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
+      { label: "Privacy Policy", href: "/legal/privacy" },
+      { label: "Terms of Use", href: "/legal/terms" },
+      { label: "Medical Disclaimer", href: "/legal/medical-disclaimer" },
+      { label: "Grievance Redressal", href: "/legal/grievance" },
+      { label: "All policies", href: "/legal" },
     ],
   },
 ];
@@ -37,6 +45,13 @@ export function SiteFooter() {
           <Wordmark compact={false} />
           <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xs">
             Connecting patient needs with doctor expertise — India&apos;s single front door to care.
+          </p>
+          {/* The one line worth repeating on every page of a healthcare site. */}
+          <p className="max-w-xs text-xs leading-relaxed text-[var(--text-faint)]">
+            Not for emergencies. Call{" "}
+            <span className="font-semibold text-[var(--text-muted)]">112</span> or{" "}
+            <span className="font-semibold text-[var(--text-muted)]">108</span> if
+            life is at risk.
           </p>
         </div>
 
@@ -62,9 +77,33 @@ export function SiteFooter() {
         ))}
       </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-[var(--border)] py-5 text-center text-xs text-[var(--text-faint)]">
-        © {new Date().getFullYear()} Doceeto Health Pvt. Ltd. All rights reserved.
+      {/* Bottom bar: copyright, then the condensed legal strip. */}
+      <div className="border-t border-[var(--border)] py-5">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 text-xs text-[var(--text-faint)] md:flex-row md:justify-between">
+          <p className="order-2 text-center md:order-1 md:text-left">
+            © {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved.
+          </p>
+          <nav
+            aria-label="Legal"
+            className="order-1 flex flex-wrap items-center justify-center gap-y-2 md:order-2 md:justify-end"
+          >
+            {FOOTER_BAR_LINKS.map((l, i) => (
+              <span key={l.href} className="flex items-center">
+                {i > 0 ? (
+                  <span aria-hidden className="px-2 opacity-50">
+                    |
+                  </span>
+                ) : null}
+                <Link
+                  href={l.href}
+                  className="whitespace-nowrap transition-colors hover:text-terracotta"
+                >
+                  {l.label}
+                </Link>
+              </span>
+            ))}
+          </nav>
+        </div>
       </div>
     </footer>
   );

@@ -88,6 +88,11 @@ function useDemoState() {
 // ── Live primitive: fetch an entity from /api/data with polling ──
 async function fetchEntity<T>(entity: string): Promise<T[]> {
   const res = await apiFetch(`/api/data?entity=${entity}`, { cache: "no-store" });
+  // A 5xx is the server falling over, not an answer of "there are none".
+  // Swallowing it as [] caches an empty screen — the doctor list, the map and
+  // every count go blank and stay blank until something else invalidates the
+  // query. Throwing keeps the last good data on screen and lets the poll retry.
+  if (res.status >= 500) throw new Error(`${entity}: ${res.status}`);
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? (data as T[]) : [];

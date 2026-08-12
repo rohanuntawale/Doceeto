@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
 import { SiteMenu } from "@/components/site/site-menu";
-import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 
 /** Public header for About / Contact pages: brand + hamburger menu. */
 export function SiteHeader() {
   return (
-    // isolate + z-50: the menu/theme popovers anchor inside this header, so it
+    // isolate + z-50: the menu popover anchors inside this header, so it
     // must out-stack anything the landing sections (framer transforms, hero
     // text) put into the root stacking context — the hero was painting over
     // the open menu.
@@ -16,7 +15,6 @@ export function SiteHeader() {
           <Wordmark />
         </Link>
         <div className="flex items-center gap-2.5">
-          <ThemeSwitcher />
           <SiteMenu />
         </div>
       </div>

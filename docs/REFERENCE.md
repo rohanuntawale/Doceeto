@@ -211,7 +211,10 @@ Realtime on these tables in Supabase (the migration already adds them to the
 | `SosCard` | `components/sos/sos-card.tsx` | Emergency card + dispatch controls |
 | `RequestCard` | `components/zumi/request-card.tsx` | Consult request + accept/pass |
 | `OrderCard` | `components/auramed/order-card.tsx` | Delivery card + progress rail |
-| `LiveMap` | `components/map/live-map.tsx` | Leaflet map (dynamic, `ssr:false`) |
+| `LiveMap` | `components/map/live-map.tsx` | Ops/dashboard map (MapLibre, dynamic, `ssr:false`) |
+| `DoctorMap` | `components/map/doctor-map.tsx` | Browse map — selectable provider pins |
+| `LiveTripMap` | `components/map/live-trip-map.tsx` | Live journey — road route, moving puck, ETA |
+| `TrackMap` | `components/map/track-map.tsx` | Two-party adapter over `LiveTripMap` for consult cards |
 
 Status → label/tone lookups live in [`lib/labels.ts`](../lib/labels.ts) — one place to
 rename or recolor a status everywhere.

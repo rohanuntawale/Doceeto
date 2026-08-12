@@ -8,29 +8,41 @@
    Default theme = Mori: the Investor Brief 2026 palette —
    deep forest green shell, paper text, WHITE accent (CTAs, SOS),
    gold for highlights; warm status-critical kept for map SOS pins. */
-/* Doceeto (default) — the brand skin: warm cream/beige canvas, frosted glass
-   cards, terracotta primary + sage-green secondary (from the logo). Light,
-   glassy and inviting — "care that reaches you". */
+/* Doceeto (default) — the brand skin, taken straight off the logo mark:
+   forest green #153D32 + brand gold #C9A13F on a paper-white canvas.
+   Green is the primary accent (CTAs, links, emphasis); gold stays a thin
+   highlight (stars, ratings) so it reads as the logo's second colour rather
+   than a warm wash. Light, glassy and inviting — "care that reaches you". */
 :root,
 [data-theme="doceeto"] {
-  --c-espresso: 249 250 252; /* app canvas — bright white #F9FAFC */
+  --c-espresso: 246 249 247; /* app canvas — faint green-white #F6F9F7 */
   --c-espresso-800: 255 255 255; /* card — pure white #FFFFFF */
-  --c-espresso-700: 241 243 247; /* raised tile #F1F3F7 */
-  --c-espresso-600: 226 230 236; /* separator / strong #E2E6EC */
-  --c-cream: 26 30 38; /* PRIMARY TEXT — elegant slate #1A1E26 */
-  --c-sand: 107 114 128; /* secondary text — slate gray #6B7280 */
-  --c-tan: 202 150 70; /* refined amber — stars / highlights #CA9646 */
-  --c-terracotta: 190 100 45; /* PRIMARY accent — terracotta #BE642D */
-  --c-terracotta-700: 165 84 36; /* pressed #A55424 */
-  --c-terracotta-300: 233 190 155; /* light terracotta tint */
-  --c-salmon: 122 138 95; /* secondary — sage green #7A8A5F */
-  --c-ink: 26 30 38;
-  --c-on-accent: 255 255 255; /* text on the terracotta accent = white */
-  --c-status-critical: 214 69 69; /* refined red #D64545 */
-  --c-status-warn: 202 150 70; /* amber */
-  --c-status-ok: 90 138 75; /* sage green #5A8A4B */
-  --c-status-idle: 148 156 168; /* cool gray */
-  --map-filter: saturate(0.95) brightness(1.03) contrast(0.97);
+  --c-espresso-700: 237 243 239; /* raised tile #EDF3EF */
+  --c-espresso-600: 219 229 223; /* separator / strong #DBE5DF */
+  --c-cream: 20 38 32; /* PRIMARY TEXT — deep forest ink #142620 */
+  --c-sand: 92 112 103; /* secondary text — green-gray #5C7067 */
+  --c-tan: 201 161 63; /* brand gold — stars / highlights #C9A13F */
+  --c-terracotta: 31 106 80; /* PRIMARY accent — Doceeto green #1F6A50 */
+  --c-terracotta-700: 23 83 64; /* pressed #175340 */
+  --c-terracotta-300: 195 222 210; /* light green tint #C3DED2 */
+  --c-salmon: 95 143 110; /* secondary — sage green #5F8F6E */
+  --c-ink: 20 38 32;
+  --c-on-accent: 255 255 255; /* text on the green accent = white */
+  --c-status-critical: 199 71 71; /* refined red #C74747 */
+  --c-status-warn: 201 161 63; /* brand gold */
+  --c-status-ok: 47 133 90; /* confirm green #2F855A */
+  --c-status-idle: 138 152 145; /* green-gray */
+
+  /* ── Forest shell ────────────────────────────────────────────
+     The deep-green bands the landing page cuts between its paper
+     panels (the dark section under the hero's rounded edge, the
+     manifesto, the closing CTA). Set on :root so every theme
+     inherits the brand green for those bands unless it overrides. */
+  --c-forest: 21 61 50; /* logo green #153D32 */
+  --c-forest-800: 27 76 62; /* raised green #1B4C3E */
+  --c-forest-600: 40 100 82; /* hairline / tile #286452 */
+  --c-forest-paper: 236 234 224; /* brand bone #ECEAE0 — text on forest */
+  --c-forest-mint: 143 205 180; /* mint highlight on forest #8FCDB4 */
 }
 
 /* Fresh Health — clean light skin, opt-in via the theme switcher. */
@@ -52,7 +64,6 @@
   --c-status-warn: 242 169 59;
   --c-status-ok: 22 163 122; /* success green #16A37A */
   --c-status-idle: 154 166 162; /* muted gray #9AA6A2 */
-  --map-filter: grayscale(0.12) brightness(1.02) contrast(0.96) saturate(0.92);
 }
 
 /* Mori — Rohan's deep forest-green Investor Brief shell, kept as an
@@ -75,8 +86,6 @@
   --c-status-warn: 198 166 76;
   --c-status-ok: 93 138 110;
   --c-status-idle: 105 117 106; /* deck sage #69756A */
-  /* map tiles tuned per shell */
-  --map-filter: grayscale(0.3) brightness(0.8) contrast(1.05) hue-rotate(65deg) sepia(0.18);
 }
 
 /* Sumi — the original warm espresso shell */
@@ -98,7 +107,6 @@
   --c-status-warn: 201 168 118;
   --c-status-ok: 124 139 99;
   --c-status-idle: 107 97 90;
-  --map-filter: grayscale(0.35) brightness(0.82) contrast(1.05) sepia(0.12);
 }
 
 /* Matcha — tea-green shell, soft gold accent */
@@ -120,7 +128,6 @@
   --c-status-warn: 201 162 75;
   --c-status-ok: 138 163 91;
   --c-status-idle: 100 110 92;
-  --map-filter: grayscale(0.3) brightness(0.82) contrast(1.05) hue-rotate(45deg) sepia(0.14);
 }
 
 /* Sakura — dusk plum shell, blossom-pink accent */
@@ -142,7 +149,6 @@
   --c-status-warn: 214 168 120;
   --c-status-ok: 130 160 120;
   --c-status-idle: 112 100 108;
-  --map-filter: grayscale(0.3) brightness(0.82) contrast(1.03) hue-rotate(300deg) sepia(0.12);
 }
 
 /* Ai — indigo night shell, lantern-blue accent */
@@ -164,28 +170,47 @@
   --c-status-warn: 214 180 110;
   --c-status-ok: 120 170 150;
   --c-status-idle: 108 118 138;
-  --map-filter: grayscale(0.2) brightness(0.8) contrast(1.05) hue-rotate(190deg) sepia(0.1);
 }
 
 /* Semantic tokens, derived from the active theme triplets. */
 :root {
   --bg: rgb(var(--c-espresso));
   --surface: rgb(var(--c-espresso-800));
+  /* Alpha-capable twins of --bg / --surface, for the same Tailwind 3 reason
+     documented on --accent-rgb below: a translucent surface must be written
+     rgb(var(--surface-rgb) / x), never bg-[var(--surface)]/x. */
+  --bg-rgb: var(--c-espresso);
+  --surface-rgb: var(--c-espresso-800);
   --border: rgb(var(--c-cream) / 0.08);
   --text: rgb(var(--c-cream));
   --text-muted: rgb(var(--c-sand)); /* iOS secondary label */
   --text-faint: rgb(var(--c-sand) / 0.7);
   --accent: rgb(var(--c-terracotta));
+  /* The accent as a bare "R G B" triplet. Tailwind 3 silently DROPS the
+     opacity modifier on an arbitrary value that is already a colour function
+     — `bg-[var(--accent)]/15` emits no rule at all — so any tinted accent
+     surface must go through rgb(var(--accent-rgb) / x) instead. Bands that
+     re-point --accent re-point this alongside it. */
+  --accent-rgb: var(--c-terracotta);
   /* Frosted cream glass (light). Cards are translucent + blurred so they pick
      up the warm, patterned background behind them. */
   --glass-bg: rgb(var(--c-espresso-800) / 0.64);
   --glass-bg-strong: rgb(var(--c-espresso-800) / 0.85);
   --glass-border: rgb(var(--c-cream) / 0.09);
   --glass-highlight: rgb(255 255 255 / 0.7);
-  --elev-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
-  --elev-shadow-strong: 0 4px 10px rgb(15 23 42 / 0.06), 0 20px 50px rgb(15 23 42 / 0.10);
+  --elev-shadow: 0 1px 2px rgb(16 45 35 / 0.04), 0 8px 24px rgb(16 45 35 / 0.07);
+  --elev-shadow-strong: 0 4px 10px rgb(16 45 35 / 0.07), 0 20px 50px rgb(16 45 35 / 0.12);
   --card-fill: rgb(var(--c-espresso-800) / 0.7);
   --card-blur: blur(20px) saturate(1.2);
+
+  /* Forest band semantics — see the triplets in the doceeto block. */
+  --forest: rgb(var(--c-forest));
+  --forest-raised: rgb(var(--c-forest-800));
+  --forest-line: rgb(var(--c-forest-paper) / 0.16);
+  --forest-text: rgb(var(--c-forest-paper));
+  --forest-muted: rgb(var(--c-forest-paper) / 0.68);
+  --forest-faint: rgb(var(--c-forest-paper) / 0.45);
+  --forest-mint: rgb(var(--c-forest-mint));
 
   /* Shell chrome lanes — the single source of truth for anything that sizes
      itself against the viewport (map canvases, chat floors). Pages must use
@@ -219,6 +244,26 @@
 html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  /* In-page anchors (#story, #how-it-works, …) resolve against this.
+
+     scroll-padding-top: the landing header is `fixed`, so without it an anchor
+     lands with the section's own heading sitting *behind* the header — the jump
+     looks like it went nowhere. 6rem clears the 82px header with a little air.
+
+     scroll-behavior: an instant jump reads as a page redirect rather than
+     navigation within one page; animating it is what makes the section feel
+     like somewhere you travelled to. */
+  scroll-padding-top: 6rem;
+  scroll-behavior: smooth;
+}
+
+/* Respect a system-level request for less motion — a long smooth scroll is
+   exactly the kind of movement that triggers vestibular discomfort. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
@@ -231,8 +276,8 @@ body {
   overflow-x: clip;
 }
 
-/* Warm, lit backdrop so the cream glass has something to refract — soft
-   terracotta + sage glows. */
+/* Lit backdrop so the glass has something to refract — soft forest + sage
+   glows, with one thin gold pass so the logo's second colour stays present. */
 body::before {
   content: "";
   position: fixed;
@@ -240,11 +285,11 @@ body::before {
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(58rem 44rem at 6% -6%, rgb(var(--c-terracotta) / 0.06), transparent 55%),
-    radial-gradient(52rem 42rem at 104% 6%, rgb(var(--c-salmon) / 0.07), transparent 52%),
-    radial-gradient(70rem 56rem at 50% 122%, rgb(var(--c-tan) / 0.05), transparent 58%);
+    radial-gradient(58rem 44rem at 6% -6%, rgb(var(--c-terracotta) / 0.09), transparent 55%),
+    radial-gradient(52rem 42rem at 104% 6%, rgb(var(--c-salmon) / 0.10), transparent 52%),
+    radial-gradient(70rem 56rem at 50% 122%, rgb(var(--c-tan) / 0.04), transparent 58%);
 }
-/* Subtle cool dot + line grid, faded toward the bottom for depth. */
+/* Subtle dot + line grid in green ink, faded toward the bottom for depth. */
 body::after {
   content: "";
   position: fixed;
@@ -252,9 +297,9 @@ body::after {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(rgb(15 23 42 / 0.05) 1px, transparent 1.5px),
-    linear-gradient(rgb(15 23 42 / 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(15 23 42 / 0.025) 1px, transparent 1px);
+    radial-gradient(rgb(16 45 35 / 0.055) 1px, transparent 1.5px),
+    linear-gradient(rgb(16 45 35 / 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(16 45 35 / 0.028) 1px, transparent 1px);
   background-size: 24px 24px, 96px 96px, 96px 96px;
   -webkit-mask-image: radial-gradient(130% 100% at 50% 0%, black, transparent 90%);
   mask-image: radial-gradient(130% 100% at 50% 0%, black, transparent 90%);
@@ -360,6 +405,92 @@ body::after {
   mask-image: radial-gradient(140% 130% at 100% 0%, black, transparent 72%);
 }
 
+/* ── Forest bands ─────────────────────────────────────────────
+   The landing page alternates paper panels with deep-green bands. A band
+   re-points the semantic text tokens at the forest palette, so anything
+   inside it (labels, .metric, muted copy) reads correctly on green without
+   each element hard-coding a light colour. */
+.forest-band {
+  background: var(--forest);
+  color: var(--forest-text);
+  --text: var(--forest-text);
+  --text-muted: var(--forest-muted);
+  --text-faint: var(--forest-faint);
+  --surface: var(--forest-raised);
+  --surface-rgb: var(--c-forest-800);
+  --bg-rgb: var(--c-forest);
+  --border: var(--forest-line);
+  --accent: var(--forest-mint);
+  --accent-rgb: var(--c-forest-mint);
+}
+
+/* The paper panels that sit on a forest band and curve away from it — the
+   rounded shape closing the first screen, and its mirror where the page
+   returns to paper. The shadow is what sells the panel as lifted off the
+   green rather than pasted onto it, so it points away from the curve. */
+.paper-panel {
+  background: var(--bg);
+  box-shadow: 0 40px 70px -45px rgb(16 45 35 / 0.55);
+}
+.paper-panel-up {
+  background: var(--bg);
+  box-shadow: 0 -40px 70px -45px rgb(16 45 35 / 0.45);
+}
+
+/* Dissolve a rail's left and right ends into the page, so a marquee reads as
+   continuous motion rather than text sliced off at the viewport edge. */
+.edge-fade-x {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 12%,
+    #000 88%,
+    transparent
+  );
+}
+
+/* Marquee rails (care ticker, connection bar). Declared globally so any
+   surface can use them — they are not owned by a single component. */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+.animate-marquee-left {
+  animation: marquee-left 35s linear infinite;
+}
+.animate-marquee-right {
+  animation: marquee-right 40s linear infinite;
+}
+.animate-marquee-slow {
+  animation: marquee-left 55s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-left,
+  .animate-marquee-right,
+  .animate-marquee-slow {
+    animation: none;
+  }
+}
+
 /* Reusable decorative patterns (apply to an absolute overlay inside a card). */
 .pattern-dots {
   background-image: radial-gradient(rgb(var(--c-cream) / 0.1) 1.4px, transparent 1.7px);
@@ -392,28 +523,86 @@ body::after {
   border-radius: 8px;
 }
 
-/* Leaflet tiles read better tuned to the active shell */
-.leaflet-container {
-  background: rgb(var(--c-espresso-800)) !important;
+/* ── MapLibre ─────────────────────────────────────────────────
+   Deliberately NOT tinted per shell. Leaflet drew tiles as <img> elements, so
+   a CSS filter could recolour the basemap and nothing else; MapLibre draws the
+   basemap, the route line and the pulses into ONE WebGL canvas, so the same
+   filter recolours the journey too — a cream route came out muted green under
+   the sepia/hue-rotate shells. The basemap is instead desaturated once at the
+   source (lib/maps/style.ts), which is also the only approach that survives
+   the upgrade to vector tiles, where there is no raster layer to tint. A quiet
+   basemap under one saturated route is the navigation look anyway. */
+.maplibregl-map {
+  background: rgb(var(--c-espresso-800));
   font-family: var(--font-inter), Inter, sans-serif;
-  /* Leaflet gives its panes/controls z-index up to ~1000. Without its own
-     stacking context those leak to the page and paint over the fixed header
-     and bottom nav (z-30). `isolate` contains them inside the map box. */
+  /* MapLibre's controls carry their own z-index. Without a stacking context
+     they leak to the page and paint over the fixed header and bottom nav
+     (z-30). `isolate` contains them inside the map box. */
   isolation: isolate;
 }
-.leaflet-tile {
-  filter: var(--map-filter);
-}
-.leaflet-bar,
-.leaflet-control-attribution {
+.maplibregl-ctrl-group,
+.maplibregl-ctrl-attrib {
   background: rgb(var(--c-espresso-800) / 0.85) !important;
   color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+.maplibregl-ctrl-group button {
+  background: rgb(var(--c-espresso-800)) !important;
   border-color: var(--border) !important;
 }
-.leaflet-bar a {
-  background: rgb(var(--c-espresso-800)) !important;
-  color: rgb(var(--c-cream)) !important;
-  border-color: var(--border) !important;
+/* The control glyphs ship as black SVGs baked into background-image, so they
+   vanish on an espresso button until inverted. */
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) opacity(0.75);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted) !important;
+}
+
+/* Hover labels on the browse and ops maps. MapLibre's default popup is a
+   white bubble with a white tail — two elements, both of which have to be
+   repainted or the tail floats detached over a dark map. */
+.iy-map-popup .maplibregl-popup-content {
+  background: rgb(var(--c-espresso-800) / 0.94) !important;
+  color: rgb(var(--c-cream));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+}
+.iy-map-popup .maplibregl-popup-tip {
+  display: none;
+}
+
+/* ── The live-trip overlays ───────────────────────────────────
+   Destination pulse and provider puck. Both are DOM markers, positioned by
+   MapLibre, so they stay crisp on a rotated map where a canvas sprite would
+   not. */
+@keyframes iy-map-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+.iy-pulse {
+  animation: iy-map-pulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .iy-pulse {
+    animation: none;
+    opacity: 0.35;
+  }
 }
 
 /* ── Map sheet materials ──────────────────────────────────────
@@ -455,12 +644,13 @@ body::after {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), var(--elev-shadow);
 }
 
-/* Map surfaces float glass chips over the map's own corners. Leaflet anchors
-   the zoom stack top-left, right where those chips sit, so drop the top
-   control gutter below that row. Sized for the tallest chip that uses this
+/* Map surfaces float glass chips over the map's own corners. MapLibre anchors
+   its control stack in those same corners, right where the chips sit, so drop
+   the top control gutter below that row. Sized for the tallest chip that uses this
    class so one value clears every map. The attribution keeps its bottom-right
    corner (OSM requires it visible); overlays reserve a bottom gutter for it. */
-.map-chip-overlay .leaflet-top {
+.map-chip-overlay .maplibregl-ctrl-top-right,
+.map-chip-overlay .maplibregl-ctrl-top-left {
   top: 3.5rem;
 }
 

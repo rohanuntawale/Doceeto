@@ -26,10 +26,13 @@ export function middleware(request: NextRequest) {
   requestHeaders.set(PATH_HEADER, path + request.nextUrl.search);
   const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
 
-  // Demo mode: no real auth; everything is open (client-side ops gate only).
-  if (!isLiveMode) return pass();
-
   const surface = surfaceFromPath(path);
+
+  // Demo mode used to open EVERY surface, so /nurse, /doctor and /ops were one
+  // URL away for anyone. Provider and ops surfaces now always demand a cookie,
+  // whatever mode we are in — the layout still does the real session lookup,
+  // this just turns away the obvious case at the edge.
+  if (!isLiveMode && (!surface || surface === "patient")) return pass();
   if (surface && !request.cookies.get(SESSION_COOKIES[surface])?.value) {
     const url = request.nextUrl.clone();
     const target = signInFor(surface, path);

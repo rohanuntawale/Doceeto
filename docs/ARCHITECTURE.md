@@ -125,7 +125,7 @@ Mutations (accept request, dispatch ambulance, advance order) update state immed
 - **Server Components** for the shells/layouts; **Client Components** for the live widgets.
 - **`next/font`** self-hosts Playfair Display / Inter / JetBrains Mono / Noto Sans JP →
   zero layout shift.
-- **The map is `dynamic(..., { ssr:false })`** (`components/map/live-map.tsx`) so Leaflet
+- **The map is `dynamic(..., { ssr:false })`** (`components/map/live-map.tsx`) so MapLibre
   never touches the server and never blocks the SOS-critical render path.
 - **Time-relative text is gated behind `useMounted`** to avoid SSR/client hydration drift.
 - Route-level code splitting; first-load JS ~170–190 kB per route.
@@ -160,7 +160,7 @@ components/
                         availability-editor, online-toggle, edit-profile-dialog
   consult/              consult-tracker (live map + the trip rail)
   zumi/ auramed/        per-module cards
-  map/                  Leaflet live map (dynamic)
+  map/                  MapLibre maps — browse, ops, live trip (all dynamic)
 lib/
   hooks/data.ts         THE data seam (demo ⇄ live), useActions, useGigs, useOpsSnapshot
   hooks/use-schedule.ts one doctor's calendar + bookable flags

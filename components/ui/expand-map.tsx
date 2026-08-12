@@ -14,7 +14,7 @@ import {
  * Animated location card (Framer-style). Collapsed it shows the place name;
  * click to expand into a stylised live-map preview with a tilt-on-hover 3D
  * effect. Adapted to the app's iOS token palette. Real routing still uses the
- * Leaflet find-care map — this is the polished location chip for headers.
+ * MapLibre find-care map — this is the polished location chip for headers.
  */
 interface LocationMapProps {
   location?: string;

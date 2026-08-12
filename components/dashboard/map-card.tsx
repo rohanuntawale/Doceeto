@@ -7,8 +7,8 @@ import { useDoctors } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 
 /**
- * Dashboard map card — a real (Leaflet) map centred on the patient with nearby
- * doctors, plus frosted glass overlay chips showing live health metrics.
+ * Dashboard map card — a real (MapLibre) map centred on the patient with
+ * nearby doctors, plus frosted glass overlay chips showing live health metrics.
  */
 export function MapCard({ patient }: { patient: PatientIdentity }) {
   const router = useRouter();
@@ -27,7 +27,7 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
         />
       </div>
 
-      {/* Glass overlays. The deeper bottom padding leaves Leaflet's
+      {/* Glass overlays. The deeper bottom padding leaves the map's
           attribution strip its own lane under the action row. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-8">
         <div className="flex items-start justify-between gap-2">

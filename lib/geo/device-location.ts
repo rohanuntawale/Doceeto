@@ -42,9 +42,39 @@ let state: DeviceLocation = IDLE;
 let listeners: Array<() => void> = [];
 let watchId: number | null = null;
 
-/** Movement below this is noise from GPS jitter, not the patient going
- *  somewhere — publishing it would churn every consumer and every write. */
-const MIN_MOVE_METERS = 40;
+/**
+ * Movement below this is noise from GPS jitter, not the patient going
+ * somewhere — publishing it would churn every consumer and every write.
+ *
+ * A live journey needs the opposite trade. At 40m a provider crossing a
+ * neighbourhood publishes a handful of times and the tracker's puck jumps a
+ * block at a time; the map cannot animate what it is never told. So a screen
+ * that is actively tracking someone calls `holdFineLocation()` to drop the
+ * gate to FINE for as long as it is mounted, and everything else keeps the
+ * coarse default.
+ */
+const COARSE_MOVE_METERS = 40;
+const FINE_MOVE_METERS = 8;
+
+/** Refcounted: several trackers may be open at once, and the last one to
+ *  close is the one that should restore the coarse gate. */
+let fineHolders = 0;
+
+/**
+ * Ask for fine-grained position updates while a live journey is on screen.
+ * Returns the release function — call it on unmount.
+ */
+export function holdFineLocation(): () => void {
+  fineHolders += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    fineHolders = Math.max(0, fineHolders - 1);
+  };
+}
+
+const minMoveMeters = () => (fineHolders > 0 ? FINE_MOVE_METERS : COARSE_MOVE_METERS);
 
 function set(next: Partial<DeviceLocation>) {
   state = { ...state, ...next };
@@ -62,7 +92,7 @@ function onPosition(pos: GeolocationPosition, force = false) {
     state.lat == null ||
     state.lng == null ||
     haversineKm({ lat: state.lat, lng: state.lng }, { lat, lng }) * 1000 >=
-      MIN_MOVE_METERS;
+      minMoveMeters();
   if (!moved && state.status === "granted") return;
   set({ lat, lng, accuracy, status: "granted", at: Date.now() });
 }

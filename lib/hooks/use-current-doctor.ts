@@ -36,6 +36,11 @@ export function useCurrentProvider(): Doctor | undefined {
     enabled: !isDemoMode,
     queryFn: async (): Promise<Doctor | null> => {
       const res = await apiFetch("/api/auth/me", { cache: "no-store" });
+      // A server-side failure is NOT an answer about who you are. Returning
+      // null here would replace a perfectly good identity with "signed out"
+      // and empty the cockpit on one bad poll; throwing leaves the last known
+      // provider in place and lets the next tick correct it.
+      if (res.status >= 500) throw new Error(`me: ${res.status}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data.role === "doctor" || data.role === "nurse"

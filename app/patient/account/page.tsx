@@ -160,7 +160,7 @@ function Row({
     <button
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium transition-colors hover:bg-[var(--c-espresso-700)]",
+        "flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-medium transition-colors hover:bg-espresso-700",
         !last && "border-b border-[var(--border)]",
         tone === "danger" ? "text-status-critical" : "text-cream",
       )}

@@ -259,23 +259,88 @@ const DOCTOR_COLS = `id, full_name, specialty, cadre, skills, kind, gender, age,
   status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url, lat, lng, last_seen,
   qualifications, education, about, registration_no, clinic_address, availability, created_at`;
 
+// ── Lazy self-heal migrations ────────────────────────────────
+/**
+ * A migration that a live database may still need, run at most once per
+ * process and NEVER able to fail the request that triggered it.
+ *
+ * These exist because setup() only runs on an explicit seed, so a database
+ * that predates a column heals itself on first use. Two rules earned the hard
+ * way, both of which used to take the whole site down:
+ *
+ *  • PROBE FIRST. `ALTER TABLE … IF NOT EXISTS` is not free: it takes an
+ *    ACCESS EXCLUSIVE lock on the table, and every serverless instance ran a
+ *    fistful of them on its first request — against `users` and `sessions`,
+ *    the two tables every other in-flight request is reading. It also needs
+ *    table ownership and a writable connection, so a read-only endpoint or a
+ *    non-owner role made ordinary READS fail. `needed` is a cheap catalog
+ *    query; in the normal case (schema already correct) no DDL runs at all.
+ *  • NEVER CACHE A FAILURE. The memo used to hold the rejected promise, so a
+ *    single transient error meant that instance answered every later request
+ *    with the same 500 until it was recycled. A failure clears the memo and is
+ *    swallowed: the caller's real query runs, and if the column genuinely is
+ *    missing it fails there with a precise message.
+ */
+function lazyMigration(label: string, needed: () => Promise<boolean>, run: () => Promise<void>) {
+  let ready: Promise<void> | null = null;
+  return () =>
+    (ready ??= (async () => {
+      try {
+        if (await needed()) await run();
+      } catch (err) {
+        // Assigned after the first await above, so clearing it here is safe.
+        ready = null;
+        console.error(`self-heal (${label}) skipped:`, err);
+      }
+    })());
+}
+
+/** Does `table` have `column`? Answers false for a missing table too. */
+const hasColumn = async (table: string, column: string): Promise<boolean> => {
+  const r = await one<{ present: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM pg_attribute
+        WHERE attrelid = to_regclass($1) AND attname = $2 AND NOT attisdropped
+     ) AS present`,
+    [table, column],
+  );
+  return Boolean(r?.present);
+};
+
+/** Is `name` a CHECK constraint that already allows the nurse role? */
+const checkAllowsNurse = async (name: string): Promise<boolean> => {
+  const r = await one<{ present: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM pg_constraint
+        WHERE conname = $1 AND pg_get_constraintdef(oid) LIKE '%nurse%'
+     ) AS present`,
+    [name],
+  );
+  return Boolean(r?.present);
+};
+
 // ── Provider cadre columns ───────────────────────────────────
-// Nurses share the doctors table (see the note on `cadre` in schema.sql). The
-// columns ship in schema.sql, but setup() only runs on seed — this lazy ALTER
-// covers databases created before nurses existed without requiring a re-seed,
-// exactly as ensureChatColumn does for chat_history. Every read and write of a
-// provider row goes through it, so a live database self-heals on first use.
-let providerColumnsReady: Promise<unknown> | null = null;
-const ensureProviderColumns = () =>
-  (providerColumnsReady ??= (async () => {
+// Nurses share the doctors table (see the note on `cadre` in schema.sql), and
+// the role CHECKs predate them: without widening those, creating a nurse fails
+// on the users/sessions constraint rather than on a missing column. Every read
+// and write of a provider row goes through this.
+const ensureProviderColumns = lazyMigration(
+  "provider columns",
+  async () =>
+    !(
+      (await hasColumn("doctors", "cadre")) &&
+      (await hasColumn("doctors", "skills")) &&
+      (await hasColumn("consult_requests", "target_cadre")) &&
+      (await checkAllowsNurse("users_role_check")) &&
+      (await checkAllowsNurse("sessions_role_check")) &&
+      (await checkAllowsNurse("pending_signups_role_check"))
+    ),
+  async () => {
     await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS cadre TEXT NOT NULL DEFAULT 'doctor'`);
     await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS skills TEXT[] NOT NULL DEFAULT '{}'`);
     await sql(
       `ALTER TABLE consult_requests ADD COLUMN IF NOT EXISTS target_cadre TEXT NOT NULL DEFAULT 'doctor'`,
     );
-    // The role CHECKs predate nurses too: without widening them, creating a
-    // nurse account fails on the users/sessions constraint rather than the
-    // missing column.
     await sql(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
     await sql(
       `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('patient','doctor','nurse','ops'))`,
@@ -288,7 +353,8 @@ const ensureProviderColumns = () =>
     await sql(
       `ALTER TABLE pending_signups ADD CONSTRAINT pending_signups_role_check CHECK (role IN ('patient','doctor','nurse'))`,
     );
-  })());
+  },
+);
 
 /**
  * Geo filter. A bounding box in SQL narrows the rows, then the exact haversine
@@ -735,13 +801,15 @@ export async function createNurseUser(input: {
 }
 
 // The postal address a provider navigates to, kept beside the short label the
-// patient's own header shows. Ships in schema.sql; this lazy ALTER covers
-// databases created before it, exactly as ensureChatColumn does.
-let addressFullReady: Promise<unknown> | null = null;
-const ensureAddressFullColumn = () =>
-  (addressFullReady ??= sql(
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS address_full TEXT`,
-  ));
+// patient's own header shows. Ships in schema.sql; this covers databases
+// created before it, exactly as ensureChatColumn does.
+const ensureAddressFullColumn = lazyMigration(
+  "users.address_full",
+  async () => !(await hasColumn("users", "address_full")),
+  async () => {
+    await sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS address_full TEXT`);
+  },
+);
 
 export async function getPatientProfile(id: string) {
   await ensureAddressFullColumn();
@@ -823,13 +891,15 @@ export async function setPatientHealthProfile(
 
 // ── Symptom-checker chat history ─────────────────────────────
 // One JSONB blob per patient (like health_profile). The column ships in
-// schema.sql, but setup() only runs on seed — this lazy ALTER covers databases
-// created before the column existed without requiring a re-seed.
-let chatColumnReady: Promise<unknown> | null = null;
-const ensureChatColumn = () =>
-  (chatColumnReady ??= sql(
-    `ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_history JSONB`,
-  ));
+// schema.sql, but setup() only runs on seed — this covers databases created
+// before the column existed without requiring a re-seed.
+const ensureChatColumn = lazyMigration(
+  "users.chat_history",
+  async () => !(await hasColumn("users", "chat_history")),
+  async () => {
+    await sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_history JSONB`);
+  },
+);
 
 export async function getChatHistory(patientId: string): Promise<unknown[]> {
   await ensureChatColumn();
@@ -1924,12 +1994,14 @@ export async function completeRequest(
 // The table and the orders.prescription_id link ship in schema.sql, but
 // setup() only runs on seed — so a database that has been live since before
 // prescriptions existed would answer every read with "relation does not
-// exist". This lazy DDL covers it without requiring a re-seed, exactly as
+// exist". This covers it without requiring a re-seed, exactly as
 // ensureProviderColumns and ensureChatColumn do. Every prescription read and
 // write goes through it, so a live database self-heals on first use.
-let prescriptionsReady: Promise<unknown> | null = null;
-const ensurePrescriptions = () =>
-  (prescriptionsReady ??= (async () => {
+const ensurePrescriptions = lazyMigration(
+  "prescriptions",
+  async () =>
+    !((await hasColumn("prescriptions", "id")) && (await hasColumn("orders", "prescription_id"))),
+  async () => {
     await sql(`CREATE TABLE IF NOT EXISTS prescriptions (
       id                     TEXT PRIMARY KEY,
       code                   TEXT NOT NULL,
@@ -1957,7 +2029,8 @@ const ensurePrescriptions = () =>
     await sql(`CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_token_uniq ON prescriptions(share_token)`);
     await sql(`CREATE UNIQUE INDEX IF NOT EXISTS prescriptions_code_uniq ON prescriptions(code)`);
     await sql(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS prescription_id TEXT`);
-  })());
+  },
+);
 
 /**
  * A doctor issues the prescription that closes a consult. The only way a

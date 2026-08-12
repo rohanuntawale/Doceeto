@@ -127,6 +127,6 @@ Both work with **zero** extra config. In demo mode they deploy even with no env 
 
 ## Tech
 
-Next.js 14 (App Router) · TypeScript · Tailwind · Postgres (Neon) · database-backed sessions (bcrypt + opaque httpOnly cookie) · TanStack Query · React-Leaflet · lucide-react.
+Next.js 14 (App Router) · TypeScript · Tailwind · Postgres (Neon) · database-backed sessions (bcrypt + opaque httpOnly cookie) · TanStack Query · MapLibre GL (MapTiler vector tiles, OSRM routing) · lucide-react.
 
 Modules covered: **Tasuke** (SOS), **Zumi** (freelance doctors), **AuraMed** (medicine). **Kenshin** (diagnostics) is reserved in the schema and nav for a later phase.

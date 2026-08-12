@@ -30,3 +30,16 @@ export function readStoredDoctorId(): string | null {
     return null;
   }
 }
+
+/**
+ * Forget the remembered provider. Called on sign-out so a shared or public
+ * browser does not keep a clinician identity lying around after they leave —
+ * "log out" must actually mean the next person is nobody.
+ */
+export function clearCurrentDoctorId() {
+  try {
+    window.localStorage.removeItem(DOCTOR_ID_KEY);
+  } catch {
+    /* private mode — ignore */
+  }
+}

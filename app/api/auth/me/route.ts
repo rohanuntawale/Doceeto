@@ -34,25 +34,34 @@ function withFreshCookie<T>(body: T, session: SessionRecord): NextResponse {
  * make a dashboard flip roles under the user.
  */
 export async function GET(req: Request) {
-  const session = await getRequestSession(req);
-  if (!session) return NextResponse.json({ user: null }, { status: 200 });
+  try {
+    const session = await getRequestSession(req);
+    if (!session) return NextResponse.json({ user: null }, { status: 200 });
 
-  if (session.role === "doctor") {
-    const doctor = await db.getDoctorById(session.userId);
-    return withFreshCookie({ role: "doctor", doctor }, session);
+    if (session.role === "doctor") {
+      const doctor = await db.getDoctorById(session.userId);
+      return withFreshCookie({ role: "doctor", doctor }, session);
+    }
+    if (session.role === "patient") {
+      const patient = await db.getPatientProfile(session.userId);
+      return withFreshCookie({ role: "patient", patient }, session);
+    }
+    if (session.role === "nurse") {
+      // A nurse IS a provider row, read exactly as a doctor's is — that record
+      // carries the coordinates the map needs, the online status, the rating and
+      // the verification flag. It is also returned as `doctor` so every shared
+      // provider component (the tracker, the map, the request cards) can take it
+      // without a second shape to handle.
+      const nurse = await db.getDoctorById(session.userId);
+      return withFreshCookie({ role: "nurse", nurse, doctor: nurse }, session);
+    }
+    return withFreshCookie({ role: "ops", name: session.name }, session);
+  } catch (err) {
+    // A database blip must not read as "signed out": answering `{user:null}`
+    // here would empty every dashboard and bounce the person to /login as if
+    // their session had ended. 503 says "ask again" — the clients that poll
+    // this endpoint treat a non-ok response as "unknown, keep what you have".
+    console.error("auth/me failed:", err);
+    return NextResponse.json({ error: "Could not load your account." }, { status: 503 });
   }
-  if (session.role === "patient") {
-    const patient = await db.getPatientProfile(session.userId);
-    return withFreshCookie({ role: "patient", patient }, session);
-  }
-  if (session.role === "nurse") {
-    // A nurse IS a provider row, read exactly as a doctor's is — that record
-    // carries the coordinates the map needs, the online status, the rating and
-    // the verification flag. It is also returned as `doctor` so every shared
-    // provider component (the tracker, the map, the request cards) can take it
-    // without a second shape to handle.
-    const nurse = await db.getDoctorById(session.userId);
-    return withFreshCookie({ role: "nurse", nurse, doctor: nurse }, session);
-  }
-  return withFreshCookie({ role: "ops", name: session.name }, session);
 }

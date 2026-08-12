@@ -9,6 +9,7 @@ import {
   Inbox,
   CalendarDays,
   Stethoscope,
+  Users,
   Wallet,
   UserRound,
   LogOut,
@@ -18,6 +19,7 @@ import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
+import { clearCurrentDoctorId } from "@/lib/demo/current-doctor";
 import { apiFetch } from "@/lib/api/client";
 
 /**
@@ -37,6 +39,7 @@ const NAV = [
   { id: "requests", href: "/doctor/requests", label: "Requests", icon: Inbox, color: "#FFD60A" },
   { id: "schedule", href: "/doctor/schedule", label: "Schedule", icon: CalendarDays, color: "#FF375F" },
   { id: "consults", href: "/doctor/consults", label: "Consults", icon: Stethoscope, color: "#30D158" },
+  { id: "network", href: "/doctor/network", label: "Network", icon: Users, color: "#5AC8FA" },
   { id: "wallet", href: "/doctor/earnings", label: "Wallet", icon: Wallet, color: "#BF5AF2" },
   { id: "profile", href: "/doctor/profile", label: "Profile", icon: UserRound, color: "#8E8E93" },
 ];
@@ -62,6 +65,9 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         /* ignore */
       }
     }
+    // Same reason as the nurse console: the remembered provider id is what
+    // decides who "me" is, so signing out has to forget it as well.
+    clearCurrentDoctorId();
     router.push(isDemoMode ? "/" : "/login");
     router.refresh();
   }
@@ -74,7 +80,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
     color: n.color,
   }));
 
-  // Seven tabs overflow a narrow phone; keep the active one in view so the
+  // Eight tabs overflow a narrow phone; keep the active one in view so the
   // clipped tabs are discoverable (the pill also edge-fades as a scroll cue).
   const pillRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -115,7 +121,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         style={{ background: "linear-gradient(to top, var(--bg) 25%, transparent)" }}
       />
 
-      {/* Mobile floating iOS tab pill. Seven tabs is a lot for a narrow
+      {/* Mobile floating iOS tab pill. Eight tabs is a lot for a narrow
           phone, so items stay compact and the pill itself scrolls (with the
           scrollbar hidden) instead of clipping the last tabs off-screen. */}
       <nav className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 flex justify-center px-3 lg:hidden">

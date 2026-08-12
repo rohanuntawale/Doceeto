@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
-import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
@@ -85,9 +84,6 @@ export function Shell({
             <span className="label">
               {role === "doctor" ? "Doctor space" : "Team console"}
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeSwitcher />
           </div>
         </header>
 

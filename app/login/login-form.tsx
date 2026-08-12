@@ -3,10 +3,9 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, ShieldCheck, UserCheck, HeartHandshake, Stethoscope } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck, HeartHandshake } from "lucide-react";
 import { Wordmark, Name } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { isDemoMode } from "@/lib/config";
 import { surfaceFromPath } from "@/lib/auth/constants";
 import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
@@ -23,11 +22,6 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
 function LoginShell({ googleEnabled }: { googleEnabled: boolean }) {
   return (
     <main className="relative grid min-h-screen place-items-center px-4 pb-6 pt-16 sm:px-6 lg:pt-6 bg-[var(--bg)] text-[var(--text)]">
-      {/* Top right Theme Switcher */}
-      <div className="absolute right-5 top-5 z-20">
-        <ThemeSwitcher />
-      </div>
-
       {/* Main split-panel frame (matches /signup container aesthetic) */}
       <div className="grid w-full max-w-6xl overflow-hidden rounded-[26px] border border-[var(--border)] shadow-card lg:min-h-[86vh] lg:grid-cols-[0.95fr_1.05fr] bg-[var(--surface)]">
         <LoginFormPanel googleEnabled={googleEnabled} />
@@ -110,27 +104,20 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 text-center shadow-soft">
             <div className="label mb-2 text-[var(--accent)] font-bold">DEMO MODE ACTIVE</div>
             <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-              Demonstration mode is currently enabled. Select a role below to jump straight to your workspace:
+              Demonstration mode is enabled. The patient app is open for
+              browsing; the clinician consoles require a real account.
             </p>
+            {/* Doctor and nurse shortcuts are deliberately gone. They pushed
+                straight to /doctor and /nurse with no credential, which — since
+                the guard used to wave demo mode through — was a working login
+                to a console holding other patients' records. */}
             <div className="mt-5 flex flex-col gap-2.5">
-              <Button
-                className="w-full bg-[var(--accent)] text-[var(--c-on-accent)] font-semibold"
-                onClick={() => router.push("/doctor")}
-              >
-                <UserCheck className="w-4 h-4 mr-2" /> Sign in as Doctor
-              </Button>
-              <Button
-                className="w-full bg-[#2F7BC4] hover:bg-[#2565A3] text-white font-semibold"
-                onClick={() => router.push("/nurse")}
-              >
-                <Stethoscope className="w-4 h-4 mr-2" /> Sign in as Nurse
-              </Button>
               <Button
                 variant="outline"
                 className="w-full border-[var(--border)] text-[var(--text)] font-semibold"
                 onClick={() => router.push("/patient")}
               >
-                <HeartHandshake className="w-4 h-4 mr-2" /> Sign in as Patient
+                <HeartHandshake className="w-4 h-4 mr-2" /> Continue as Patient
               </Button>
             </div>
           </div>
@@ -196,7 +183,7 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
             <Button
               type="submit"
               size="lg"
-              className="mt-6 w-full h-12 text-sm font-bold bg-[var(--accent)] text-[var(--c-on-accent)] shadow-soft group"
+              className="mt-6 w-full h-12 text-sm font-bold bg-[var(--accent)] text-on-accent shadow-soft group"
               disabled={loading}
             >
               {loading ? "Signing in…" : "Sign In"}
@@ -254,7 +241,7 @@ function Field({
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 text-sm text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40";
+  "h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 text-sm text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)]";
 
 /** Right: Cover Plate matching /signup aesthetic */
 function LoginCoverPlate() {

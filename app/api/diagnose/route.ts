@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRequestSession } from "@/lib/auth/session";
+import { clientIp, rateLimit } from "@/lib/server/rate-limit";
 import { db } from "@/lib/db";
 import {
   ageFrom,
@@ -256,6 +257,20 @@ function normaliseCauses(raw: unknown): { name: string; likelihood: string; why?
 export async function POST(req: Request) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return NextResponse.json({ unavailable: true, reason: "no-key" });
+
+  /**
+   * The public preview (/try/checker) calls this without a session, so the
+   * route is now reachable by anyone — and every call costs a model request.
+   *
+   * The per-IP ceiling here is the REAL limit; the "two free checks" the
+   * preview shows is a localStorage counter and a funnel, not a boundary. It
+   * is set generously on purpose: a household or clinic behind one NAT should
+   * not lock each other out, and a rate-limited visitor still gets an answer
+   * because the client falls back to the offline rule engine.
+   */
+  if (!rateLimit(`diagnose:${clientIp(req)}`, 40, 60 * 60_000)) {
+    return NextResponse.json({ unavailable: true, reason: "rate-limited" });
+  }
 
   let body: Body;
   try {

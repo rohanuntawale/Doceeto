@@ -36,6 +36,15 @@ const config: Config = {
         },
         salmon: v("--c-salmon"),
         ink: v("--c-ink"),
+        // Deep-green bands (landing hero backdrop, manifesto, closing CTA)
+        // and the bone/mint that read on top of them.
+        forest: {
+          DEFAULT: v("--c-forest"),
+          800: v("--c-forest-800"),
+          600: v("--c-forest-600"),
+        },
+        paper: v("--c-forest-paper"),
+        mint: v("--c-forest-mint"),
         // Friendly aliases for the Fresh Health redesign (same tokens).
         primary: {
           DEFAULT: v("--c-terracotta"),
@@ -94,6 +103,13 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-14px)" },
         },
+        // Travelling dashes along a path — "en route" shown rather than
+        // labelled. The offset equals one dash + one gap (3 + 2.5), so the
+        // pattern lands exactly where it started and the loop is seamless.
+        "route": {
+          "0%": { strokeDashoffset: "5.5" },
+          "100%": { strokeDashoffset: "0" },
+        },
         "sheen": {
           "0%": { transform: "translateX(-120%) skewX(-12deg)", opacity: "0" },
           "20%": { opacity: "0.5" },
@@ -105,6 +121,7 @@ const config: Config = {
         "fade-up": "fade-up 0.28s ease-out both",
         "rise": "rise 0.6s cubic-bezier(0.16,1,0.3,1) both",
         "float": "float 9s ease-in-out infinite",
+        "route": "route 1.4s linear infinite",
         "sheen": "sheen 7s ease-in-out infinite",
       },
     },

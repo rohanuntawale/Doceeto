@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { Name, BrandMark } from "@/components/brand/wordmark";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
@@ -55,12 +54,7 @@ export default function Landing() {
 
 function LandingShell() {
   return (
-    // pt-16 below lg keeps the card clear of the floating theme switcher.
     <main className="relative grid min-h-screen place-items-center px-4 pb-6 pt-16 sm:px-6 lg:pt-6">
-      <div className="absolute right-5 top-5 z-20">
-        <ThemeSwitcher />
-      </div>
-
       <div className="grid w-full max-w-6xl overflow-hidden rounded-[26px] border border-[var(--border)] shadow-card lg:min-h-[86vh] lg:grid-cols-[0.95fr_1.05fr]">
         <OnboardingPanel />
         <CoverPlate />

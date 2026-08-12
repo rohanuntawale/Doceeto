@@ -17,6 +17,7 @@ import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { cn } from "@/lib/utils/cn";
 import { isDemoMode } from "@/lib/config";
+import { clearCurrentDoctorId } from "@/lib/demo/current-doctor";
 import { apiFetch } from "@/lib/api/client";
 import { useT } from "@/lib/i18n";
 import { NURSE_ACCENT_VARS } from "@/lib/nurse";
@@ -66,6 +67,11 @@ export function NurseShell({ children }: { children: React.ReactNode }) {
         /* ignore */
       }
     }
+    // Drop the remembered provider identity too. The cookie alone was not the
+    // whole story: this key is what the console reads to decide who "me" is,
+    // so leaving it behind kept a clinician signed in from the browser's point
+    // of view even after the session was gone.
+    clearCurrentDoctorId();
     router.push(isDemoMode ? "/" : "/login");
     router.refresh();
   }
@@ -94,9 +100,6 @@ export function NurseShell({ children }: { children: React.ReactNode }) {
           <Wordmark compact />
         </Link>
         <div className="flex items-center gap-2">
-          <span className="hidden rounded-full border border-[var(--border)] bg-surface/70 px-3 py-1 text-xs font-semibold text-[var(--text-muted)] sm:inline">
-            {t("nurse.console")}
-          </span>
           <button
             onClick={logout}
             aria-label={isDemoMode ? t("nurse.exitDemo") : t("nurse.signOut")}

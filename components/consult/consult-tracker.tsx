@@ -16,7 +16,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
-import { TrackMap } from "@/components/map/track-map";
+import { TrackMap, type TripEta } from "@/components/map/track-map";
 import { useToast } from "@/components/ui/toast";
 import { StartCodeForDoctor, StartCodeForPatient } from "@/components/consult/start-code";
 import { CancelVisitDialog } from "@/components/doctor/cancel-visit-dialog";
@@ -153,6 +153,9 @@ function TrackerCard({
   const device = useDeviceLocation();
   const toast = useToast();
   const isHomeVisit = req.type === "home_visit";
+  /** The routing engine's answer, once it lands. Null until then (and for a
+   *  video or clinic consult, where there is no journey to estimate). */
+  const [eta, setEta] = useState<TripEta | null>(null);
 
   // Someone travelling to an address needs the device following them, not the
   // row they last wrote. Idempotent, so this shares the publisher's watch.
@@ -243,7 +246,17 @@ function TrackerCard({
 
       {known ? (
         <div className="p-3">
-          <TrackMap self={here} other={other as LatLng & { label?: string }} height={260} />
+          <TrackMap
+            self={here}
+            other={other as LatLng & { label?: string }}
+            // The provider travels; the patient is the fixed address. That is
+            // true whichever side is looking at the card.
+            mover={side === "doctor" ? "self" : "other"}
+            routing={isHomeVisit}
+            arrived={stage === "arrived" || stage === "in_progress"}
+            height={260}
+            onEta={setEta}
+          />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1">
             <span className="flex items-center gap-1.5 text-sm text-cream">
               <Navigation className="h-4 w-4 text-tan" />
@@ -252,20 +265,26 @@ function TrackerCard({
             <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                {km !== null ? formatKm(km) : "—"} apart
+                {/* Road distance once routing has answered — "2.1km apart" as
+                    the crow flies is not the distance anyone has to travel. */}
+                {eta ? formatKm(eta.km) : km !== null ? formatKm(km) : "—"}
+                {eta && !eta.estimated ? " to go" : " apart"}
               </span>
-              {isHomeVisit && km !== null && (
-                <span className="font-mono text-tan">~{etaMins(km)} min</span>
+              {isHomeVisit && (eta || km !== null) && (
+                <span className="font-mono text-tan">
+                  ~{eta ? eta.minutes : etaMins(km as number)} min
+                </span>
               )}
             </span>
           </div>
           <div className="mt-2 flex items-center gap-4 px-1 text-[11px] text-[var(--text-faint)]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[rgb(var(--c-cream))]" /> You
+              <span className="h-2 w-2 rounded-full bg-tan" />
+              {side === "patient" ? "You" : "Patient"}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-tan" />
-              {side === "patient" ? "Your doctor" : "Patient"}
+              <span className="h-2 w-2 rounded-full bg-[rgb(var(--c-cream))]" />
+              {side === "patient" ? "Your doctor" : "You"}
             </span>
           </div>
 

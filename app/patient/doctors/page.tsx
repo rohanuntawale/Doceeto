@@ -217,7 +217,7 @@ function DoctorsBrowser() {
           <button
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--text-faint)]/25 text-cream"
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[rgb(var(--c-sand)/0.25)] text-cream"
           >
             <X className="h-3 w-3" />
           </button>
@@ -403,7 +403,7 @@ function DoctorsBrowser() {
           onClick={() => setSnap((s) => ((s + 1) % 3) as 0 | 1 | 2)}
           className="flex shrink-0 cursor-grab touch-none justify-center pb-1 pt-3 active:cursor-grabbing"
         >
-          <span className="h-1.5 w-10 rounded-full bg-[var(--text-faint)]/50" />
+          <span className="h-1.5 w-10 rounded-full bg-[rgb(var(--c-sand)/0.5)]" />
         </div>
 
         <div className="shrink-0 px-4 pb-3 pt-1">{searchBar}</div>

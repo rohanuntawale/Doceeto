@@ -99,7 +99,7 @@ export function LanguageSelector() {
                   "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors",
                   l.code === lang
                     ? "bg-primary/10 text-primary"
-                    : "text-[var(--text-muted)] hover:bg-[var(--c-espresso-700)] hover:text-[var(--text)]",
+                    : "text-[var(--text-muted)] hover:bg-espresso-700 hover:text-[var(--text)]",
                 )}
               >
                 <span>

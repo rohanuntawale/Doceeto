@@ -68,8 +68,9 @@ Editorial, calm, premium. A **dark "espresso" shell** with warm cream text and a
 ## Stack
 
 Next.js 14 (App Router) + TypeScript + Tailwind CSS. Supabase (Postgres + Auth + Realtime +
-Storage). TanStack Query for client caching + mutations. React-Leaflet + OpenStreetMap for
-maps (dynamic import, `ssr:false`, no API key). lucide-react icons. `next/font` (self-hosted,
+Storage). TanStack Query for client caching + mutations. MapLibre GL for maps (dynamic
+import, `ssr:false`; MapTiler vector tiles when `NEXT_PUBLIC_MAPTILER_KEY` is set, keyless
+CARTO raster fallback otherwise) with OSRM for driving routes. lucide-react icons. `next/font` (self-hosted,
 zero CLS). Deployable to **Vercel** (primary) and **Render** (`render.yaml`) with zero config.
 
 ## Architecture rules (non-negotiable)

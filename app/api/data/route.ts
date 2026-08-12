@@ -309,7 +309,16 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Unknown entity." }, { status: 400 });
     }
   } catch (err) {
-    console.error("data read failed:", err);
-    return NextResponse.json({ error: "Could not load data." }, { status: 500 });
+    console.error(`data read failed (entity=${entity}, role=${role}):`, err);
+    return NextResponse.json(
+      {
+        error: "Could not load data.",
+        // Operators are already trusted with every row in the database, so the
+        // database's own words cost them nothing — and without this, a live
+        // failure is only diagnosable from the hosting provider's log viewer.
+        ...(role === "ops" ? { detail: (err as Error)?.message ?? String(err) } : {}),
+      },
+      { status: 500 },
+    );
   }
 }
