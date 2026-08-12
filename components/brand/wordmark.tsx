@@ -79,7 +79,7 @@ export function BrandMark({
       aria-label="Doceeto"
     >
       {/* Background */}
-      <rect width="512" height="512" rx="80" fill="#EAE6DC" />
+      <rect width="512" height="512" rx="80" fill="#ffffff00" />
 
       {/* Main green D-shaped logo */}
       <path
