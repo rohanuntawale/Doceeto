@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, ShieldCheck, HeartHandshake } from "lucide-react";
 import { Wordmark, Name } from "@/components/brand/wordmark";
+import { DoctorFigure } from "@/components/brand/doctor-figure";
 import { Button } from "@/components/ui/button";
 import { isDemoMode } from "@/lib/config";
 import { surfaceFromPath } from "@/lib/auth/constants";
@@ -266,7 +267,7 @@ function LoginCoverPlate() {
           <span className="absolute inset-[14%] rounded-full border border-tan/15" />
           <span className="absolute inset-[28%] rounded-full border border-tan/10" />
           <span className="absolute inset-0 grid place-items-center">
-            <DoctorMascot className="h-40 w-40 animate-float" />
+            <DoctorFigure className="h-40 w-40 animate-float motion-reduce:animate-none" />
           </span>
         </div>
       </div>
@@ -299,73 +300,3 @@ function LoginCoverPlate() {
   );
 }
 
-/** Mascot SVG component */
-function DoctorMascot({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className={className}
-      role="img"
-      aria-label="Doceeto doctor mascot"
-    >
-      <path
-        d="M42 200 C42 164 68 148 100 148 C132 148 158 164 158 200 Z"
-        className="fill-espresso-700"
-      />
-      <path
-        d="M86 150 L100 168 L114 150"
-        fill="none"
-        className="stroke-cream"
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-      <rect
-        x="54"
-        y="58"
-        width="92"
-        height="88"
-        rx="30"
-        className="fill-cream"
-      />
-      <rect
-        x="66"
-        y="72"
-        width="68"
-        height="60"
-        rx="22"
-        className="fill-espresso"
-      />
-      <path
-        d="M80 100 q7 9 14 0"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M106 100 q7 9 14 0"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="100"
-        y1="58"
-        x2="100"
-        y2="44"
-        className="stroke-tan"
-        strokeWidth="3"
-      />
-      <circle
-        cx="100"
-        cy="38"
-        r="11"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="3"
-      />
-      <circle cx="100" cy="38" r="3.5" className="fill-tan" />
-    </svg>
-  );
-}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/health/profile";
 import { idrsOf } from "@/lib/health/score";
 import { NURSE_SERVICES } from "@/lib/nurse";
+import { analyzeSymptoms, type Urgency } from "@/lib/triage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -230,6 +231,75 @@ function normaliseSpecialty(raw: unknown): string | undefined {
 
 const LIKELIHOODS = ["likely", "possible", "less-likely"] as const;
 
+const URGENCY_RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency: 2 };
+
+/**
+ * THE SAFETY FLOOR — the most important function in this file.
+ *
+ * A language model is the best thing we have for ranking a differential, and
+ * the worst possible thing to trust alone with "is this an emergency". It is
+ * fluent, it is confident, and when it is wrong it is wrong quietly. So its
+ * verdict is not the final word: the deterministic red-flag engine in
+ * lib/triage.ts reads the same transcript, and the answer that reaches the
+ * patient is the MORE URGENT of the two, never the less.
+ *
+ * The asymmetry is the whole argument. Over-calling urgency costs someone an
+ * unnecessary consultation. Under-calling it — telling a person with crushing
+ * chest pain and jaw ache that a routine appointment will do — can kill them.
+ * Given that trade, escalate-only is the only defensible rule, and it holds
+ * even if the model is right far more often than the keyword engine.
+ *
+ * This can only ever raise urgency. It never downgrades a model that was more
+ * worried than the rules were.
+ */
+function applySafetyFloor(s: Record<string, unknown>, spoken: string): void {
+  const floor = analyzeSymptoms(spoken);
+  if (!floor) return;
+
+  const modelUrgency = (
+    ["routine", "urgent", "emergency"] as const
+  ).includes(s.urgency as Urgency)
+    ? (s.urgency as Urgency)
+    : "routine";
+
+  if (URGENCY_RANK[floor.urgency] > URGENCY_RANK[modelUrgency]) {
+    s.urgency = floor.urgency;
+  }
+
+  // A matched red flag is not a matter of degree. It forces the emergency
+  // result outright, whatever the model concluded.
+  if (floor.redFlags.length > 0) {
+    s.urgency = "emergency";
+    s.emergency = true;
+    s.redFlags = floor.redFlags;
+
+    const advice = typeof s.advice === "string" ? s.advice.trim() : "";
+    const call =
+      "Call 112 (or 108 for an ambulance) now, or go straight to the nearest emergency department. Do not wait for an appointment.";
+    // Lead with the instruction. Someone frightened reads the first sentence.
+    if (!/\b112\b|\b108\b|emergency department|nearest hospital/i.test(advice)) {
+      s.advice = advice ? `${call} ${advice}` : call;
+    }
+  }
+
+  if (s.urgency === "emergency") s.emergency = true;
+
+  // A nurse is never the answer to an escalated case — they do not diagnose,
+  // and offering one here would read as "this can wait at home".
+  if (s.urgency !== "routine") {
+    delete s.nurseService;
+    delete s.nurseWhy;
+  }
+}
+
+/** Everything the patient has actually said, for the deterministic pass. */
+function spokenText(body: Body): string {
+  return [body.seed ?? "", ...(body.answers ?? []).map((a) => a?.label ?? "")]
+    .filter(Boolean)
+    .join(". ")
+    .slice(0, 2000);
+}
+
 /** Coerce the model's differential into the shape the UI renders. Anything
  *  unusable is dropped rather than passed through — a cause without a bookable
  *  specialty would render a dead "Find a …" button. */
@@ -359,7 +429,44 @@ export async function POST(req: Request) {
     if (!valid(step)) return NextResponse.json({ unavailable: true, reason: "bad-json" });
 
     const s = step as Record<string, unknown>;
+    const spoken = spokenText(body);
+
     if (s.kind === "question") {
+      // A red flag ends the conversation. If the patient has already said
+      // something that means "go to hospital now", asking them a seventh
+      // question about their sleep is the single worst thing this product
+      // could do — so the question is discarded and an emergency conclusion
+      // is returned in its place.
+      //
+      // This is returned from HERE rather than handed back to the client's
+      // engine, because the client only ever analyses one message at a time
+      // while this reads the whole transcript joined together. "Chest pain" in
+      // the first message and "sweating, and it's going down my left arm" in
+      // the third is a heart attack that only the joined text can see.
+      const floor = analyzeSymptoms(spoken);
+      if (floor && floor.redFlags.length > 0) {
+        return NextResponse.json({
+          step: {
+            kind: "conclusion",
+            urgency: "emergency",
+            emergency: true,
+            redFlags: floor.redFlags,
+            specialty: normaliseSpecialty(floor.specialties[0]) ?? "General Physician",
+            conditions: floor.conditions,
+            causes: floor.conditions.slice(0, 3).map((name, i) => ({
+              name,
+              likelihood: i === 0 ? "likely" : "possible",
+              specialty: normaliseSpecialty(floor.specialties[i] ?? floor.specialties[0]) ?? "General Physician",
+            })),
+            summary: `What you've described (${floor.redFlags.join(", ").toLowerCase()}) needs to be seen right now, not booked.`,
+            advice:
+              "Call 112 (or 108 for an ambulance) now, or go straight to the nearest emergency department. Do not wait for an appointment.",
+          },
+          model: "safety-floor",
+          personalised: Boolean(profile),
+        });
+      }
+
       // Past the cap the model ignored the instruction — let the client's rule
       // engine close the session out rather than looping forever.
       if (asked >= MAX_QUESTIONS)
@@ -420,6 +527,10 @@ export async function POST(req: Request) {
         delete s.nurseService;
         delete s.nurseWhy;
       }
+
+      // LAST WORD. Runs after every other normalisation so nothing downstream
+      // can quietly relax an urgency the rules insisted on.
+      applySafetyFloor(s, spoken);
     }
     // `data.model` is what actually served it (may be a fallback, not `model`).
     // `personalised` lets the UI say the answer used their health record.

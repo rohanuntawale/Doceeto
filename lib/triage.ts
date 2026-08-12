@@ -160,6 +160,37 @@ const RED_FLAGS: Flag[] = [
   { test: /overdose|poison|swallowed (pills|chemical)/, label: "Poisoning / overdose", sos: "other" },
   { test: /major accident|hit by|road accident|serious injury|can'?t move/, label: "Serious injury", sos: "trauma" },
   { test: /labour|water broke|delivering/, label: "Childbirth", sos: "obstetric" },
+
+  /**
+   * Time-critical presentations the original list missed. Triage is a
+   * deliberately ASYMMETRIC problem: sending someone to hospital who did not
+   * need it costs an afternoon, missing one of these can cost a life or an
+   * organ. Every pattern below is a "go now" that a keyword engine can catch
+   * with high confidence, so each is worth the occasional false positive.
+   */
+  // Subarachnoid haemorrhage — the phrasing is famously distinctive.
+  { test: /worst (headache|head ?ache) (of my life|ever)|thunderclap|sudden(est)? severe head ?ache/, label: "Sudden severe headache", sos: "stroke" },
+  // Meningitis: the non-blanching rash is the one sign laypeople are taught.
+  { test: /stiff neck.*(fever|light)|neck stiff.*(fever|light)|rash.*(doesn'?t|does not|won'?t) fade|glass test/, label: "Possible meningitis", sos: "other" },
+  // Upper and lower GI bleeding.
+  { test: /vomit(ing)? blood|blood in (my )?vomit|coffee ground|black (tarry )?stool|blood in (my )?stool|passing blood/, label: "Bleeding from the gut", sos: "other" },
+  // Surgical abdomen / obstruction.
+  { test: /severe (stomach|abdominal|belly) pain|abdomen.{0,15}rigid|can'?t (pass|pee|urinate)|not passed urine/, label: "Severe abdominal problem", sos: "other" },
+  // Testicular torsion — a six-hour window to save the testicle.
+  { test: /testic(le|ular).{0,20}(pain|swollen|swelling)|scrotum.{0,15}pain/, label: "Sudden testicular pain", sos: "other" },
+  // Acute vision loss — retinal artery occlusion / detachment.
+  { test: /sudden(ly)? (lost|loss of|can'?t see|blurred).{0,15}(vision|sight)|curtain over (my )?(eye|vision)/, label: "Sudden vision loss", sos: "other" },
+  // Obstetric emergencies.
+  { test: /(bleeding|blood).{0,25}pregnan|pregnan.{0,25}(bleeding|blood)|baby.{0,20}(not moving|stopped moving)|reduced (fetal |foetal )?movement/, label: "Pregnancy emergency", sos: "obstetric" },
+  // The infant signs that matter, in the words a parent would use.
+  { test: /(baby|infant|newborn|child).{0,30}(not feeding|refus(ing|es) (to )?feed|floppy|limp|won'?t wake|not waking|grunting)/, label: "Sick infant", sos: "other" },
+  // Environmental.
+  { test: /snake ?bite|bitten by a snake|scorpion sting/, label: "Snake or scorpion bite", sos: "other" },
+  { test: /burn(t|ed)?.{0,20}(badly|severe|large|boiling|acid)|electric shock|electrocut/, label: "Serious burn or shock", sos: "trauma" },
+  // Sepsis-ish: the combination is what makes it urgent, not either alone.
+  { test: /(high fever|very high temperature).{0,30}(confus|drowsy|shiver|rigor)|fever.{0,20}(not waking|unrespons)/, label: "Possible severe infection", sos: "other" },
+  // Diabetic emergency.
+  { test: /sugar.{0,15}(very (high|low)|too (high|low))|hypo(glycemi|glycaemi)|ketoacidos|breath smells sweet/, label: "Diabetic emergency", sos: "other" },
 ];
 
 const RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency: 2 };

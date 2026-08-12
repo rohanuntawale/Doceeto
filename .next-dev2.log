@@ -1,0 +1,401 @@
+
+> doceeto-dashboard@0.1.0 predev
+> node scripts/ensure-single-dev.mjs
+
+[dev] found 1 existing Next.js server(s) for this project.
+[dev] Two servers sharing .next corrupt each other's chunks, which is what
+[dev] produces 404s on main-app.js / layout.css and an unstyled page.
+[dev] Stopping them so this one is the only server:
+[dev]   stopped pid 26804
+[dev]   cleared .next (was written by two servers at once)
+
+> doceeto-dashboard@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3.9s
+ ○ Compiling /api/stream ...
+ ✓ Compiled /api/stream in 948ms (56 modules)
+ ✓ Compiled (95 modules)
+ GET /api/health 200 in 2368ms
+(node:26092) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ GET /api/health 200 in 27ms
+ ✓ Compiled /middleware in 448ms (73 modules)
+ ○ Compiling / ...
+The user aborted a request.
+
+Retrying 1/3...
+The user aborted a request.
+
+Retrying 1/3...
+The user aborted a request.
+
+Retrying 1/3...
+ ✓ Compiled /api/actions in 27.4s (1660 modules)
+ GET / 200 in 3923ms
+ GET / 200 in 60ms
+ GET /api/health 200 in 33ms
+ POST /api/actions 200 in 23790ms
+ GET /api/health 200 in 20ms
+ POST /api/actions 200 in 1843ms
+ GET /api/health 200 in 15ms
+ GET /api/health 200 in 14ms
+ POST /api/actions 200 in 1567ms
+ GET /api/health 200 in 14ms
+ GET /api/health 200 in 18ms
+ POST /api/actions 200 in 2205ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 17ms
+ POST /api/actions 200 in 1189ms
+ GET /api/health 200 in 260ms
+ POST /api/actions 200 in 1833ms
+ GET /api/health 200 in 26ms
+ GET /api/health 200 in 19ms
+ POST /api/actions 200 in 1389ms
+ GET /api/health 200 in 14ms
+ GET /api/health 200 in 15ms
+ GET / 200 in 115ms
+ ○ Compiling /api/stream ...
+ ✓ Compiled /api/stream in 572ms (838 modules)
+ ✓ Compiled (840 modules)
+ GET /api/public?entity=providers&cadre=doctor 200 in 12562ms
+ POST /api/actions 200 in 344ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 15676ms
+ GET /api/health 200 in 20ms
+ GET /api/health 200 in 17ms
+ GET /api/health 200 in 20ms
+ GET /api/health 200 in 21ms
+ POST /api/actions 200 in 314ms
+ GET /api/health 200 in 38ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 14401ms
+ GET /api/health 200 in 19ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 17982ms
+ GET /api/health 200 in 29ms
+ GET /api/health 200 in 27ms
+ POST /api/actions 200 in 1816ms
+ GET /api/health 200 in 31ms
+ GET /api/health 200 in 14ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 19152ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 20095ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 13ms
+ POST /api/actions 200 in 319ms
+ GET /api/health 200 in 18ms
+ GET /api/health 200 in 18ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1826ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1613ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 15ms
+ POST /api/actions 200 in 333ms
+ GET /api/health 200 in 31ms
+ GET /api/health 200 in 25ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2697ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1943ms
+ GET /api/health 200 in 30ms
+ GET /api/health 200 in 58ms
+ POST /api/actions 200 in 391ms
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 29ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1562ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2490ms
+ GET /api/health 200 in 48ms
+ GET /api/health 200 in 36ms
+ POST /api/actions 200 in 371ms
+ GET /api/health 200 in 41ms
+ GET /api/health 200 in 45ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1573ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1560ms
+ GET /api/health 200 in 17ms
+ GET /api/health 200 in 44ms
+ POST /api/actions 200 in 346ms
+ GET /api/health 200 in 39ms
+ GET /api/health 200 in 25ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1586ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1863ms
+ GET /api/health 200 in 40ms
+ GET /api/health 200 in 51ms
+ POST /api/actions 200 in 366ms
+ GET /api/health 200 in 33ms
+ GET /api/health 200 in 50ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1687ms
+ GET /api/health 200 in 18ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1520ms
+ GET /api/health 200 in 27ms
+ POST /api/actions 200 in 347ms
+ GET /api/health 200 in 27ms
+ GET /api/health 200 in 46ms
+ GET /api/health 200 in 53ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1845ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1530ms
+ GET /api/health 200 in 45ms
+ POST /api/actions 200 in 340ms
+ GET /api/health 200 in 31ms
+ GET /api/health 200 in 43ms
+ GET /api/health 200 in 38ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1717ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1517ms
+ GET /api/health 200 in 32ms
+ POST /api/actions 200 in 353ms
+ GET /api/health 200 in 38ms
+ GET /api/health 200 in 35ms
+ GET /api/health 200 in 16ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1821ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2531ms
+ GET /api/health 200 in 48ms
+ POST /api/actions 200 in 382ms
+ GET /api/health 200 in 29ms
+ GET /api/health 200 in 39ms
+ GET /api/health 200 in 51ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 2193ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 3043ms
+ POST /api/actions 200 in 360ms
+ GET /api/health 200 in 45ms
+ GET /api/health 200 in 29ms
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 55ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1996ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2364ms
+ POST /api/actions 200 in 344ms
+ GET /api/health 200 in 14ms
+ GET /api/health 200 in 43ms
+ GET /api/health 200 in 54ms
+ GET /api/health 200 in 28ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1897ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 785ms
+ POST /api/actions 200 in 334ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 45ms
+ GET /api/health 200 in 25ms
+ GET /api/health 200 in 46ms
+ POST /api/actions 200 in 803ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 2313ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1731ms
+ GET /api/health 200 in 46ms
+ GET /api/health 200 in 29ms
+ GET /api/health 200 in 61ms
+ GET /api/health 200 in 27ms
+ POST /api/actions 200 in 1285ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1560ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 1428ms
+ GET /api/health 200 in 37ms
+ GET /api/health 200 in 34ms
+ GET /api/health 200 in 55ms
+ GET /api/health 200 in 39ms
+ POST /api/actions 200 in 1359ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1729ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2486ms
+ GET /api/health 200 in 49ms
+ GET /api/health 200 in 41ms
+ GET /api/health 200 in 43ms
+ GET /api/health 200 in 27ms
+ POST /api/actions 200 in 1338ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 1632ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 2883ms
+ GET /api/health 200 in 45ms
+ GET /api/health 200 in 38ms
+ GET /api/health 200 in 41ms
+ GET /api/health 200 in 18ms
+ GET /api/stream 200 in 1652344ms
+ GET /api/stream 200 in 1313475ms
+ GET /api/health 200 in 51ms
+ GET /api/health 200 in 41ms
+ POST /api/actions 200 in 1263ms
+ ○ Compiling /try/doctors ...
+ ✓ Compiled /try/doctors in 1800ms (1671 modules)
+ ✓ Compiled in 453ms (803 modules)
+ ✓ Compiled /api/public in 177ms (871 modules)
+ GET /api/public?entity=providers&cadre=doctor 200 in 2651ms
+ ○ Compiling /try/nurses ...
+ ✓ Compiled /try/nurses in 544ms (1662 modules)
+ ○ Compiling /try/urgent ...
+ ✓ Compiled /try/urgent in 793ms (1674 modules)
+ GET /api/public?entity=providers&cadre=nurse 200 in 1802ms
+ ○ Compiling /try/checker ...
+ GET /api/public?entity=providers&cadre=doctor&urgent=1 200 in 3127ms
+ ✓ Compiled /try/checker in 1409ms (1691 modules)
+ GET /api/health 200 in 69ms
+ GET /api/health 200 in 63ms
+ ✓ Compiled /api/diagnose in 362ms (897 modules)
+ GET /api/health 200 in 86ms
+ GET /api/health 200 in 70ms
+ POST /api/diagnose 200 in 25330ms
+ POST /api/actions 200 in 1328ms
+ GET /api/health 200 in 13ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 28ms
+ GET /api/public?entity=providers&cadre=doctor&urgent=1 200 in 2827ms
+ POST /api/actions 200 in 369ms
+ GET /api/health 200 in 33ms
+ GET /api/health 200 in 27ms
+ POST /api/diagnose 200 in 17591ms
+ GET /api/health 200 in 21ms
+ GET /api/health 200 in 16ms
+ POST /api/actions 200 in 1635ms
+ POST /api/actions 200 in 459ms
+ ✓ Compiled /api/data in 439ms (837 modules)
+ ✓ Compiled in 1ms (840 modules)
+ ✓ Compiled in 0ms (840 modules)
+ ✓ Compiled in 1ms (840 modules)
+ GET /api/health 200 in 34ms
+ GET /api/auth/me 200 in 3017ms
+ POST /api/actions 200 in 2643ms
+ GET /api/data?entity=gigs 200 in 3096ms
+ GET /api/health 200 in 16ms
+ POST /api/actions 200 in 436ms
+ POST /api/actions 200 in 434ms
+ GET /api/data?entity=requests 200 in 4999ms
+ GET /api/data?entity=doctors 200 in 6384ms
+ ✓ Compiled /api/auth/logout in 292ms (842 modules)
+ POST /api/auth/logout 200 in 551ms
+ GET /api/auth/me 200 in 281ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1960ms (1664 modules)
+ ✓ Compiled /api/warm in 315ms (862 modules)
+ GET /api/warm 200 in 636ms
+ GET /api/warm 200 in 189ms
+ GET /api/health 200 in 57ms
+ GET /api/health 200 in 38ms
+ ✓ Compiled in 1179ms (818 modules)
+ ✓ Compiled in 543ms (818 modules)
+ ✓ Compiled in 421ms (818 modules)
+ GET /api/health 200 in 24ms
+ GET /api/health 200 in 29ms
+ GET /api/health 200 in 23ms
+ GET /api/health 200 in 23ms
+ GET /api/health 200 in 18ms
+ GET /api/health 200 in 26ms
+ ✓ Compiled in 407ms (818 modules)
+ ✓ Compiled in 800ms (819 modules)
+ GET /api/health 200 in 18ms
+ GET /api/health 200 in 12ms
+ ○ Compiling /try/checker ...
+ ✓ Compiled /try/checker in 538ms (832 modules)
+ GET /try/checker 200 in 823ms
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 16ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 30ms
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 33ms
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 26ms
+ GET /api/health 200 in 27ms
+ GET /api/health 200 in 30ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 31ms
+ GET /api/health 200 in 33ms
+ GET /api/health 200 in 30ms
+ GET /api/health 200 in 44ms
+ GET /api/health 200 in 60ms
+ GET /api/health 200 in 33ms
+ GET /api/health 200 in 41ms
+ GET /api/health 200 in 14ms
+ GET /api/health 200 in 18ms
+ GET /api/health 200 in 19ms
+ GET /api/health 200 in 17ms
+ GET /api/health 200 in 45ms
+ GET /api/health 200 in 20ms
+ GET /api/health 200 in 1217ms
+ ✓ Compiled in 3.4s (1616 modules)
+ GET /api/health 200 in 1297ms
+ GET /api/health 200 in 45ms
+ ✓ Compiled in 492ms (819 modules)
+ GET /api/health 200 in 15ms
+ ✓ Compiled in 405ms (819 modules)
+ GET /api/health 200 in 63ms
+ ✓ Compiled in 566ms (819 modules)
+ GET /api/health 200 in 12ms
+ ✓ Compiled in 485ms (819 modules)
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 13ms
+ ✓ Compiled in 333ms (819 modules)
+ GET /api/health 200 in 18ms
+ ✓ Compiled in 902ms (819 modules)
+ GET /api/health 200 in 452ms
+ ✓ Compiled in 627ms (819 modules)
+ GET /api/health 200 in 13ms
+ GET /api/health 200 in 19ms
+ ○ Compiling /legal/privacy ...
+ ✓ Compiled /legal/privacy in 1599ms (1634 modules)
+ GET /api/health 200 in 32ms
+ GET /api/health 200 in 56ms
+ GET /api/health 200 in 41ms
+ GET /api/health 200 in 28ms
+ GET /api/health 200 in 45ms
+ GET /api/health 200 in 51ms
+ ○ Compiling /legal/sales ...
+ ✓ Compiled /legal/sales in 1224ms (1648 modules)
+ GET /api/health 200 in 36ms
+ GET /api/health 200 in 49ms
+ GET /api/health 200 in 34ms
+ GET /api/health 200 in 30ms
+ GET /api/stream 200 in 1123293ms
+ GET /legal/sales 200 in 248ms
+ ○ Compiling /api/stream ...
+ ✓ Compiled /api/stream in 528ms (864 modules)
+ GET /api/stream 401 in 688ms
+ ✓ Compiled in 768ms (820 modules)
+ ✓ Compiled in 464ms (820 modules)
+ ✓ Compiled /api/public in 330ms (868 modules)
+ ✓ Compiled in 969ms (1688 modules)
+ GET /api/stream 401 in 74ms
+ ✓ Compiled in 1809ms (1692 modules)
+ GET /api/health 200 in 104ms
+self-heal (provider columns) skipped: error: Failed to acquire permit to connect to the database. Too many database connection attempts are currently ongoing.
+    at C:\Users\Admin\Iyashi\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async sql (webpack-internal:///(rsc)/./lib/postgres/client.ts:75:21)
+    at async one (webpack-internal:///(rsc)/./lib/postgres/client.ts:87:18)
+    at async hasColumn (webpack-internal:///(rsc)/./lib/postgres/repo.ts:342:15)
+    at async eval (webpack-internal:///(rsc)/./lib/postgres/repo.ts:365:77)
+    at async eval (webpack-internal:///(rsc)/./lib/postgres/repo.ts:333:21) {
+  length: 134,
+  severity: 'ERROR',
+  code: '53300',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: undefined,
+  line: undefined,
+  routine: undefined
+}
+ ○ Compiling /signup ...
+ ✓ Compiled /signup in 1844ms (1698 modules)
+ GET /api/stream 401 in 759ms
+ ✓ Compiled /api/warm in 236ms (885 modules)
+ ✓ Compiled (887 modules)
+ GET /api/auth/me 200 in 613ms
+ ✓ Compiled in 1369ms (1716 modules)
+ GET /api/warm 200 in 4560ms
+ GET /api/warm 200 in 453ms
+ GET /api/public?entity=providers&cadre=nurse 200 in 19745ms
+ GET /api/public?entity=providers&cadre=doctor 200 in 20271ms
+ GET /api/health 200 in 37ms
+ GET /api/stream 401 in 27ms
+ GET /api/stream 401 in 40ms
+ GET /api/health 200 in 19ms
+ GET /api/stream 401 in 18ms
+ ✓ Compiled /api/diagnose in 389ms (891 modules)

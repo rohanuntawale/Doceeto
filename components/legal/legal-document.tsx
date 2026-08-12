@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight, Printer, Mail, ArrowUpRight } from "lucide-react";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
+import { ContentsRail } from "@/components/legal/contents-rail";
 import {
   COMPANY,
   CONTACTS,
@@ -87,7 +88,11 @@ export function LegalDocument({
         {intro ? <div className="mt-8 max-w-3xl">{intro}</div> : null}
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
-          <Contents sections={sections} />
+          {/* Only id + title cross into the client component — see the note
+              on ContentsEntry for why the sections themselves must not. */}
+          <ContentsRail
+            sections={sections.map((s) => ({ id: s.id, title: s.title }))}
+          />
 
           <article className="min-w-0 max-w-3xl">
             {sections.map((s, i) => (
@@ -151,36 +156,6 @@ function Stamp({ label, value }: { label: string; value: string }) {
       </span>
       <span className="font-medium text-[var(--text-muted)]">{value}</span>
     </span>
-  );
-}
-
-/** Sticky contents rail. Hidden on mobile, where it would push the document
- *  a full screen down before a single word of it is visible. */
-function Contents({ sections }: { sections: LegalSection[] }) {
-  return (
-    <aside className="hidden lg:block print:hidden">
-      <nav
-        aria-label="On this page"
-        className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2"
-      >
-        <div className="label mb-3">On this page</div>
-        <ol className="space-y-1.5">
-          {sections.map((s, i) => (
-            <li key={s.id} className="flex gap-2 text-[13px] leading-snug">
-              <span className="shrink-0 tabular-nums text-[var(--text-faint)]">
-                {i + 1}.
-              </span>
-              <a
-                href={`#${s.id}`}
-                className="text-[var(--text-muted)] transition-colors hover:text-terracotta"
-              >
-                {s.title}
-              </a>
-            </li>
-          ))}
-        </ol>
-      </nav>
-    </aside>
   );
 }
 

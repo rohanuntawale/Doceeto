@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Name, BrandMark } from "@/components/brand/wordmark";
+import { DoctorFigure } from "@/components/brand/doctor-figure";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
@@ -39,7 +40,7 @@ const SPECIALTIES = [
 /**
  * Doceeto landing — the single onboarding, matched to the pitch deck:
  * deep-forest shell, paper text, gold accents, the serif "Doceeto" wordmark
- * (gold "ee") and the doctor mascot. Patients sign up with name/email/password;
+ * (gold "ee") and the clinician figure. Patients sign up with name/email/password;
  * doctors continue to a second step that captures their full practice profile
  * (specialty, credentials, languages, fees) so patients see a complete card
  * from day one. `?as=doctor` preselects the doctor toggle (deep links).
@@ -1097,7 +1098,7 @@ function CoverPlate() {
           <span className="absolute inset-[13%] rounded-full border border-tan/15" />
           <span className="absolute inset-[26%] rounded-full border border-tan/10" />
           <span className="absolute inset-0 grid place-items-center">
-            <DoctorMascot className="h-40 w-40 animate-float motion-reduce:animate-none" />
+            <DoctorFigure className="h-40 w-40 animate-float motion-reduce:animate-none" />
           </span>
         </div>
       </div>
@@ -1134,83 +1135,6 @@ function CoverPlate() {
   );
 }
 
-/** Flat doctor mascot — a nod to the deck's 3D character: cream head with a
- *  gold head-mirror, happy eyes, and green scrubs. */
-function DoctorMascot({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className={className}
-      role="img"
-      aria-label="Doceeto doctor mascot"
-    >
-      {/* scrubs / shoulders */}
-      <path
-        d="M42 200 C42 164 68 148 100 148 C132 148 158 164 158 200 Z"
-        className="fill-espresso-700"
-      />
-      {/* collar */}
-      <path
-        d="M86 150 L100 168 L114 150"
-        fill="none"
-        className="stroke-cream"
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-      {/* head */}
-      <rect
-        x="54"
-        y="58"
-        width="92"
-        height="88"
-        rx="30"
-        className="fill-cream"
-      />
-      {/* face screen */}
-      <rect
-        x="66"
-        y="72"
-        width="68"
-        height="60"
-        rx="22"
-        className="fill-espresso"
-      />
-      {/* happy eyes */}
-      <path
-        d="M80 100 q7 9 14 0"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M106 100 q7 9 14 0"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      {/* head-mirror: band + reflector */}
-      <line
-        x1="100"
-        y1="58"
-        x2="100"
-        y2="44"
-        className="stroke-tan"
-        strokeWidth="3"
-      />
-      <circle
-        cx="100"
-        cy="38"
-        r="11"
-        fill="none"
-        className="stroke-tan"
-        strokeWidth="3"
-      />
-      <circle cx="100" cy="38" r="3.5" className="fill-tan" />
-    </svg>
-  );
-}
 
 // Brand glyphs inlined (no lucide brand-icon dependency). Google keeps its
 // colors to read at a glance; Apple rides currentColor.
