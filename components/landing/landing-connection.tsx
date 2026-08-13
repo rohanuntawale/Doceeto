@@ -25,7 +25,7 @@ const STEPS = [
   {
     n: "03",
     title: "Care arrives",
-    body: "The consult, the home visit, and the prescription that follows — in one place.",
+    body: "The consult, the home visit, and the prescription that follows in one place.",
   },
 ];
 
@@ -55,7 +55,7 @@ export function LandingConnection() {
               </p>
               <p>
                 Practitioners see structured patient requirements in real-time,
-                accept consultations directly, and provide verified care —
+                accept consultations directly, and provide verified care
                 eliminating middleman delays.
               </p>
             </div>

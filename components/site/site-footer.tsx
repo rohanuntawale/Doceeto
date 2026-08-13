@@ -44,14 +44,16 @@ export function SiteFooter() {
         <div className="space-y-4">
           <Wordmark compact={false} />
           <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xs">
-            Connecting patient needs with doctor expertise — India&apos;s single front door to care.
+            Connecting patient needs with doctor expertise India&apos;s single
+            front door to care.
           </p>
           {/* The one line worth repeating on every page of a healthcare site. */}
           <p className="max-w-xs text-xs leading-relaxed text-[var(--text-faint)]">
             Not for emergencies. Call{" "}
-            <span className="font-semibold text-[var(--text-muted)]">112</span> or{" "}
-            <span className="font-semibold text-[var(--text-muted)]">108</span> if
-            life is at risk.
+            <span className="font-semibold text-[var(--text-muted)]">112</span>{" "}
+            or{" "}
+            <span className="font-semibold text-[var(--text-muted)]">108</span>{" "}
+            if life is at risk.
           </p>
         </div>
 
@@ -81,7 +83,8 @@ export function SiteFooter() {
       <div className="border-t border-[var(--border)] py-5">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 text-xs text-[var(--text-faint)] md:flex-row md:justify-between">
           <p className="order-2 text-center md:order-1 md:text-left">
-            © {new Date().getFullYear()} {COMPANY.legalName}. All rights reserved.
+            © {new Date().getFullYear()} {COMPANY.legalName}. All rights
+            reserved.
           </p>
           <nav
             aria-label="Legal"
