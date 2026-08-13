@@ -347,3 +347,75 @@ export const LEGAL_SECTION_META = {
 /** Every non-legal indexable entry, for sitemap.xml. */
 export const indexableEntries = (): SiteEntry[] =>
   SITE_SECTIONS.flatMap((s) => s.entries).filter((e) => e.indexable);
+
+/**
+ * The site map as it appears in the footer of every page.
+ *
+ * SITE_SECTIONS above is the complete inventory, organised by which session
+ * each page needs — the right shape for /sitemap, the wrong shape for a
+ * footer. Nobody scanning a footer thinks "show me the nurse surface"; they
+ * think "I am a nurse, what is here for me". So this regroups the same site
+ * by WHO IS LOOKING, and drops the pages that are only reachable once you are
+ * already signed in and looking at them anyway.
+ *
+ * Deep signed-in pages (earnings ledgers, a patient's own prescriptions) are
+ * deliberately absent. A logged-out visitor clicking them lands on a sign-in
+ * form, which is a dead end dressed as a link; /sitemap still lists every one
+ * of them with a chip saying which account it needs.
+ */
+export interface FooterColumn {
+  heading: string;
+  links: { label: string; href: string }[];
+}
+
+export const FOOTER_SITEMAP: FooterColumn[] = [
+  {
+    heading: "For patients",
+    links: [
+      { label: "Find a doctor", href: "/try/doctors" },
+      { label: "Find a home nurse", href: "/try/nurses" },
+      { label: "Urgent care", href: "/try/urgent" },
+      { label: "Check a symptom", href: "/try/checker" },
+      { label: "Order medicine", href: "/patient/medicine" },
+      { label: "Patient sign in", href: "/login" },
+    ],
+  },
+  {
+    heading: "For doctors",
+    links: [
+      { label: "Join as a doctor", href: "/signup?as=doctor" },
+      { label: "Doctor sign in", href: "/login" },
+      { label: "How verification works", href: "/support" },
+      { label: "Provider terms", href: "/legal/providers" },
+    ],
+  },
+  {
+    heading: "For nurses",
+    links: [
+      { label: "Join as a nurse", href: "/signup?as=nurse" },
+      { label: "Nurse sign in", href: "/login" },
+      { label: "Services you can offer", href: "/try/nurses" },
+      { label: "Provider terms", href: "/legal/providers" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Support", href: "/support" },
+      { label: "Contact", href: "/contact" },
+      { label: "Site map", href: "/sitemap" },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Privacy policy", href: "/legal/privacy" },
+      { label: "Terms of use", href: "/legal/terms" },
+      { label: "Medical disclaimer", href: "/legal/medical-disclaimer" },
+      { label: "Telemedicine consent", href: "/legal/telemedicine-consent" },
+      { label: "Grievance redressal", href: "/legal/grievance" },
+      { label: "All policies", href: "/legal" },
+    ],
+  },
+];

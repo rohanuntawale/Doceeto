@@ -348,8 +348,15 @@ export interface Actions {
    *  backend always scopes the write to the signed-in doctor. */
   setAvailability: (id: string, availability: DoctorAvailability) => Promise<void>;
   acceptRequest: (id: string, doctorId: string) => Promise<void>;
-  /** Pass on a request. On a broadcast this only hides it from this doctor. */
-  declineRequest: (id: string, reason?: string) => void;
+  /**
+   * Pass on a request. On a broadcast this only hides it from this doctor.
+   *
+   * Returns a promise so callers can await it and show a real error. It used to
+   * be typed `void` while actually returning one, so every rejection became an
+   * unhandled promise and a doctor pressing Pass on a request the server
+   * refused saw absolutely nothing happen.
+   */
+  declineRequest: (id: string, reason?: string) => Promise<void>;
   /** Patient or doctor calls off a booking, freeing the slot. A doctor MUST
    *  give a reason — it is shown to the patient — and cancelling a broadcast
    *  puts it back out to other doctors rather than ending it. */
@@ -443,7 +450,8 @@ export function useActions(): Actions {
         setAvailability: async (id, availability) =>
           demoStore.setDoctorAvailability(id, availability),
         acceptRequest: async (id, doctorId) => demoStore.acceptRequest(id, doctorId),
-        declineRequest: (id) => demoStore.declineRequest(id, currentDoctorId() ?? undefined),
+        declineRequest: async (id) =>
+          demoStore.declineRequest(id, currentDoctorId() ?? undefined),
         // The demo store has no session, so "who is cancelling" is inferred
         // from whether a reason was given — the doctor path is the only one
         // that requires one.
@@ -498,7 +506,38 @@ export function useActions(): Actions {
       setAvailability: (_id, availability) =>
         callAction<void>(qc, "setAvailability", { availability }),
       acceptRequest: async (id) => void (await callAction(qc, "acceptRequest", { id })),
-      declineRequest: (id, reason) => callAction(qc, "declineRequest", { id, reason }),
+      /**
+       * Pass, applied to the SHARED request cache rather than to one screen.
+       *
+       * Both the dashboard and the requests page render from the same
+       * `["requests"]` query, so dropping the row here hides it on both at
+       * once, and it stays hidden across navigation because the cache outlives
+       * the components. Each screen previously kept its own `passed` Set in
+       * component state, which is why passing on the dashboard did nothing to
+       * the requests list — and why it came straight back the moment you
+       * navigated, since that state died with the component.
+       *
+       * This is only the optimistic half. `callAction` persists the pass in
+       * `consult_requests.passed_by` and then invalidates, so the refetch
+       * confirms from the database rather than trusting the cache; a passed
+       * request is filtered server-side by visibleToProvider() from then on,
+       * for every surface. If the write fails we invalidate to pull the truth
+       * back and rethrow so the caller can say so.
+       */
+      declineRequest: async (id, reason) => {
+        // setQueriesData, not setQueryData: the map and other views subscribe
+        // to scoped variants like ["requests", {near}], and a pass has to
+        // remove the row from every one of them.
+        qc.setQueriesData<ConsultRequest[]>({ queryKey: ["requests"] }, (list) =>
+          Array.isArray(list) ? list.filter((r) => r.id !== id) : list,
+        );
+        try {
+          await callAction(qc, "declineRequest", { id, reason });
+        } catch (e) {
+          qc.invalidateQueries({ queryKey: ["requests"] });
+          throw e;
+        }
+      },
       cancelRequest: async (id, reason) =>
         void (await callAction(qc, "cancelRequest", { id, reason })),
       completeRequest: (id) => callAction(qc, "completeRequest", { id }),

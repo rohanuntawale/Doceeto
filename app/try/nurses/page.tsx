@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { PreviewBanner } from "@/components/try/preview-chrome";
 import { ProviderPreview } from "@/components/try/provider-preview";
+import { AvailabilityMap } from "@/components/try/availability-map";
 
 export const metadata = {
   title: "Home care nurses on Doceeto",
@@ -17,6 +18,7 @@ export default function TryNursesPage() {
           can="Nurses handle the hands-on work at home: dressings, injections, vitals and elder care."
           needsAccount="Sending a nurse to an address needs an account, so we know where they're going."
         />
+        <AvailabilityMap cadre="nurse" />
         <ProviderPreview
           cadre="nurse"
           emptyTitle="No nurses online at the moment"

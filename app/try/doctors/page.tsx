@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { PreviewBanner } from "@/components/try/preview-chrome";
 import { ProviderPreview } from "@/components/try/provider-preview";
+import { AvailabilityMap } from "@/components/try/availability-map";
 
 export const metadata = {
   title: "Doctors on Doceeto",
@@ -17,6 +18,7 @@ export default function TryDoctorsPage() {
           can="This is the real roster — every doctor here is registered and ops-verified."
           needsAccount="Booking, video consults and home visits need an account. It takes a minute."
         />
+        <AvailabilityMap cadre="doctor" />
         <ProviderPreview
           cadre="doctor"
           emptyTitle="No doctors online at the moment"

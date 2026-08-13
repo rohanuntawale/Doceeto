@@ -13,19 +13,18 @@ import {
   Scissors,
   Users,
   Weight,
-  Wine,
-  Cigarette,
 } from "lucide-react";
+import { AvatarImage } from "@/components/ui/avatar-image";
 import { Modal, modalPanelCls } from "@/components/ui/modal";
 import { StarDisplay } from "@/components/ui/star-rating";
 import { apiFetch } from "@/lib/api/client";
 import {
   ACTIVITY_LABEL,
   BMI_BAND_LABEL,
-  FAMILY_DIABETES_LABEL,
   ageFrom,
   bmiBand,
   bmiOf,
+  cmToInches,
   type HealthProfile,
 } from "@/lib/health/profile";
 import { idrsOf } from "@/lib/health/score";
@@ -110,14 +109,11 @@ export function PatientBriefDialog({
           <div className="mt-4 space-y-4">
             {/* Identity */}
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-terracotta/20 text-lg font-semibold text-salmon">
-                {brief.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={brief.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  brief.name.charAt(0).toUpperCase()
-                )}
-              </span>
+              <AvatarImage
+                src={brief.avatarUrl}
+                className="h-12 w-12 rounded-full bg-terracotta/20 text-lg font-semibold text-salmon"
+                fallback={brief.name.charAt(0).toUpperCase()}
+              />
               <div className="min-w-0">
                 <p className="flex items-center gap-2 truncate font-medium text-cream">
                   {brief.name}
@@ -164,7 +160,7 @@ export function PatientBriefDialog({
                   <Vital label="Gender" value={p.gender ? p.gender[0].toUpperCase() + p.gender.slice(1) : "—"} />
                   <Vital icon={<Droplets className="h-3.5 w-3.5" />} label="Blood group"
                     value={p.bloodGroup ?? "—"} />
-                  <Vital label="Waist" value={p.waistCm ? `${p.waistCm} cm` : "—"} />
+                  <Vital label="Waist" value={p.waistCm ? `${cmToInches(p.waistCm)} in` : "—"} />
                   <Vital
                     label="Diabetes"
                     value={p.diabetes ? (p.diabetes === "yes" ? "Yes" : "No") : "—"}
@@ -209,7 +205,7 @@ export function PatientBriefDialog({
                       )}
                     >
                       <span className="font-semibold">Diabetes risk (IDRS): </span>
-                      {idrs.band[0].toUpperCase() + idrs.band.slice(1)} · {idrs.score}/100
+                      {idrs.band[0].toUpperCase() + idrs.band.slice(1)} · {idrs.score}/{idrs.max}
                     </p>
                   );
                 })()}
@@ -220,17 +216,10 @@ export function PatientBriefDialog({
                   <Line icon={<Pill className="h-4 w-4 text-salmon" />} label="Current medication" value={p.medications} />
                   <Line icon={<Scissors className="h-4 w-4 text-salmon" />} label="Past surgeries" value={p.surgeries} />
                   <Line icon={<Users className="h-4 w-4 text-salmon" />} label="Family history" value={p.familyHistory} />
-                  <Line icon={<Cigarette className="h-4 w-4 text-salmon" />} label="Smoking" value={p.smoking} />
-                  <Line icon={<Wine className="h-4 w-4 text-salmon" />} label="Alcohol" value={p.alcohol} />
                   <Line
                     icon={<HeartPulse className="h-4 w-4 text-salmon" />}
                     label="Daily activity"
                     value={p.activity ? ACTIVITY_LABEL[p.activity] : undefined}
-                  />
-                  <Line
-                    icon={<Users className="h-4 w-4 text-salmon" />}
-                    label="Diabetes in parents"
-                    value={p.familyDiabetes ? FAMILY_DIABETES_LABEL[p.familyDiabetes] : undefined}
                   />
                   <Line
                     icon={<Phone className="h-4 w-4 text-salmon" />}

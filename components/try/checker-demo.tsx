@@ -263,7 +263,11 @@ export function CheckerDemo() {
   const question = step?.kind === "question" ? step.question : null;
 
   return (
-    <Card className="flex h-[min(72vh,640px)] flex-col overflow-hidden p-0">
+    // h-full, not a vh clamp: the layout has already worked out how much room
+    // is left after the header, tabs and home button, so filling the slot is
+    // correct at every window size. A fixed 72vh either overflowed a short
+    // window or left a gap under a tall one.
+    <Card className="flex h-full flex-col overflow-hidden p-0">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
         <div className="flex items-center gap-2.5">
@@ -294,7 +298,9 @@ export function CheckerDemo() {
       </div>
 
       {/* Transcript */}
-      <div ref={scrollerRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      {/* min-h-0 lets this shrink below its content so the composer below is
+          never pushed out of the card on a short window. */}
+      <div ref={scrollerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {msgs.map((m) =>
           m.from === "bot" ? (
             <Bubble key={m.id} text={m.text} hint={m.hint} />
@@ -382,7 +388,9 @@ export function CheckerDemo() {
             </form>
 
             {!started ? (
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
+              // Suggestions are a nicety; on a short window the composer and
+              // transcript matter more, so they drop out rather than compete.
+              <div className="mt-2.5 hidden flex-wrap gap-1.5 [@media(min-height:600px)]:flex">
                 {[
                   "Sore throat for 3 days",
                   "Lower back pain",

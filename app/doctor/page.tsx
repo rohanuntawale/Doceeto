@@ -42,6 +42,7 @@ import {
   visibleToProvider,
 } from "@/lib/scheduling/slots";
 import { activeGigs } from "@/lib/gigs/rules";
+import { weeklySeries } from "@/lib/health/metrics";
 import { cn } from "@/lib/utils/cn";
 
 /** Requests shown on the dashboard before it defers to the full list. */
@@ -56,7 +57,10 @@ export default function DoctorHome() {
   const reviews = useReviews(me?.id);
   const actions = useActions();
   const toast = useToast();
-  const [passed, setPassed] = useState<Set<string>>(new Set());
+  // No local "passed" set. The pass now goes to the server and to the shared
+  // ["requests"] cache inside useActions().declineRequest, so this screen, the
+  // requests page and the map all drop the row together — and it stays dropped
+  // after a refresh because it is persisted in passed_by.
   const online = me?.status === "online";
   const greetKey =
     new Date().getHours() < 12
@@ -81,7 +85,6 @@ export default function DoctorHome() {
     (r) =>
       doctorId &&
       r.status === "pending" &&
-      !passed.has(r.id) &&
       visibleToProvider(r, { doctorId, busy: Boolean(ongoing) }),
   );
   const myCompleted = requests.filter(
@@ -116,24 +119,18 @@ export default function DoctorHome() {
       ? Math.max(1, Math.round(responseMins.reduce((a, m) => a + m, 0) / responseMins.length))
       : null;
 
-  // Net earnings per day for the last 7 days (oldest → today).
-  const earningsWeek = Array.from({ length: 7 }, (_, i) => {
-    const from = new Date(startOfToday);
-    from.setDate(from.getDate() - (6 - i));
-    const to = new Date(from);
-    to.setDate(to.getDate() + 1);
-    return myEarnings
-      .filter((t) => {
-        const at = new Date(t.createdAt).getTime();
-        return at >= from.getTime() && at < to.getTime();
-      })
-      .reduce((a, t) => a + t.net, 0);
-  });
-  // Today against the daily average of the six days before it — comparing it
-  // to their *sum* would read as a swing of hundreds of percent.
-  const priorAvg = earningsWeek.slice(0, 6).reduce((a, n) => a + n, 0) / 6;
-  const weekTrend =
-    priorAvg > 0 ? Math.round(((earningsWeek[6] - priorAvg) / priorAvg) * 100) : 0;
+  /**
+   * Net earnings per day, Sunday → Saturday of the current week, with the
+   * trend measured week-to-date against the same slice of last week.
+   *
+   * The bars used to be a rolling seven days ending today while the card was
+   * titled "Earnings this week", and the badge compared TODAY against the
+   * average of the six days before it — so every morning opened at "↓ 100%"
+   * and climbed back as the day went on. See lib/health/metrics.ts.
+   */
+  const earnings = weeklySeries(
+    myEarnings.map((t) => ({ at: Date.parse(t.createdAt), value: t.net })),
+  );
   // Acceptance: of the requests this doctor actually answered, how many they
   // took. Was hard-coded to 92% with an invented sparkline — a made-up figure
   // on a real dashboard is worse than no figure.
@@ -364,9 +361,25 @@ export default function DoctorHome() {
                     });
                   }
                 }}
-                onDecline={() => {
-                  if (r.doctorId === me?.id) actions.declineRequest(r.id);
-                  else setPassed((p) => new Set(p).add(r.id));
+                /**
+                 * Always tell the server. This used to persist the pass ONLY
+                 * for a request already assigned to this doctor, and for
+                 * anything else — every broadcast, which is most of the
+                 * inbox — it just added the id to local state and never called
+                 * the backend at all. So the card vanished from this one screen
+                 * and nowhere else: still on /doctor/requests, still on the
+                 * map, and back in full on the next refresh.
+                 */
+                onDecline={async () => {
+                  try {
+                    await actions.declineRequest(r.id);
+                  } catch (e) {
+                    toast.push({
+                      tone: "error",
+                      title: "Couldn't pass on that request",
+                      desc: e instanceof Error ? e.message : "Please try again.",
+                    });
+                  }
                 }}
               />
             ))
@@ -386,10 +399,13 @@ export default function DoctorHome() {
       <div className="lg:col-span-4">
         <ActivityCard
           title="Earnings this week"
-          caption="Daily net (₹) — tap a day"
-          data={earningsWeek}
-          trend={weekTrend}
+          caption="Daily net (₹) — tap a day to read it"
+          data={earnings.data}
+          // null means "nothing to compare against" — the badge hides rather
+          // than asserting a measured 0%.
+          trend={earnings.trend ?? undefined}
           href="/doctor/earnings"
+          hrefLabel="Open your wallet"
           formatValue={formatINR}
         />
       </div>

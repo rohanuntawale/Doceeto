@@ -912,6 +912,17 @@ export function applyText(prev: DState, text: string): DState {
   const clean = text.trim();
   const s: DState = {
     ...prev,
+    /**
+     * The FIRST thing someone types is their presenting complaint, so it
+     * becomes the seed when there isn't one already.
+     *
+     * Without this, a chat started from the checker's own composer (rather
+     * than from the dashboard box, which passes ?q=) sent `seed: ""` to the
+     * triage API — whose prompt then opened with "Patient hasn't typed
+     * anything yet" while the words sat further down in the answers. The model
+     * read the first line and asked them what was wrong.
+     */
+    seed: prev.seed || clean,
     scores: { ...prev.scores },
     conditions: [...prev.conditions],
     causes: prev.causes.map((c) => ({ ...c })),

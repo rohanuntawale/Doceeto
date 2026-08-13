@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Name, BrandMark } from "@/components/brand/wordmark";
 import { DoctorFigure } from "@/components/brand/doctor-figure";
+import { RegistryAutofill } from "@/components/auth/registry-autofill";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
@@ -89,6 +90,22 @@ function OnboardingPanel() {
         ? "nurse"
         : "patient",
   );
+  /**
+   * Keep the toggle honest when `?as=` changes under a mounted page.
+   *
+   * The initialiser above only runs on the first render, and Next does not
+   * remount a page for a query-string change — so arriving at /signup, then
+   * following a "For providers" link to /signup?as=doctor, left the form on
+   * "I need care" while the URL claimed otherwise. Keyed on the param value,
+   * so a visitor who then picks a different role by hand keeps their choice.
+   */
+  const asParam = params.get("as");
+  useEffect(() => {
+    if (asParam === "doctor" || asParam === "nurse" || asParam === "patient") {
+      setRole(asParam);
+    }
+  }, [asParam]);
+
   const [name, setName] = useState(
     googleProvider ? (params.get("name") ?? "") : "",
   );
@@ -691,6 +708,13 @@ function OnboardingPanel() {
                     placeholder="MNC-11482"
                     required
                   />
+                  <RegistryAutofill
+                    registrationNo={registrationNo}
+                    onApply={(m) => {
+                      if (m.fullName) setName(m.fullName);
+                      if (m.qualification) setQualifications(m.qualification);
+                    }}
+                  />
                 </Field>
               </div>
 
@@ -829,6 +853,13 @@ function OnboardingPanel() {
                     onChange={(e) => setRegistrationNo(e.target.value)}
                     placeholder="MH-12345"
                     maxLength={60}
+                  />
+                  <RegistryAutofill
+                    registrationNo={registrationNo}
+                    onApply={(m) => {
+                      if (m.fullName) setName(m.fullName);
+                      if (m.qualification) setQualifications(m.qualification);
+                    }}
                   />
                 </Field>
               </div>

@@ -35,6 +35,10 @@ export default function RequestsPage() {
   const [briefFor, setBriefFor] = useState<string | null>(null);
   /** Which accepted consult is being closed out with a prescription. */
   const [prescribingFor, setPrescribingFor] = useState<string | null>(null);
+  // No local "passed" state here on purpose. The pass is applied to the shared
+  // ["requests"] cache inside useActions().declineRequest and persisted to
+  // passed_by, so this list, the dashboard and the map all drop the row
+  // together — see the note there.
 
   /**
    * "Medical history" on a request the doctor has NOT accepted yet. Whether to
@@ -74,9 +78,25 @@ export default function RequestsPage() {
     .filter(isScheduled)
     .sort((a, b) => (intervalOf(a)!.start - intervalOf(b)!.start));
 
-  /** Pass on a request. The server decides whether that declines it outright
-   *  or just records this doctor as having passed on a broadcast. */
-  const pass = (id: string) => actions.declineRequest(id);
+  /**
+   * Pass on a request. The server decides whether that declines it outright or
+   * just records this doctor as having passed on a broadcast.
+   *
+   * Hide first, then call. If the call fails the card comes back and we say why
+   * — silently swallowing the error was the old behaviour, and it left the
+   * doctor pressing a button that appeared to do nothing at all.
+   */
+  async function pass(id: string) {
+    try {
+      await actions.declineRequest(id);
+    } catch (e) {
+      toast.push({
+        tone: "error",
+        title: "Couldn't pass on that request",
+        desc: e instanceof Error ? e.message : "Please try again.",
+      });
+    }
+  }
 
   const accepted = requests.filter((r) => r.status === "accepted" && r.doctorId === doctorId);
 
@@ -142,7 +162,7 @@ export default function RequestsPage() {
             }
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
             {gigHires.map((r) => (
               <RequestCard
                 key={r.id}
@@ -173,7 +193,7 @@ export default function RequestsPage() {
             }
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
             {urgent.map((r) => (
               <RequestCard
                 key={r.id}
@@ -198,7 +218,7 @@ export default function RequestsPage() {
             desc="Slots patients book on your calendar land here for a quick confirm."
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
             {booked.map((r) => {
               // Confirming two appointments over the same slot is the one
               // thing the calendar must never allow.
@@ -230,7 +250,7 @@ export default function RequestsPage() {
             desc="Accepted consults show up here until you complete them."
           />
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
             {accepted.map((r) => (
               <RequestCard
                 key={r.id}

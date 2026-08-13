@@ -2,8 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
+import { Check, TrendingUp, Activity, Target, ArrowUpRight, ArrowDownRight, ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 /* ── Trend badge + sparkline ── */
@@ -176,6 +175,7 @@ export function ActivityCard({
   labels = ["S", "M", "T", "W", "T", "F", "S"],
   trend,
   href,
+  hrefLabel,
   formatValue = (n: number) => String(n),
   dayNames = DAY_NAMES,
 }: {
@@ -184,29 +184,34 @@ export function ActivityCard({
   data: number[];
   labels?: string[];
   trend?: number;
-  /** Where a third tap leads. Omit to keep the chart non-interactive. */
+  /**
+   * Optional destination for the full record, rendered as a LABELLED LINK
+   * under the chart.
+   *
+   * It used to be wired to a tap counter: the third tap on any bar navigated
+   * away. The caption said "tap a day", so that is exactly what people did —
+   * and on the third one the dashboard vanished and the wallet appeared, with
+   * no control anywhere that said it would. A chart that sometimes reads a
+   * value and sometimes leaves the page is a chart you stop touching.
+   *
+   * Tapping a bar now only ever selects that bar. Navigation belongs to
+   * something that names where it goes.
+   */
   href?: string;
+  /** Text for that link. */
+  hrefLabel?: string;
   /** Renders the selected day's figure (e.g. as rupees). */
   formatValue?: (n: number) => string;
   dayNames?: string[];
 }) {
-  const router = useRouter();
   const [selected, setSelected] = useState<number | null>(null);
-  const [taps, setTaps] = useState(0);
 
   const max = Math.max(1, ...data);
   const peak = data.indexOf(max);
-  const interactive = Boolean(href);
-  // Two taps in, say what the third one does. Springing a navigation on
-  // someone without warning is how a chart starts feeling broken.
-  const hintNext = interactive && taps === 2;
 
+  /** Tap to read a day, tap again to clear it. That is the whole interaction. */
   function onPick(i: number) {
-    if (!interactive) return;
     setSelected((prev) => (prev === i ? null : i));
-    const next = taps + 1;
-    setTaps(next);
-    if (next >= 3 && href) router.push(href);
   }
 
   return (
@@ -254,7 +259,7 @@ export function ActivityCard({
                     lit
                       ? "bg-[rgb(var(--c-terracotta))]"
                       : "bg-[rgb(var(--c-espresso-600))]",
-                    interactive && !lit && "group-hover:bg-[rgb(var(--c-espresso-500))]",
+                    !lit && "group-hover:bg-[rgb(var(--c-espresso-500))]",
                   )}
                   style={{ height: `${Math.max(6, (v / max) * 100)}%` }}
                 />
@@ -270,7 +275,7 @@ export function ActivityCard({
             </>
           );
 
-          return interactive ? (
+          return (
             <button
               key={i}
               type="button"
@@ -281,18 +286,19 @@ export function ActivityCard({
             >
               {Bar}
             </button>
-          ) : (
-            <div key={i} className="flex flex-1 flex-col items-center gap-2 py-1">
-              {Bar}
-            </div>
           );
         })}
       </div>
 
-      {hintNext && (
-        <p className="relative mt-2 text-center text-[10px] text-[var(--text-faint)]">
-          Tap once more to open your wallet
-        </p>
+      {/* The way out, saying where it goes. */}
+      {href && (
+        <Link
+          href={href}
+          className="relative mt-3 inline-flex items-center gap-1 self-start text-[11px] font-medium text-[rgb(var(--c-salmon))] hover:underline"
+        >
+          {hrefLabel ?? "See the full record"}
+          <ArrowRight className="h-3 w-3" />
+        </Link>
       )}
     </section>
   );

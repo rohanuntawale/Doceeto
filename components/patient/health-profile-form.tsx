@@ -5,13 +5,14 @@ import { HeartPulse, Save } from "lucide-react";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import {
   ACTIVITY_CHOICES,
-  ALCOHOL_CHOICES,
   BLOOD_GROUPS,
-  FAMILY_DIABETES_CHOICES,
-  SMOKING_CHOICES,
+  WAIST_INCHES_MAX,
+  WAIST_INCHES_MIN,
   bmiBand,
   bmiOf,
+  cmToInches,
   healthProfileCompletion,
+  inchesToCm,
   sanitizeHealthProfile,
   type HealthProfile,
 } from "@/lib/health/profile";
@@ -37,11 +38,12 @@ export function HealthProfileForm() {
 
   const [heightCm, setHeightCm] = useState(p.heightCm?.toString() ?? "");
   const [weightKg, setWeightKg] = useState(p.weightKg?.toString() ?? "");
-  const [waistCm, setWaistCm] = useState(p.waistCm?.toString() ?? "");
+  // Held in INCHES — what the patient types. Converted to cm on save,
+  // because that is the unit IDRS is defined in (see lib/health/profile.ts).
+  const [waistIn, setWaistIn] = useState(cmToInches(p.waistCm)?.toString() ?? "");
   const [activity, setActivity] = useState(p.activity ?? "");
   const [diabetes, setDiabetes] = useState(p.diabetes ?? "");
   const [hypertension, setHypertension] = useState(p.hypertension ?? "");
-  const [familyDiabetes, setFamilyDiabetes] = useState(p.familyDiabetes ?? "");
   const [dob, setDob] = useState(p.dob ?? "");
   const [gender, setGender] = useState(p.gender ?? "");
   const [bloodGroup, setBloodGroup] = useState<string>(p.bloodGroup ?? "");
@@ -50,8 +52,6 @@ export function HealthProfileForm() {
   const [medications, setMedications] = useState(p.medications ?? "");
   const [surgeries, setSurgeries] = useState(p.surgeries ?? "");
   const [familyHistory, setFamilyHistory] = useState(p.familyHistory ?? "");
-  const [smoking, setSmoking] = useState(p.smoking ?? "");
-  const [alcohol, setAlcohol] = useState(p.alcohol ?? "");
   const [ecName, setEcName] = useState(p.emergencyContactName ?? "");
   const [ecPhone, setEcPhone] = useState(p.emergencyContactPhone ?? "");
   const [saving, setSaving] = useState(false);
@@ -76,11 +76,10 @@ export function HealthProfileForm() {
 
     setHeightCm(saved.heightCm?.toString() ?? "");
     setWeightKg(saved.weightKg?.toString() ?? "");
-    setWaistCm(saved.waistCm?.toString() ?? "");
+    setWaistIn(cmToInches(saved.waistCm)?.toString() ?? "");
     setActivity(saved.activity ?? "");
     setDiabetes(saved.diabetes ?? "");
     setHypertension(saved.hypertension ?? "");
-    setFamilyDiabetes(saved.familyDiabetes ?? "");
     setDob(saved.dob ?? "");
     setGender(saved.gender ?? "");
     setBloodGroup(saved.bloodGroup ?? "");
@@ -89,8 +88,6 @@ export function HealthProfileForm() {
     setMedications(saved.medications ?? "");
     setSurgeries(saved.surgeries ?? "");
     setFamilyHistory(saved.familyHistory ?? "");
-    setSmoking(saved.smoking ?? "");
-    setAlcohol(saved.alcohol ?? "");
     setEcName(saved.emergencyContactName ?? "");
     setEcPhone(saved.emergencyContactPhone ?? "");
   }, [patient.healthProfile]);
@@ -106,9 +103,11 @@ export function HealthProfileForm() {
   async function save() {
     // Same sanitizer the server runs — what you see saved is what it keeps.
     const profile: HealthProfile = sanitizeHealthProfile({
-      heightCm, weightKg, waistCm, dob, gender, bloodGroup, activity,
-      diabetes, hypertension, familyDiabetes, allergies, conditions,
-      medications, surgeries, familyHistory, smoking, alcohol,
+      heightCm, weightKg,
+      waistCm: inchesToCm(Number(waistIn) || undefined),
+      dob, gender, bloodGroup, activity,
+      diabetes, hypertension, allergies, conditions,
+      medications, surgeries, familyHistory,
       emergencyContactName: ecName, emergencyContactPhone: ecPhone,
     });
 
@@ -194,8 +193,9 @@ export function HealthProfileForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.waist")}>
-            <input type="number" min={40} max={200} className={inputCls} value={waistCm}
-              onChange={(e) => setWaistCm(e.target.value)} placeholder="85" />
+            <input type="number" min={WAIST_INCHES_MIN} max={WAIST_INCHES_MAX} step={0.5}
+              className={inputCls} value={waistIn}
+              onChange={(e) => setWaistIn(e.target.value)} placeholder="34" />
           </Field>
           <Field label={t("field.activity")}>
             <select className={inputCls} value={activity}
@@ -245,15 +245,6 @@ export function HealthProfileForm() {
           </Field>
         </div>
 
-        <Field label={t("field.familyDiabetes")}>
-          <select className={inputCls} value={familyDiabetes}
-            onChange={(e) => setFamilyDiabetes(e.target.value as typeof familyDiabetes)}>
-            <option value="">{t("opt.select")}</option>
-            {FAMILY_DIABETES_CHOICES.map((c) => (
-              <option key={c} value={c}>{t(c === "none" ? "opt.noParent" : c === "one-parent" ? "opt.oneParent" : "opt.bothParents")}</option>
-            ))}
-          </select>
-        </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.bloodGroup")}>
@@ -285,27 +276,6 @@ export function HealthProfileForm() {
           <input className={inputCls} value={familyHistory} maxLength={500}
             onChange={(e) => setFamilyHistory(e.target.value)} placeholder="Heart disease (father)…" />
         </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("field.smoking")}>
-            <select className={inputCls} value={smoking}
-              onChange={(e) => setSmoking(e.target.value as typeof smoking)}>
-              <option value="">{t("opt.select")}</option>
-              {SMOKING_CHOICES.map((c) => (
-                <option key={c} value={c}>{t(`opt.${c}`)}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t("field.alcohol")}>
-            <select className={inputCls} value={alcohol}
-              onChange={(e) => setAlcohol(e.target.value as typeof alcohol)}>
-              <option value="">{t("opt.select")}</option>
-              {ALCOHOL_CHOICES.map((c) => (
-                <option key={c} value={c}>{t(`opt.${c}`)}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.ecName")}>

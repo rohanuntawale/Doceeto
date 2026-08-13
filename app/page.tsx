@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingStory } from "@/components/landing/landing-story";
 import { LandingTwoSides } from "@/components/landing/landing-two-sides";
-import { LandingConnection } from "@/components/landing/landing-connection";
+import { LandingTestimonials } from "@/components/landing/landing-testimonials";
 import { LandingProductShowcase } from "@/components/landing/landing-product-showcase";
 import { LandingFinalCta } from "@/components/landing/landing-final-cta";
+import { CheckerFab } from "@/components/landing/checker-fab";
 import { SiteFooter } from "@/components/site/site-footer";
 import {
   AnimatedNavigationTabs,
@@ -33,22 +34,32 @@ import {
  * a marketing section about doctors.
  */
 const NAV_ITEMS: AnimatedNavigationTab[] = [
-  // Each of these lands on a PREVIEW that works without an account (see
-  // app/try). Pointing them straight at /patient/* sent every curious visitor
-  // to a sign-in form before they had seen anything worth signing in for —
-  // the nav was a wall with labels on it.
+  // Each lands on a PREVIEW that works without an account (see app/try).
+  // Pointing them straight at /patient/* sent every curious visitor to a
+  // sign-in form before they had seen anything worth signing in for.
   { id: "doctors", tile: "Doctors", href: "/try/doctors" },
   { id: "nurses", tile: "Nurses", href: "/try/nurses" },
-  { id: "urgent", tile: "Urgent care", href: "/try/urgent" },
   { id: "checker", tile: "Symptom check", href: "/try/checker" },
-  // The one item aimed at the other side of the marketplace: the signup page
-  // opens directly on the doctor form.
-  { id: "providers", tile: "For providers", href: "/signup?as=doctor" },
   // The company, the mechanism, the policies and the ways to reach a person.
-  // Not the bare contact form it used to be — most people who click "Support"
-  // want an answer, not a text box.
   { id: "support", tile: "Support", href: "/support" },
 ];
+
+/*
+ * ── What was cut from this rail, and why it is still reachable ──
+ *
+ * A header is a place to make four choices, not eight. Two came out:
+ *
+ *   Urgent care   — a filtered view of Doctors ("free right now"), not a
+ *                   separate thing. It is the first tab on every /try page and
+ *                   the loudest link on /try/doctors.
+ *   For providers — the hero already carries "I'm a doctor" and "I'm a nurse"
+ *                   as full-size buttons a few hundred pixels below this, and
+ *                   /support opens with a provider card. A third copy in the
+ *                   header was competing with itself.
+ *
+ * Both still appear in the footer sitemap and in /sitemap.xml, so nothing was
+ * hidden — only un-duplicated.
+ */
 
 export default function Page() {
   const [scrolled, setScrolled] = useState(false);
@@ -97,36 +108,46 @@ export default function Page() {
             : "py-5 bg-transparent"
         }`}
       >
-        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between">
-          <Link href="/" className="hover:opacity-90 transition-opacity">
+        {/* Two groups, not three. The rail used to sit in the middle of a
+            justify-between row, which meant the gap on its left (to the
+            wordmark) and the gap on its right (to the buttons) were whatever
+            the viewport happened to leave over — never equal, and never the
+            same at two window widths. Everything except the wordmark now lives
+            in ONE right-hand group, so the spacing inside it is set by the
+            items themselves rather than by leftover space. */}
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6">
+          <Link href="/" className="transition-opacity hover:opacity-90">
             <Wordmark />
           </Link>
 
-          {/* Centre rail. `activeId={null}` on purpose: these tabs are
-              destinations elsewhere in the app, so none of them is ever "where
-              you are" while you're reading the landing page. A persistent
-              underline would claim otherwise; the hover wash is the feedback. */}
-          <AnimatedNavigationTabs
-            items={NAV_ITEMS}
-            activeId={null}
-            className="hidden lg:block text-xs font-semibold uppercase tracking-wider"
-          />
+          <div className="flex items-center">
+            {/* `activeId={null}` on purpose: these tabs are destinations
+                elsewhere in the app, so none of them is ever "where you are"
+                while you're reading the landing page. A persistent underline
+                would claim otherwise; the hover wash is the feedback. */}
+            <AnimatedNavigationTabs
+              items={NAV_ITEMS}
+              activeId={null}
+              className="hidden text-xs font-semibold uppercase tracking-wider md:block"
+            />
 
-          {/* Right Action Cluster */}
-          <div className="flex items-center gap-3">
+            {/* The one seam in the group: what you can get, then who you are.
+                Its margin matches the tabs' own horizontal padding, so the
+                rhythm carries straight through it. */}
+            <span aria-hidden className="mx-3 hidden h-4 w-px bg-[var(--border)] md:block" />
+
             <Link href="/login" className="hidden sm:inline-block">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="font-semibold text-xs"
-              >
+              <Button variant="ghost" size="sm" className="text-xs font-semibold">
                 Log in
               </Button>
             </Link>
-            <Link href="/signup">
+            {/* ml-2 rather than a gap on the row: a filled button reads as
+                heavier than bare text at the same distance, so it needs a
+                little more air to look like the same gap. */}
+            <Link href="/signup" className="ml-2">
               <Button
                 size="sm"
-                className="font-bold text-xs bg-[var(--accent)] text-on-accent shadow-soft border-0"
+                className="border-0 bg-[var(--accent)] text-xs font-bold text-on-accent shadow-soft"
               >
                 Get Started
               </Button>
@@ -140,13 +161,16 @@ export default function Page() {
         <LandingHero />
         <LandingStory />
         <LandingTwoSides />
-        <LandingConnection />
+        <LandingTestimonials />
         <LandingProductShowcase />
         <LandingFinalCta />
       </main>
 
       {/* Site Footer */}
       <SiteFooter />
+
+      {/* Follows the scroll — the checker stays one tap away all the way down. */}
+      <CheckerFab />
     </div>
   );
 }
