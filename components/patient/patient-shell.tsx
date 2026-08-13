@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Search, Pill, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, LogOut, Search, Stethoscope, Pill, User } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
-import { MEDICINE_ENABLED } from "@/lib/config";
+import { MEDICINE_ENABLED, isDemoMode } from "@/lib/config";
+import { apiFetch } from "@/lib/api/client";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
 
@@ -17,6 +18,26 @@ import { cn } from "@/lib/utils/cn";
  */
 const NAV = [
   { id: "home", href: "/patient", labelKey: "nav.home", icon: Home, color: "#0A84FF", exact: true },
+  /**
+   * The symptom checker, as its own destination.
+   *
+   * It was reachable only through the "I need care" card on the dashboard,
+   * which meant that from any other screen the way back to it was: go home,
+   * find the card, scroll to it. For the one tool a patient opens when they
+   * are worried and not yet sure what they need, that is the wrong number of
+   * steps — and it sat under a tab labelled "Find care" that actually opens
+   * the doctor list, so nothing in the chrome named it at all.
+   *
+   * It goes SECOND, before browsing doctors: "I don't know what's wrong" comes
+   * before "show me a cardiologist" for most people arriving here.
+   */
+  {
+    id: "check",
+    href: "/patient/care",
+    labelKey: "nav.check",
+    icon: Stethoscope,
+    color: "#FF9F0A",
+  },
   { id: "care", href: "/patient/doctors", labelKey: "nav.care", icon: Search, color: "#30D158" },
   // Medicine hidden while MEDICINE_ENABLED is off.
   ...(MEDICINE_ENABLED
@@ -26,9 +47,10 @@ const NAV = [
 ];
 
 function activeIndex(pathname: string) {
-  // The symptom checker lives under the "care" tab even though its URL
-  // isn't a prefix of /patient/doctors — without this it lit up Home.
-  if (pathname.startsWith("/patient/care")) return "care";
+  // The special case for /patient/care is gone: the checker now has its own
+  // tab whose href IS that path, so the ordinary longest-prefix match below
+  // resolves it. It used to be borrowed by "Find care", which lit the doctor
+  // list while you were in the checker.
   // Longest matching href wins; home is exact.
   const found = [...NAV]
     .filter((n) => (n.exact ? pathname === n.href : pathname.startsWith(n.href)))
@@ -38,8 +60,30 @@ function activeIndex(pathname: string) {
 
 export function PatientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useT();
   const active = activeIndex(pathname);
+
+  /**
+   * End the PATIENT session only.
+   *
+   * apiFetch tags the call with the surface it was made from, so a browser
+   * holding both a patient and a doctor session signs out of this one and
+   * leaves the cockpit alone — which is the whole reason sessions are stored
+   * per role. A plain fetch here would let the server pick, and the doctor
+   * could find themselves signed out by their own patient account.
+   */
+  async function logout() {
+    if (!isDemoMode) {
+      try {
+        await apiFetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        /* ignore — the redirect below still gets them out */
+      }
+    }
+    router.push(isDemoMode ? "/" : "/login");
+    router.refresh();
+  }
 
   const dockItems: DockItem[] = NAV.map((n) => ({
     id: n.id,
@@ -68,7 +112,21 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
         <Link href="/patient" aria-label="Doceeto home">
           <Wordmark compact />
         </Link>
-        <LanguageSelector />
+        {/* Sign out then language — the same order, icon and styling as the
+            doctor cockpit's top bar. Someone who holds both a patient and a
+            provider account should not have to re-learn where the exit is
+            when they switch. */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={logout}
+            aria-label={isDemoMode ? "Exit demo" : "Sign out"}
+            title={isDemoMode ? "Exit demo" : "Sign out"}
+            className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border)] bg-surface/70 text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+          <LanguageSelector />
+        </div>
       </div>
 
       <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(var(--chrome-dock)+1.75rem)] pt-4 sm:px-6 lg:pt-6">

@@ -149,7 +149,7 @@ export default function PrivacyPolicyPage() {
                   ],
                   [
                     "Health profile",
-                    "Date of birth, gender, height, weight, waist measurement, blood group, allergies, ongoing conditions, current medication, past surgeries and hospitalisations, family history, diagnosed diabetes and hypertension, physical-activity level, smoking and alcohol use, and an emergency contact's name and phone number.",
+                    "Date of birth, gender, height, weight, waist measurement, blood group, allergies, ongoing conditions, current medication, past surgeries and hospitalisations, family history, diagnosed diabetes and hypertension, physical-activity level, and an emergency contact's name and phone number.",
                     "Only when you fill it in. Every field is optional and can be cleared.",
                   ],
                   [

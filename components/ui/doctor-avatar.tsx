@@ -1,12 +1,15 @@
 import type { CSSProperties, ReactNode } from "react";
+import { AvatarImage } from "@/components/ui/avatar-image";
 import { initials } from "@/lib/utils/format";
-import { cn } from "@/lib/utils/cn";
 
 /**
- * A doctor's face wherever patients see one: the profile photo when it exists,
- * else the initials-on-accent monogram the app has always used. Size, shape
- * and typography stay with the caller via className — this only decides
- * photo-vs-monogram, so every list renders doctors the same way.
+ * A doctor's face wherever patients see one: the profile photo when it exists
+ * AND loads, else the initials-on-accent monogram the app has always used.
+ * Size, shape and typography stay with the caller via className — this only
+ * decides photo-vs-monogram, so every list renders doctors the same way.
+ *
+ * The photo-vs-monogram decision itself lives in AvatarImage, which also
+ * recovers from a photo that is present but unloadable — see the note there.
  */
 export function DoctorAvatar({
   doctor,
@@ -20,19 +23,14 @@ export function DoctorAvatar({
   style?: CSSProperties;
   title?: string;
 }): ReactNode {
-  const photo = doctor.avatarUrl;
   return (
-    <span
-      className={cn("grid shrink-0 place-items-center overflow-hidden", className)}
-      style={{ ...(photo ? {} : { background: doctor.avatarColor ?? "#6B615A" }), ...style }}
+    <AvatarImage
+      src={doctor.avatarUrl}
+      background={doctor.avatarColor ?? "#6B615A"}
+      className={className}
+      style={style}
       title={title}
-    >
-      {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={photo} alt="" className="h-full w-full object-cover" />
-      ) : (
-        initials(doctor.fullName.replace("Dr. ", ""))
-      )}
-    </span>
+      fallback={initials(doctor.fullName.replace("Dr. ", ""))}
+    />
   );
 }

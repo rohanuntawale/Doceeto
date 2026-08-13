@@ -34,34 +34,53 @@ const DAY_MS = 24 * 3600 * 1000;
 export type IdrsBand = "low" | "moderate" | "high";
 
 /**
- * The published IDRS: age (0/20/30) + waist (0/10/20) + physical activity
- * (0/10/20/30) + family history of diabetes (0/10/20), total 0–100.
- * <30 low, 30–59 moderate, ≥60 high. Needs age plus at least one other
- * component to be worth reporting.
+ * The published IDRS scores four things — age (0/20/30), waist (0/10/20),
+ * physical activity (0/10/20/30) and family history of diabetes (0/10/20) —
+ * for a total of 0–100, banded <30 low, 30–59 moderate, ≥60 high.
+ *
+ * ── This app computes it from THREE ──
+ *
+ * The family-history question was removed from the health profile, so the
+ * highest score anyone can now reach is 80, not 100.
+ *
+ * That matters more than it looks. Banding a partial score against the
+ * published ABSOLUTE thresholds systematically UNDER-flags people: a
+ * 55-year-old with a 38-inch waist who barely moves scores the maximum on
+ * every question we still ask — 80 — and would clear "high" at 60, but
+ * someone answering only two of the three can max out at 50 and never be
+ * flagged at all, however bad their answers. For a screening tool, missing
+ * someone at risk is the dangerous direction to fail in.
+ *
+ * So the band is taken from the PROPORTION of the achievable maximum, at the
+ * same 60% / 30% cuts the published bands sit at. A person who scored the
+ * worst possible answer to everything we asked is "high", whether we asked
+ * three questions or four. The raw `score` is still returned for display, and
+ * `max` says what it was out of — never show one without the other.
  */
-export function idrsOf(p: HealthProfile): { score: number; band: IdrsBand } | undefined {
+export function idrsOf(
+  p: HealthProfile,
+): { score: number; max: number; band: IdrsBand } | undefined {
   const age = ageFrom(p.dob);
   if (age === undefined) return undefined;
 
-  let known = 0;
+  // Age is a precondition, so it is always in both the score and the maximum.
   let score = age < 35 ? 0 : age < 50 ? 20 : 30;
+  let max = 30;
 
   if (p.waistCm !== undefined) {
-    known++;
+    max += 20;
     const cuts = p.gender === "female" ? [80, 90] : [90, 100];
     score += p.waistCm < cuts[0] ? 0 : p.waistCm < cuts[1] ? 10 : 20;
   }
   if (p.activity) {
-    known++;
+    max += 30;
     score += { vigorous: 0, moderate: 10, mild: 20, sedentary: 30 }[p.activity];
   }
-  if (p.familyDiabetes) {
-    known++;
-    score += { none: 0, "one-parent": 10, "both-parents": 20 }[p.familyDiabetes];
-  }
-  if (known === 0) return undefined;
+  // Age alone is not a risk assessment, it is a birthday.
+  if (max === 30) return undefined;
 
-  return { score, band: score >= 60 ? "high" : score >= 30 ? "moderate" : "low" };
+  const ratio = score / max;
+  return { score, max, band: ratio >= 0.6 ? "high" : ratio >= 0.3 ? "moderate" : "low" };
 }
 
 // ── Pillars ──────────────────────────────────────────────────
@@ -119,21 +138,17 @@ function bodyPillar(p: HealthProfile): ScorePillar | undefined {
 function lifestylePillar(p: HealthProfile): ScorePillar | undefined {
   // Each answered habit contributes its own slice; unanswered ones are left
   // out of the denominator instead of counting silently for or against.
+  //
+  // Smoking and alcohol used to sit here, worth 12 and 7 of the 19 points
+  // before activity's 6. They were removed from the profile, so this pillar
+  // now rests on activity alone — the normalisation below still scales it to
+  // 25, so no score changes meaning, but the pillar is thinner than it reads.
+  // If lifestyle is to carry a quarter of the score again, it needs another
+  // input (sleep and diet are the obvious candidates).
   let earned = 0;
   let max = 0;
   const notes: string[] = [];
 
-  if (p.smoking) {
-    max += 12;
-    earned += { never: 12, former: 8, current: 0 }[p.smoking];
-    if (p.smoking === "current") notes.push("smoking is the single biggest drag");
-    else if (p.smoking === "former") notes.push("staying off cigarettes is paying off");
-  }
-  if (p.alcohol) {
-    max += 7;
-    earned += { never: 7, occasional: 5, regular: 0 }[p.alcohol];
-    if (p.alcohol === "regular") notes.push("regular alcohol is costing points");
-  }
   if (p.activity) {
     max += 6;
     earned += { vigorous: 6, moderate: 6, mild: 3, sedentary: 0 }[p.activity];

@@ -13,8 +13,20 @@ export interface HealthProfile {
   heightCm?: number;
   /** Weight in kilograms. */
   weightKg?: number;
-  /** Waist in centimetres — with age, activity and family history it forms
-   *  the validated Indian Diabetes Risk Score (IDRS). */
+  /**
+   * Waist in CENTIMETRES — with age and activity it feeds the Indian Diabetes
+   * Risk Score (IDRS). The score's fourth component, family history of
+   * diabetes, is no longer collected; see idrsOf in lib/health/score.ts for
+   * what that changes.
+   *
+   * COLLECTED IN INCHES, STORED IN CM. Patients here think in inches, but the
+   * IDRS cut-offs (80/90 cm for women, 90/100 for men) are defined in
+   * centimetres and are what make the score a validated instrument rather than
+   * a number we invented. Converting once at the form boundary keeps the
+   * clinical maths on its own units — storing inches would mean every reader
+   * of this field has to remember to convert, and the first one to forget
+   * silently mis-scores a patient. Use inchesToCm / cmToInches.
+   */
   waistCm?: number;
   /** Date of birth, "YYYY-MM-DD" — age is derived, never stored. */
   dob?: string;
@@ -26,8 +38,6 @@ export interface HealthProfile {
   diabetes?: "yes" | "no";
   /** Diagnosed high blood pressure. */
   hypertension?: "yes" | "no";
-  /** Diabetes among parents, graded the way IDRS grades it. */
-  familyDiabetes?: (typeof FAMILY_DIABETES_CHOICES)[number];
   /** Free text, comma-separated where it helps: "penicillin, peanuts". */
   allergies?: string;
   /** Ongoing conditions: "type 2 diabetes, high blood pressure". */
@@ -38,8 +48,6 @@ export interface HealthProfile {
   surgeries?: string;
   /** Conditions that run in the family. */
   familyHistory?: string;
-  smoking?: "never" | "former" | "current";
-  alcohol?: "never" | "occasional" | "regular";
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   /** ISO — stamped by the server on every save. */
@@ -47,10 +55,7 @@ export interface HealthProfile {
 }
 
 export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
-export const SMOKING_CHOICES = ["never", "former", "current"] as const;
-export const ALCOHOL_CHOICES = ["never", "occasional", "regular"] as const;
 export const ACTIVITY_CHOICES = ["vigorous", "moderate", "mild", "sedentary"] as const;
-export const FAMILY_DIABETES_CHOICES = ["none", "one-parent", "both-parents"] as const;
 
 export const ACTIVITY_LABEL: Record<(typeof ACTIVITY_CHOICES)[number], string> = {
   vigorous: "Heavy exercise or physical work",
@@ -59,11 +64,32 @@ export const ACTIVITY_LABEL: Record<(typeof ACTIVITY_CHOICES)[number], string> =
   sedentary: "Mostly sitting",
 };
 
-export const FAMILY_DIABETES_LABEL: Record<(typeof FAMILY_DIABETES_CHOICES)[number], string> = {
-  none: "No parent",
-  "one-parent": "One parent",
-  "both-parents": "Both parents",
-};
+// ── Waist units ──────────────────────────────────────────────
+// Collected in inches, stored in centimetres. See the note on `waistCm`.
+
+const CM_PER_INCH = 2.54;
+
+/** Inches → cm for storage. Undefined in, undefined out. */
+export function inchesToCm(inches: number | undefined): number | undefined {
+  if (inches === undefined || !Number.isFinite(inches)) return undefined;
+  return Math.round(inches * CM_PER_INCH * 10) / 10;
+}
+
+/**
+ * cm → inches for display, to one decimal.
+ *
+ * Half-inch resolution is the honest limit of a tape measure round a waist, so
+ * rounding to whole inches here would lose real information at the IDRS
+ * boundaries — 31.5" and 31.9" fall either side of the 80 cm cut-off.
+ */
+export function cmToInches(cm: number | undefined): number | undefined {
+  if (cm === undefined || !Number.isFinite(cm)) return undefined;
+  return Math.round((cm / CM_PER_INCH) * 10) / 10;
+}
+
+/** Inch bounds matching the 40–200 cm the sanitizer accepts. */
+export const WAIST_INCHES_MIN = 16;
+export const WAIST_INCHES_MAX = 78;
 
 const oneOf = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined =>
   typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T[number]) : undefined;
@@ -95,14 +121,11 @@ export function sanitizeHealthProfile(raw: unknown): HealthProfile {
     activity: oneOf(ACTIVITY_CHOICES, p.activity),
     diabetes: oneOf(["yes", "no"] as const, p.diabetes),
     hypertension: oneOf(["yes", "no"] as const, p.hypertension),
-    familyDiabetes: oneOf(FAMILY_DIABETES_CHOICES, p.familyDiabetes),
     allergies: text(p.allergies, 300),
     conditions: text(p.conditions, 500),
     medications: text(p.medications, 500),
     surgeries: text(p.surgeries, 500),
     familyHistory: text(p.familyHistory, 500),
-    smoking: oneOf(SMOKING_CHOICES, p.smoking),
-    alcohol: oneOf(ALCOHOL_CHOICES, p.alcohol),
     emergencyContactName: text(p.emergencyContactName, 80),
     emergencyContactPhone: text(p.emergencyContactPhone, 20),
   };
@@ -161,8 +184,8 @@ export function healthProfileCompletion(p: HealthProfile | undefined): number {
   if (!p) return 0;
   const fields: (keyof HealthProfile)[] = [
     "heightCm", "weightKg", "waistCm", "dob", "gender", "bloodGroup",
-    "activity", "diabetes", "hypertension", "familyDiabetes", "allergies",
-    "conditions", "medications", "smoking", "alcohol",
+    "activity", "diabetes", "hypertension", "allergies",
+    "conditions", "medications",
     "emergencyContactName", "emergencyContactPhone",
   ];
   const filled = fields.filter((k) => p[k] !== undefined && p[k] !== "").length;

@@ -1,6 +1,7 @@
 "use client";
 
 import { BadgeCheck } from "lucide-react";
+import { AvatarImage } from "@/components/ui/avatar-image";
 import { initials, timeAgo } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import type { SocialAuthor } from "@/lib/social/types";
@@ -21,20 +22,15 @@ export function SocialAvatar({
   className?: string;
 }) {
   return (
-    <span
+    <AvatarImage
+      src={author.avatarUrl}
+      background={author.avatarColor}
       className={cn(
-        "grid shrink-0 place-items-center overflow-hidden rounded-full text-xs font-semibold text-on-accent",
+        "rounded-full text-xs font-semibold text-on-accent",
         className,
       )}
-      style={author.avatarUrl ? undefined : { background: author.avatarColor }}
-    >
-      {author.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={author.avatarUrl} alt="" className="h-full w-full object-cover" />
-      ) : (
-        initials(author.name.replace(/^Dr\.?\s+/i, ""))
-      )}
-    </span>
+      fallback={initials(author.name.replace(/^Dr\.?\s+/i, ""))}
+    />
   );
 }
 

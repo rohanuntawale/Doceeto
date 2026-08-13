@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import {
   ageFrom,
   bmiOf,
+  cmToInches,
   bmiBand,
   BMI_BAND_LABEL,
   ACTIVITY_LABEL,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/health/profile";
 import { idrsOf } from "@/lib/health/score";
 import { NURSE_SERVICES } from "@/lib/nurse";
-import { analyzeSymptoms, type Urgency } from "@/lib/triage";
+import { analyzeSymptoms, mentionsSymptom, type Urgency } from "@/lib/triage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,7 +76,8 @@ function profileBlock(p: HealthProfile | undefined, gender?: string): string {
       `- BMI ${bmi.toFixed(1)} (${band})${p.heightCm ? ` — ${p.heightCm} cm` : ""}${p.weightKg ? `, ${p.weightKg} kg` : ""}`,
     );
   }
-  if (p.waistCm) lines.push(`- Waist ${p.waistCm} cm`);
+  if (p.waistCm)
+    lines.push(`- Waist ${cmToInches(p.waistCm)} in (${p.waistCm} cm)`);
   if (p.hypertension === "yes") lines.push("- DIAGNOSED high blood pressure (hypertension)");
   if (p.diabetes === "yes") lines.push("- DIAGNOSED diabetes");
   const idrs = idrsOf(p);
@@ -86,10 +88,6 @@ function profileBlock(p: HealthProfile | undefined, gender?: string): string {
   if (p.allergies?.trim()) lines.push(`- Allergies: ${p.allergies.trim()}`);
   if (p.surgeries?.trim()) lines.push(`- Past surgeries: ${p.surgeries.trim()}`);
   if (p.familyHistory?.trim()) lines.push(`- Family history: ${p.familyHistory.trim()}`);
-  if (p.familyDiabetes && p.familyDiabetes !== "none")
-    lines.push(`- Diabetes in ${p.familyDiabetes === "both-parents" ? "both parents" : "one parent"}`);
-  if (p.smoking && p.smoking !== "never") lines.push(`- Smoking: ${p.smoking}`);
-  if (p.alcohol && p.alcohol !== "never") lines.push(`- Alcohol: ${p.alcohol}`);
   if (p.activity) lines.push(`- Activity level: ${ACTIVITY_LABEL[p.activity] ?? p.activity}`);
   if (p.bloodGroup) lines.push(`- Blood group: ${p.bloodGroup}`);
   return lines.join("\n");
@@ -107,14 +105,14 @@ patient is a specific person you already know, and every turn must show it:
 - Their profile CHANGES THE MEDICINE. Chest pain in someone with diagnosed high blood pressure is a
   different differential (cardiac causes rank higher, urgency rises) than the same words from a fit
   25-year-old. Numbness with diabetes suggests diabetic nerve damage. Knee pain at BMI 32 has weight
-  as a named contributor. A smoker's chronic cough is not treated like a non-smoker's. Family history
+  as a named contributor. Family history
   of heart disease compounds cardiac risk. USE all of this when ranking causes and setting urgency.
 - Their MEDICATION matters: a symptom can be a side effect (dizziness on BP tablets, cough on some BP
   medicines, stomach pain with painkillers). When plausible, include it as a cause. Never tell them to
   stop a medicine — say a doctor should review it.
 - Never suggest anything their ALLERGIES list rules out.
 - NEVER ask what the profile already answers — their age, sex, whether they have BP or diabetes,
-  what they take, whether they smoke. Asking reads as not knowing them. Build on it instead:
+  what they take. Asking reads as not knowing them. Build on it instead:
   "Since you're on blood-pressure medication, does the dizziness come when you stand up?"
 - SPEAK to them personally, in second person, naming their specifics: "given your blood pressure",
   "at your BMI of 31", "since your father had heart disease". The "why" of each cause and the summary
@@ -123,9 +121,13 @@ patient is a specific person you already know, and every turn must show it:
 - The profile INFORMS but never overrides what they report now. New symptoms always win over history.
 If there is NO profile block, triage normally and do not invent facts about them.
 
-BEFORE ANY TRIAGE — is there actually a symptom yet? If the patient's messages so far carry NO
-current health complaint (a greeting like "hello"/"hi"/"namaste", small talk, a test message,
-gibberish, or a question about the app), do NOT start triage. Ask ONE warm, open question — e.g.
+BEFORE ANY TRIAGE — is there actually a symptom yet? The user message carries a COMPLAINT DETECTED
+line that ALREADY ANSWERS THIS, decided by a deterministic scan of everything the patient typed.
+OBEY IT. When it says yes, they have described a problem — never ask the opening question, never ask
+them to say more before you engage, and never treat a short answer as no answer. One word is a
+complaint: "bleeding", "fever", "dizzy" are all complete symptoms to start from. When it says no
+(a greeting like "hello"/"hi"/"namaste", small talk, a test message, gibberish, or a question about
+the app), do NOT start triage. Ask ONE warm, open question — e.g.
 "Hi! What's troubling you today?" — with broad body-area options (fever/whole body, chest or
 breathing, stomach, head, skin, bones or joints, mood or sleep). NEVER use their history or health
 profile to guess a complaint they have not made TODAY: an old "bleeding" or "chest pain" session is
@@ -374,6 +376,8 @@ export async function POST(req: Request) {
   }
 
   const asked = body.answers?.length ?? 0;
+  /** Deterministic: has the patient described a problem at all? */
+  const complained = mentionsSymptom(spokenText(body));
   const transcript = [
     profile
       ? `PATIENT PROFILE (their own health record — personalise with it):\n${
@@ -381,6 +385,23 @@ export async function POST(req: Request) {
         }${profile}`
       : "No health profile on file for this patient.",
     body.seed ? `\nPatient first said: "${body.seed}"` : "\nPatient hasn't typed anything yet.",
+    /**
+     * Settled in CODE, not left to the model.
+     *
+     * The "is there actually a symptom yet?" rule in the system prompt exists
+     * so a greeting doesn't start a triage. But a model applying it to a
+     * one-word complaint gets it backwards: a patient typed "bleeding" and was
+     * answered with "Hi! What's troubling you today?" — after they had just
+     * told us. Asking a worried person to repeat themselves is the failure
+     * they actually notice.
+     *
+     * mentionsSymptom() is a deterministic scan over everything they have
+     * said. When it fires, the model is told the gate is already passed and
+     * must not re-litigate it.
+     */
+    complained
+      ? 'COMPLAINT DETECTED: yes. The patient HAS described a health problem in their own words. Do NOT ask "what\'s troubling you" or any other opening question — that gate is already passed. Take what they said at face value, however short it is, and ask your FIRST NARROWING question about it (or conclude if you have enough).'
+      : "COMPLAINT DETECTED: no. Nothing they have said is a health complaint yet — ask the warm opening question.",
     body.history?.length
       ? `Past symptom checks (CLOSED episodes — context for ranking only, the patient has NOT raised these today): ${body.history.join("; ")}.`
       : "No past symptom checks.",
@@ -406,17 +427,30 @@ export async function POST(req: Request) {
         // so a busy primary degrades to the free tier instead of to no AI.
         ...(fallbacks.length ? { models: [model, ...fallbacks] } : {}),
         temperature: 0.3,
-        // Nemotron 3 is a reasoning model: leave room for thinking tokens so
-        // the JSON body isn't cut off mid-object.
-        max_tokens: 1200,
+        /**
+         * Sized to the turn, not to the worst case.
+         *
+         * A question is a prompt plus five short options — a few hundred
+         * tokens. Only the closing conclusion (a differential, reasons and
+         * advice) needs real room. Asking for 1200 on every turn made the
+         * model think for a conclusion's worth of time before answering
+         * "where does it hurt?", and the patient waited for all of it.
+         */
+        max_tokens: asked >= MAX_QUESTIONS ? 1200 : 500,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: transcript },
         ],
       }),
-      // Never let a slow model hang the UI.
-      signal: AbortSignal.timeout(25_000),
+      /**
+       * A question that takes 25 seconds has already failed — the patient has
+       * given up or typed again. The local rule engine answers instantly and
+       * is always there, so failing over to it fast is strictly better than
+       * waiting. The conclusion gets longer, because arriving late with the
+       * real answer still beats a generic one.
+       */
+      signal: AbortSignal.timeout(asked >= MAX_QUESTIONS ? 20_000 : 8_000),
     });
 
     if (!res.ok) {

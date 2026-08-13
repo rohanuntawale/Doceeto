@@ -415,6 +415,24 @@ function CareInner() {
     answers: state.answers,
     conclusion,
   };
+  /**
+   * The answers the transcript should SHOW.
+   *
+   * `seed` is what the patient arrived with — typed into the dashboard box, or
+   * carried in a ?q= link — and it is already rendered as the opening bubble.
+   * applyText then records that same text as the first free-text answer, so a
+   * naive render says it back to them twice before the bot has said anything.
+   * That reads as the app having dropped the first message, which is exactly
+   * the moment someone starts repeating themselves.
+   */
+  const transcriptAnswers = view.answers.filter(
+    (a, i) =>
+      !(
+        i === 0 &&
+        a.questionId === "free" &&
+        a.label.trim().toLowerCase() === (view.seed ?? "").trim().toLowerCase()
+      ),
+  );
   const myBookings = requests.filter((r) => r.patientId === patient.id);
   // "Reports" is what this sidebar always promised prescriptions would be —
   // the empty state said so before there was anything to put here.
@@ -502,7 +520,7 @@ function CareInner() {
           ) : (
             <>
               {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
-              {view.answers.map((a, i) =>
+              {transcriptAnswers.map((a, i) =>
                 a.questionId === "free" ? (
                   <Bubble key={i} who="me">
                     {a.label}
@@ -780,7 +798,7 @@ function CareInner() {
                   ) : (
                     <>
                       {view.seed ? <Bubble who="me">{view.seed}</Bubble> : null}
-                      {view.answers.map((a, i) =>
+                      {transcriptAnswers.map((a, i) =>
                         a.questionId === "free" ? (
                           <Bubble key={i} who="me">
                             {a.label}

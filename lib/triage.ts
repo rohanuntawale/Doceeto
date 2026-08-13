@@ -261,3 +261,50 @@ export function analyzeSymptoms(input: string): TriageResult | null {
         : `A ${specialties[0]} is a good fit. Book a visit below.`,
   };
 }
+
+// ── Is this a complaint at all? ─────────────────────────────
+
+/**
+ * The words people actually open with.
+ *
+ * SEPARATE from the specialty rules above, and deliberately so. Those rules
+ * exist to route — they answer "which doctor", and they are written to fire on
+ * phrases with enough context to be confident ("severe bleeding", "bleeding
+ * heavily"). This list answers a much cheaper question: has this person told
+ * us about a symptom at all?
+ *
+ * That distinction is not academic. A patient typed "bleeding", matched no
+ * routing rule, reached the model with a single word, and was answered with
+ * "Hi! What's troubling you today?" — after they had just said. The router was
+ * right to be unsure which specialty; the app was wrong to conclude they had
+ * said nothing.
+ *
+ * So this is broad on purpose. A false positive costs one triage question. A
+ * false negative asks a worried person to repeat themselves, which is the
+ * failure they actually notice and the one that makes the tool feel stupid.
+ */
+const SYMPTOM_WORDS =
+  /\b(pain|ache|aching|hurt|hurts|hurting|sore|soreness|fever|temperature|chills|cold|cough|coughing|sneez\w*|breath\w*|breathless|wheez\w*|bleed\w*|blood|bruise\w*|swell\w*|swollen|lump|rash|itch\w*|burn\w*|sting\w*|numb\w*|tingl\w*|weak\w*|tired\w*|fatigue|exhaust\w*|dizzy|dizziness|faint\w*|giddy|nausea|nauseous|vomit\w*|puk\w*|diarrh\w*|loose motion\w*|constipat\w*|gas|bloat\w*|acidity|heartburn|indigest\w*|cramp\w*|spasm|stiff\w*|sprain\w*|fracture|injur\w*|wound|cut|burnt|infect\w*|discharge|pus|boil|ulcer|blister|headache|migraine|vertigo|seizure|fit|fits|unconscious|confus\w*|memory|insomnia|sleepless|sleep|anxiety|anxious|depress\w*|stress\w*|panic|mood|appetite|weight loss|weight gain|thirsty|urin\w*|pee|peeing|stool|motion|period|periods|menstru\w*|pregnan\w*|discharge|erectile|infertil\w*|vision|blurred|eyesight|hearing|deaf\w*|tinnitus|earache|throat|tonsil\w*|toothache|gum|mouth|tongue|skin|hair fall|hairfall|dandruff|acne|pimple\w*|allerg\w*|asthma|diabet\w*|sugar|bp|pressure|palpitation\w*|heart|chest|stomach|belly|abdomen|tummy|back|neck|shoulder|knee|joint\w*|muscle|leg|arm|hand|foot|feet|head|eye|ear|nose|liver|kidney|piles|hemorrhoid\w*|fissure|hernia|thyroid|anemia|anaemia|jaundice|typhoid|malaria|dengue|covid|flu|viral|infection|unwell|sick|ill|illness|not feeling well|feeling low)\b/i;
+
+/**
+ * Has the patient described a health problem yet?
+ *
+ * Used by the triage API to settle the question in CODE before the model sees
+ * the transcript, so a one-word complaint can never be mistaken for small talk.
+ * Greetings and app questions are excluded explicitly — "hello" and "how does
+ * this work" are the two things people genuinely do open with that are not
+ * complaints.
+ */
+export function mentionsSymptom(text: string): boolean {
+  const t = (text ?? "").trim();
+  if (t.length < 2) return false;
+  // A pure greeting or a question about the product is not a complaint, even
+  // if a body word slips into it ("hi, how does this app work?").
+  if (/^(hi|hey|hello|namaste|namaskar|hola|yo|test+|ok|okay|thanks?|thank you)\b[\s!.,]*$/i.test(t)) {
+    return false;
+  }
+  if (/\b(how (do|does|can)|what is this|who are you|are you (a )?(bot|real|doctor))\b/i.test(t)) {
+    return false;
+  }
+  return SYMPTOM_WORDS.test(t) || (analyzeSymptoms(t)?.matched ?? false);
+}

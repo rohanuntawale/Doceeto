@@ -175,7 +175,7 @@ export default function PatientHome() {
           <HeaderStat
             n={sessions.length}
             label={t("home.checks")}
-            trend={checksTrend !== 0 ? checksTrend : undefined}
+            trend={checksTrend ?? undefined}
           />
           <HeaderStat
             n={formatCount(doctors.length)}
@@ -275,7 +275,9 @@ export default function PatientHome() {
           title={t("home.careActivity")}
           caption="Visits & checks this week"
           data={activity.data}
-          trend={activity.trend}
+          // null = nothing to compare against; the badge hides rather than
+          // asserting a measured 0%.
+          trend={activity.trend ?? undefined}
         />
       </div>
       <div className="lg:col-span-4">

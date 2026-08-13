@@ -29,6 +29,7 @@ import { EditNurseProfileDialog } from "@/components/nurse/edit-nurse-profile-di
 import { RequestCard } from "@/components/zumi/request-card";
 import { LiveMap } from "@/components/map/live-map";
 import { DoctorConsultTracker } from "@/components/consult/consult-tracker";
+import { AvatarImage } from "@/components/ui/avatar-image";
 import { AvatarUploader } from "@/components/ui/avatar-uploader";
 import { useToast } from "@/components/ui/toast";
 import { useMounted } from "@/lib/hooks/use-mounted";
@@ -485,17 +486,12 @@ function Profile() {
             {/* A photo is required before going online — the same rule the
                 cockpit enforces, so it belongs on the same screen. */}
             <AvatarUploader onPhoto={setPhoto}>
-              <span
-                className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl font-serif text-2xl text-cream"
-                style={{ background: me.avatarColor }}
-              >
-                {me.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials(me.fullName)
-                )}
-              </span>
+              <AvatarImage
+                src={me.avatarUrl}
+                background={me.avatarColor}
+                className="h-16 w-16 rounded-xl font-serif text-2xl text-cream"
+                fallback={initials(me.fullName)}
+              />
             </AvatarUploader>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
