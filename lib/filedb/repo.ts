@@ -1016,9 +1016,11 @@ export async function declineRequest(id: string, doctorId?: string, reason?: str
   if (doctorId && !claimableBy(req, doctorId)) {
     throw new DomainError("That request isn't yours to decline.", 403);
   }
-  // Passing on a broadcast must not kill it for everyone else — the patient
-  // asked the network, not this doctor. Record the pass and leave it pending.
-  if (doctorId && req.broadcast && req.status === "pending" && req.doctorId === null) {
+  // Passing on a request that was never directed at THIS doctor must not kill
+  // it for everyone else — the patient asked the network, not this doctor.
+  // Keeps parity with the Postgres repo; see the longer note there on why the
+  // test is "is it mine?" rather than "is the broadcast flag set?".
+  if (doctorId && req.status === "pending" && req.doctorId !== doctorId) {
     req.passedBy = [...new Set([...(req.passedBy ?? []), doctorId])];
     persist();
     return;

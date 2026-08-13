@@ -405,6 +405,28 @@ body::after {
   mask-image: radial-gradient(140% 130% at 100% 0%, black, transparent 72%);
 }
 
+/* ── The signed-in app keeps the original terracotta accent ───
+   Green is the public brand — the landing page, the previews, the
+   marketing surfaces. Inside the product the warm accent is what people
+   have been working against, so the app shells re-point it back.
+
+   --accent and --accent-rgb are redeclared here alongside the triplet
+   rather than left to follow it. A custom property is substituted at the
+   element where it is DECLARED: `--accent: rgb(var(--c-terracotta))` on
+   :root has already resolved to green before it inherits this far, so
+   overriding the triplet alone would flip every `bg-terracotta` and leave
+   every `bg-[var(--accent)]` sitting there green. */
+/* Named outside Tailwind's `accent-*` namespace on purpose: `accent-terracotta`
+   is already a generated utility for the CSS `accent-color` property, and two
+   rules sharing a class name is a trap for whoever reads it next. */
+.app-accent-warm {
+  --c-terracotta: 190 100 45; /* #BE642D */
+  --c-terracotta-700: 165 84 36; /* #A55424 pressed */
+  --c-terracotta-300: 233 190 155; /* light tint */
+  --accent: rgb(190 100 45);
+  --accent-rgb: 190 100 45;
+}
+
 /* ── Forest bands ─────────────────────────────────────────────
    The landing page alternates paper panels with deep-green bands. A band
    re-points the semantic text tokens at the forest palette, so anything

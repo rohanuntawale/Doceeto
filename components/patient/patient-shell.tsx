@@ -60,7 +60,8 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   }, [active]);
 
   return (
-    <div className="min-h-screen">
+    // The app keeps the terracotta accent; green is the public brand.
+    <div className="min-h-screen app-accent-warm">
       {/* Top bar — brand + language. Solid glass at exactly --chrome-top tall,
           so scrolled content never collides with the controls floating on it. */}
       <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">

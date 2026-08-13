@@ -1591,9 +1591,19 @@ export async function declineRequest(id: string, doctorId?: string, reason?: str
     if (doctorId && !claimableBy(req, doctorId)) {
       throw new DomainError("That request isn't yours to decline.", 403);
     }
-    // Passing on a broadcast must not kill it for everyone else — the patient
-    // asked the network, not this doctor. Record the pass, leave it pending.
-    if (doctorId && req.broadcast && req.status === "pending" && req.doctorId === null) {
+    // Passing on a request that was never directed at THIS doctor must not kill
+    // it for everyone else — the patient asked the network, not this doctor.
+    // Record the pass and leave it pending.
+    //
+    // The test is "is it mine?", not "is the broadcast flag set?". It used to
+    // require `broadcast && doctor_id IS NULL`, which quietly missed two real
+    // cases that claimableBy() lets through: a request aimed at a seeded
+    // catalog doctor (doctor_id = 'doc-seed-…', no account behind it), and an
+    // open request that never got the broadcast flag. Passing on either of
+    // those fell through to the branch below and marked the whole request
+    // DECLINED — one doctor's "not me" cancelled a patient's request for the
+    // entire network, and the patient was never told.
+    if (doctorId && req.status === "pending" && req.doctorId !== doctorId) {
       await c.query(
         `UPDATE consult_requests
          SET passed_by = (SELECT array_agg(DISTINCT x) FROM unnest(passed_by || $2::text[]) x)

@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingStory } from "@/components/landing/landing-story";
 import { LandingTwoSides } from "@/components/landing/landing-two-sides";
-import { LandingConnection } from "@/components/landing/landing-connection";
+import { LandingTestimonials } from "@/components/landing/landing-testimonials";
 import { LandingProductShowcase } from "@/components/landing/landing-product-showcase";
 import { LandingFinalCta } from "@/components/landing/landing-final-cta";
+import { CheckerFab } from "@/components/landing/checker-fab";
 import { SiteFooter } from "@/components/site/site-footer";
 import {
   AnimatedNavigationTabs,
@@ -126,19 +127,21 @@ export default function Page() {
 
           {/* Right Action Cluster */}
           <div className="flex items-center gap-3">
-            {SECONDARY_NAV.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="hidden text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] lg:inline-block"
-              >
-                {l.label}
-              </Link>
-            ))}
-            <span
-              aria-hidden
-              className="hidden h-4 w-px bg-[var(--border)] lg:inline-block"
-            />
+            {/* Own flex row with its own gap. Sharing the cluster's gap-3 with
+                the buttons squeezed these two labels together — buttons carry
+                their own padding, bare text does not. */}
+            <div className="hidden items-center gap-6 lg:flex">
+              {SECONDARY_NAV.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="whitespace-nowrap text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:text-[var(--accent)]"
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <span aria-hidden className="h-4 w-px bg-[var(--border)]" />
+            </div>
             <Link href="/login" className="hidden sm:inline-block">
               <Button
                 variant="ghost"
@@ -165,13 +168,16 @@ export default function Page() {
         <LandingHero />
         <LandingStory />
         <LandingTwoSides />
-        <LandingConnection />
+        <LandingTestimonials />
         <LandingProductShowcase />
         <LandingFinalCta />
       </main>
 
       {/* Site Footer */}
       <SiteFooter />
+
+      {/* Follows the scroll — the checker stays one tap away all the way down. */}
+      <CheckerFab />
     </div>
   );
 }

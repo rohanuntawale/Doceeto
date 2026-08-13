@@ -56,7 +56,10 @@ export default function DoctorHome() {
   const reviews = useReviews(me?.id);
   const actions = useActions();
   const toast = useToast();
-  const [passed, setPassed] = useState<Set<string>>(new Set());
+  // No local "passed" set. The pass now goes to the server and to the shared
+  // ["requests"] cache inside useActions().declineRequest, so this screen, the
+  // requests page and the map all drop the row together — and it stays dropped
+  // after a refresh because it is persisted in passed_by.
   const online = me?.status === "online";
   const greetKey =
     new Date().getHours() < 12
@@ -81,7 +84,6 @@ export default function DoctorHome() {
     (r) =>
       doctorId &&
       r.status === "pending" &&
-      !passed.has(r.id) &&
       visibleToProvider(r, { doctorId, busy: Boolean(ongoing) }),
   );
   const myCompleted = requests.filter(
@@ -364,9 +366,25 @@ export default function DoctorHome() {
                     });
                   }
                 }}
-                onDecline={() => {
-                  if (r.doctorId === me?.id) actions.declineRequest(r.id);
-                  else setPassed((p) => new Set(p).add(r.id));
+                /**
+                 * Always tell the server. This used to persist the pass ONLY
+                 * for a request already assigned to this doctor, and for
+                 * anything else — every broadcast, which is most of the
+                 * inbox — it just added the id to local state and never called
+                 * the backend at all. So the card vanished from this one screen
+                 * and nowhere else: still on /doctor/requests, still on the
+                 * map, and back in full on the next refresh.
+                 */
+                onDecline={async () => {
+                  try {
+                    await actions.declineRequest(r.id);
+                  } catch (e) {
+                    toast.push({
+                      tone: "error",
+                      title: "Couldn't pass on that request",
+                      desc: e instanceof Error ? e.message : "Please try again.",
+                    });
+                  }
                 }}
               />
             ))

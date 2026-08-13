@@ -146,15 +146,19 @@ export function LandingProductShowcase() {
                         New Incoming Request
                       </span>
                       <span className="font-mono text-[var(--text-faint)]">
-                        #REQ-8821
+                        Home visit
                       </span>
                     </div>
                     <h4 className="font-semibold text-lg text-[var(--text)]">
-                      Patient: Ramesh K. (Age 58)
+                      What a request carries
                     </h4>
+                    {/* Describes the shape of a request rather than inventing a
+                        patient to fill it. Real patient details are private and
+                        never leave the signed-in app. */}
                     <p className="text-xs text-[var(--text-muted)]">
-                      Symptoms: High blood pressure readings &amp; mild
-                      dizziness. Requesting evening home call or tele-consult.
+                      Symptoms in the patient&apos;s own words, how urgent it
+                      is, where they are, and whether they want a home visit or
+                      a tele-consult — before you accept.
                     </p>
                     <div className="pt-3 flex gap-2">
                       <span className="rounded-lg bg-[var(--accent)] text-on-accent px-3 py-1.5 text-xs font-bold">
@@ -216,15 +220,15 @@ export function LandingProductShowcase() {
                         Confirmed Visit
                       </span>
                       <span className="font-mono text-[var(--text-faint)]">
-                        Today • 4:00 PM
+                        Time &amp; distance
                       </span>
                     </div>
                     <h4 className="font-semibold text-lg text-[var(--text)]">
-                      Post-Surgical Dressing Change
+                      Post-surgical dressing changes
                     </h4>
                     <p className="text-xs text-[var(--text-muted)]">
-                      Location: Manewada, Nagpur (1.8 km). Patient needs wound
-                      cleaning, sterile dressing, and BP check.
+                      Wound cleaning, sterile dressing and a BP check — with the
+                      address and route shown once the visit is confirmed.
                     </p>
                     <div className="pt-2">
                       <span className="rounded-lg bg-[#2F7BC4] text-white px-3 py-1.5 text-xs font-bold">

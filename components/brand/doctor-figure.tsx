@@ -39,9 +39,12 @@ export function DoctorFigure({ className }: { className?: string }) {
       />
 
       {/* Scrub top. The bust runs off the bottom edge rather than resolving
-          into a floating torso — the frame is a crop, not a cut-out. */}
+          into a floating torso — the frame is a crop, not a cut-out.
+          Held to the same shoulder width the previous mascot used (x42–158):
+          the cover plates sit this drawing beside their body copy with very
+          little clearance, and a wider base eats into the paragraph. */}
       <path
-        d="M30 200 C30 172 52 154 78 148 L122 148 C148 154 170 172 170 200 Z"
+        d="M42 200 C42 170 60 154 80 148 L120 148 C140 154 158 170 158 200 Z"
         className="fill-forest-800"
       />
 

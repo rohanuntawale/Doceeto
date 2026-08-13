@@ -14,8 +14,18 @@
 /** True when a real server backend is enabled (any non-empty value). */
 export const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 
-/** True when we should run the in-browser demo engine (default). */
-export const isDemoMode = !isLiveMode;
+/**
+ * The in-browser demo engine is OFF, permanently.
+ *
+ * It used to switch on whenever NEXT_PUBLIC_BACKEND was absent, which meant a
+ * deploy that simply forgot the variable would quietly serve invented doctors,
+ * invented requests and invented prescriptions to real people, with no error
+ * anywhere to say so. A missing backend has to look broken, not fake.
+ *
+ * Kept as a `false` constant rather than deleted so the demo branches it guards
+ * die quietly; they are being removed surface by surface.
+ */
+export const isDemoMode = false;
 
 /**
  * Whether to offer "Continue with Google".

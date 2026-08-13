@@ -9,9 +9,19 @@ export const metadata = {
 
 export default function TryCheckerPage() {
   return (
-    <>
-      <PageHeader label="Two free checks" title="What's going on?" />
-      <CheckerDemo />
-    </>
+    <div className="flex h-full flex-col">
+      {/* The title is the first thing to go when the window is short. On a
+          laptop it sets the scene; on a 600px-tall window it would push the
+          composer off screen, and a chat you cannot type into is worse than a
+          chat with no headline. The card carries its own "Symptom check"
+          header, so nothing is lost when this collapses. */}
+      <div className="hidden shrink-0 [@media(min-height:760px)]:block">
+        <PageHeader label="Two free checks" title="What's going on?" />
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <CheckerDemo />
+      </div>
+    </div>
   );
 }

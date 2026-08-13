@@ -600,8 +600,10 @@ export const demoStore = {
     const s = getState();
     const req = s.requests.find((r) => r.id === id);
     if (!req) return;
-    // Passing on a broadcast must not kill it for everyone else.
-    if (doctorId && req.broadcast && req.status === "pending" && req.doctorId === null) {
+    // Passing on a request never directed at THIS doctor must not kill it for
+    // everyone else. Same rule as the Postgres and file repos — see the note in
+    // lib/postgres/repo.ts on why the flag alone was the wrong test.
+    if (doctorId && req.status === "pending" && req.doctorId !== doctorId) {
       s.requests = s.requests.map((r) =>
         r.id === id
           ? { ...r, passedBy: [...new Set([...(r.passedBy ?? []), doctorId])] }
