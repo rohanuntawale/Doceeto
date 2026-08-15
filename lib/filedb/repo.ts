@@ -266,8 +266,11 @@ export async function createPatientUser(input: {
     role: "patient",
     name: input.name,
     address: input.address,
-    lat: MAP_CENTER.lat,
-    lng: MAP_CENTER.lng,
+    // Undefined, not the city centre — parity with the Postgres repo. Stamping
+    // MAP_CENTER here made every new account look like it was standing in
+    // Nagpur, and nothing downstream could tell that from a real fix.
+    lat: undefined,
+    lng: undefined,
   };
   data().users.push(u);
   persist();
@@ -428,8 +431,11 @@ export async function getPatientProfile(id: string) {
     name: u.name,
     address: u.address ?? "",
     addressFull: u.addressFull ?? "",
-    lat: Number(u.lat ?? MAP_CENTER.lat),
-    lng: Number(u.lng ?? MAP_CENTER.lng),
+    // Null stays null; see the note in lib/postgres/repo.ts. `located` is the
+    // only thing that may be trusted to mean "this is where they are".
+    lat: typeof u.lat === "number" ? u.lat : null,
+    lng: typeof u.lng === "number" ? u.lng : null,
+    located: typeof u.lat === "number" && typeof u.lng === "number",
     avatarUrl: u.avatarUrl,
     healthProfile: u.healthProfile,
   };

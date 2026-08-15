@@ -675,8 +675,20 @@ export async function createPatientUser(input: {
       input.passwordHash,
       input.name,
       input.address,
-      MAP_CENTER.lat,
-      MAP_CENTER.lng,
+      // NULL, not the city centre.
+      //
+      // This used to stamp every new account with MAP_CENTER — the Nagpur
+      // default — which is not a placeholder once it is in the column: it is a
+      // real-looking pair of coordinates that the rest of the system trusts.
+      // A patient signing up in Delhi was recorded as standing in Nagpur, their
+      // requests carried Nagpur, and the maps centred there. The bug was
+      // invisible precisely BECAUSE the value looked plausible.
+      //
+      // The column is nullable exactly so "we do not know yet" is expressible.
+      // It stays NULL until the device reports a real fix through
+      // /api/geo/locate.
+      null,
+      null,
       input.googleId ?? null,
       input.avatarUrl ?? null,
     ],
@@ -875,8 +887,15 @@ export async function getPatientProfile(id: string) {
     name: r.name,
     address: r.address ?? "",
     addressFull: r.address_full ?? "",
-    lat: num(r.lat, MAP_CENTER.lat),
-    lng: num(r.lng, MAP_CENTER.lng),
+    // Null stays null. Substituting MAP_CENTER here re-created the bug the
+    // insert above no longer commits: the caller receives coordinates it has
+    // no way to distinguish from a real fix, and "unknown" silently becomes
+    // "Nagpur". Callers that need a map centre may fall back themselves — but
+    // they must do it knowingly, and must not write it back.
+    lat: r.lat ?? null,
+    lng: r.lng ?? null,
+    /** True only when the device has actually reported a position. */
+    located: r.lat != null && r.lng != null,
     avatarUrl: r.avatar_url ?? undefined,
     healthProfile: (r.health_profile as HealthProfile | null) ?? undefined,
   };

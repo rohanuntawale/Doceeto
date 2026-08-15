@@ -81,8 +81,35 @@ function set(next: Partial<DeviceLocation>) {
   listeners.forEach((l) => l());
 }
 
+/**
+ * Can this page even ask?
+ *
+ * `"geolocation" in navigator` is NOT the question. The API object exists on
+ * an insecure origin too — it just never resolves: no permission prompt, no
+ * error dialog, `getCurrentPosition` simply times out or fails quietly. That
+ * is exactly what "production never asks for location" looks like, and it is
+ * invisible in local development because `localhost` counts as secure while a
+ * plain-HTTP deployment does not.
+ *
+ * Checking `isSecureContext` turns that silence into a reportable state, so
+ * the UI can say why instead of pretending it is still looking.
+ */
 function supported() {
-  return typeof navigator !== "undefined" && "geolocation" in navigator;
+  if (typeof navigator === "undefined" || !("geolocation" in navigator)) return false;
+  // Older browsers lack isSecureContext; assume secure rather than block them.
+  if (typeof window !== "undefined" && window.isSecureContext === false) return false;
+  return true;
+}
+
+/** True when the browser CAN geolocate but the page is not served securely —
+ *  the one failure the user cannot fix from their own settings. */
+export function insecureOrigin(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.isSecureContext === false &&
+    typeof navigator !== "undefined" &&
+    "geolocation" in navigator
+  );
 }
 
 function onPosition(pos: GeolocationPosition, force = false) {

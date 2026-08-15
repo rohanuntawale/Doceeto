@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { useActions } from "@/lib/hooks/data";
+import { ensureLocated } from "@/lib/hooks/use-current-patient";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { useDoctorSchedule, type DoctorSchedule } from "@/lib/hooks/use-schedule";
 import { formatINR } from "@/lib/utils/format";
@@ -41,7 +42,15 @@ export function BookingPanel({
   schedule: given,
 }: {
   doctor: Doctor;
-  patient: { id: string; name: string; address: string; lat: number; lng: number };
+  patient: {
+    id: string;
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+    /** False until the device has reported a real fix — see ensureLocated. */
+    located?: boolean;
+  };
   onBooked: () => void;
   /** Pass the parent's schedule to avoid a second poll of /api/availability. */
   schedule?: DoctorSchedule;
@@ -103,6 +112,18 @@ export function BookingPanel({
 
   async function book() {
     if (!canBook || busy) return;
+
+    // A home visit sends a clinician to a door. Until the device has reported
+    // a fix, patient.lat/lng are the Nagpur map centre — see ensureLocated.
+    if (type === "home_visit" && !(await ensureLocated(patient))) {
+      toast.push({
+        tone: "error",
+        title: "We need your location",
+        desc: "Allow location access so the doctor reaches the right address.",
+      });
+      return;
+    }
+
     setBusy(true);
     try {
       await createRequest({

@@ -86,7 +86,34 @@ function hydrateOnce() {
                 addressFull: current.addressFull,
               }
             : {};
-          current = { ...DEFAULT, ...data.patient, ...live, located: current.located, ready: true };
+
+          /**
+           * The account row now stores NULL until the device has actually
+           * reported a fix, so `data.patient.lat` may legitimately be absent —
+           * and spreading a null straight over the default would hand every
+           * consumer `lat: null` to crash on.
+           *
+           * Strip the nulls, keep the map-centre default underneath as a
+           * VIEWPORT, and let `located` carry the truth. Nothing may treat
+           * these coordinates as the patient's position unless `located` is
+           * true.
+           */
+          const { lat, lng, ...rest } = data.patient as {
+            lat?: number | null;
+            lng?: number | null;
+            [k: string]: unknown;
+          };
+          const stored =
+            typeof lat === "number" && typeof lng === "number" ? { lat, lng } : {};
+
+          current = {
+            ...DEFAULT,
+            ...rest,
+            ...stored,
+            ...live,
+            located: current.located || Boolean(data.patient.located),
+            ready: true,
+          };
         } else {
           current = { ...current, ready: true };
         }
@@ -139,6 +166,35 @@ export function updatePatient(patch: Partial<PatientIdentity>) {
   current = { ...current, ...patch };
   persist();
   emit();
+}
+
+/**
+ * Make sure we know where the patient actually is before sending them help.
+ *
+ * `patient.lat`/`lng` always hold numbers so a map has somewhere to point, and
+ * until the device reports a fix those numbers are the Nagpur map centre. Fine
+ * for a viewport, catastrophic in a request body: it is how a home visit for
+ * someone in Delhi gets dispatched to Nagpur, and how an SOS sends help to a
+ * city the patient has never been to. The failure is silent precisely because
+ * the coordinates look real.
+ *
+ * The request contract requires numbers (consult_requests.lat is NOT NULL), so
+ * the answer is not to send nulls — it is to refuse to guess. Any flow that
+ * puts a clinician on the road calls this first: if there is no fix yet it asks
+ * the browser for one, from inside the user's click, which is also when a
+ * permission prompt is most likely to be shown at all.
+ *
+ * Returns true only when a real position is now known.
+ */
+export async function ensureLocated(p: {
+  // Only this one field matters, and several callers receive a narrowed
+  // patient prop rather than the whole identity.
+  located?: boolean;
+}): Promise<boolean> {
+  if (p.located) return true;
+  const { requestDeviceLocation } = await import("@/lib/geo/device-location");
+  const fix = await requestDeviceLocation();
+  return fix.status === "granted" && fix.lat != null && fix.lng != null;
 }
 
 /** The signed-in patient ("me") for the patient app.

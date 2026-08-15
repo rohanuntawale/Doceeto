@@ -26,7 +26,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useToast } from "@/components/ui/toast";
 import { useActions, useConsultRequests, useDoctors } from "@/lib/hooks/data";
-import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
+import { useCurrentPatient, ensureLocated } from "@/lib/hooks/use-current-patient";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { bookingModeOf } from "@/lib/scheduling/slots";
 import { haversineKm } from "@/lib/utils/geo";
@@ -93,6 +93,25 @@ export default function CareNowPage() {
 
   async function broadcast() {
     if (posting) return;
+
+    /**
+     * Never dispatch to a guessed position.
+     *
+     * Until the device reports a fix, `patient.lat/lng` are the Nagpur map
+     * centre — plausible-looking coordinates that used to be sent as though
+     * they were real, which for an emergency means help going to the wrong
+     * city entirely. Ask now, from inside this click (the moment a browser is
+     * most willing to show the prompt), and refuse rather than guess.
+     */
+    if (type === "home_visit" && !(await ensureLocated(patient))) {
+      toast.push({
+        tone: "error",
+        title: "We need your location",
+        desc: "Allow location access so help can reach the right address.",
+      });
+      return;
+    }
+
     setPosting(true);
     try {
       // doctorId: null is what makes this a broadcast rather than a request
