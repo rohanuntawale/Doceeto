@@ -6,6 +6,7 @@ import { GigList } from "@/components/patient/gig-list";
 import { useToast } from "@/components/ui/toast";
 import { StatusPill } from "@/components/ui/status-pill";
 import { useActions, useGigs } from "@/lib/hooks/data";
+import { ensureLocated } from "@/lib/hooks/use-current-patient";
 import { useMounted } from "@/lib/hooks/use-mounted";
 import { useDoctorSchedule } from "@/lib/hooks/use-schedule";
 import { activeGigs } from "@/lib/gigs/rules";
@@ -58,6 +59,15 @@ export function NurseBookingPanel({
 
   async function book() {
     if (!canBook || busy) return;
+    const liveLocation = await ensureLocated(patient);
+    if (!liveLocation) {
+      toast.push({
+        tone: "error",
+        title: "We need your location",
+        desc: "Allow location access so the nurse reaches the right address.",
+      });
+      return;
+    }
     setBusy(true);
     try {
       await createRequest({
@@ -71,8 +81,8 @@ export function NurseBookingPanel({
         symptoms: selectedLabel,
         fee: nurse.homeVisitFee,
         address,
-        lat: patient.lat,
-        lng: patient.lng,
+        lat: liveLocation.lat,
+        lng: liveLocation.lng,
       });
       toast.push({
         tone: "success",

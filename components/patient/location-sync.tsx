@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import {
   startDeviceLocation,
+  stopDeviceLocation,
   useDeviceLocation,
 } from "@/lib/geo/device-location";
 import { updatePatient } from "@/lib/hooks/use-current-patient";
@@ -34,6 +35,7 @@ export function PatientLocationSync() {
   // One watch for the whole app, started here.
   useEffect(() => {
     startDeviceLocation();
+    return stopDeviceLocation;
   }, []);
 
   const { status, lat, lng } = geo;

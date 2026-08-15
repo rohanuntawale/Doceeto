@@ -21,7 +21,9 @@ export function LocationChip({ className }: { className?: string }) {
   const geo = useDeviceLocation();
   const [pressed, setPressed] = useState(false);
 
-  const busy = pressed && (geo.status === "locating" || geo.status === "idle");
+  const busy =
+    pressed ||
+    (!patient.located && (geo.status === "locating" || geo.status === "idle"));
   const denied = geo.status === "denied";
   const unsupported = geo.status === "unsupported";
   const { t } = useT();

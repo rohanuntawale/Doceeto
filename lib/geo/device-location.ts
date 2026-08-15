@@ -126,6 +126,10 @@ function onPosition(pos: GeolocationPosition, force = false) {
 
 function onError(err: GeolocationPositionError) {
   if (err.code === err.PERMISSION_DENIED) {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
     set({ status: "denied" });
     return;
   }
@@ -151,6 +155,13 @@ export function startDeviceLocation() {
     maximumAge: 30_000,
     timeout: 25_000,
   });
+}
+
+export function stopDeviceLocation() {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  watchId = null;
+  state = IDLE;
+  listeners.forEach((listener) => listener());
 }
 
 /**

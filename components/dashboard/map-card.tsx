@@ -5,6 +5,7 @@ import { MapPin, Stethoscope, Clock, Navigation } from "lucide-react";
 import { DoctorMap } from "@/components/map/doctor-map";
 import { useDoctors } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
+import { useDeviceLocation } from "@/lib/geo/device-location";
 
 /**
  * Dashboard map card — a real (MapLibre) map centred on the patient with
@@ -13,7 +14,13 @@ import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 export function MapCard({ patient }: { patient: PatientIdentity }) {
   const router = useRouter();
   const doctors = useDoctors();
+  const geo = useDeviceLocation();
   const nearby = doctors.filter((d) => d.status !== "offline");
+  const area = patient.located && patient.address
+    ? patient.address
+    : geo.status === "locating"
+      ? "Finding your area…"
+      : "Allow location";
 
   return (
     <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
@@ -33,7 +40,7 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
         <div className="flex items-start justify-between gap-2">
           <Chip>
             <MapPin className="h-3.5 w-3.5 text-[rgb(var(--c-terracotta))]" />
-            <span className="max-w-[9rem] truncate">{patient.address || "Your area"}</span>
+            <span className="max-w-[9rem] truncate">{area}</span>
           </Chip>
           <Chip>
             <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-status-ok))]" />

@@ -115,7 +115,8 @@ export function BookingPanel({
 
     // A home visit sends a clinician to a door. Until the device has reported
     // a fix, patient.lat/lng are the Nagpur map centre — see ensureLocated.
-    if (type === "home_visit" && !(await ensureLocated(patient))) {
+    const liveLocation = type === "home_visit" ? await ensureLocated(patient) : null;
+    if (type === "home_visit" && !liveLocation) {
       toast.push({
         tone: "error",
         title: "We need your location",
@@ -134,8 +135,8 @@ export function BookingPanel({
         paymentMethod: payMethod,
         fee,
         address,
-        lat: patient.lat,
-        lng: patient.lng,
+        lat: liveLocation?.lat ?? patient.lat,
+        lng: liveLocation?.lng ?? patient.lng,
         doctorId: doctor.id,
         mode: when,
         scheduledAt: when === "scheduled" ? slot : null,

@@ -38,7 +38,7 @@ const KEY = "iyashi:patient:v2";
 const DEFAULT: PatientIdentity = {
   id: "patient-me",
   name: "Guest",
-  address: "Nagpur",
+  address: "",
   lat: MAP_CENTER.lat,
   lng: MAP_CENTER.lng,
   located: false,
@@ -49,6 +49,7 @@ const DEFAULT: PatientIdentity = {
    together when it changes. */
 let current: PatientIdentity = DEFAULT;
 let hydrated = false;
+let hydrationVersion = 0;
 let listeners: Array<() => void> = [];
 
 function emit() {
@@ -67,12 +68,14 @@ function persist() {
 function hydrateOnce() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
+  const version = hydrationVersion;
 
   if (!isDemoMode) {
     // Live: pull the real signed-in patient.
     apiFetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (version !== hydrationVersion) return;
         if (data?.role === "patient" && data.patient) {
           // A device fix can land before this response does. When it has, the
           // live position WINS — the account row is only ever where the
@@ -98,20 +101,16 @@ function hydrateOnce() {
            * these coordinates as the patient's position unless `located` is
            * true.
            */
-          const { lat, lng, ...rest } = data.patient as {
-            lat?: number | null;
-            lng?: number | null;
-            [k: string]: unknown;
-          };
-          const stored =
-            typeof lat === "number" && typeof lng === "number" ? { lat, lng } : {};
+          const account = { ...(data.patient as Record<string, unknown>) };
+          for (const field of ["lat", "lng", "address", "addressFull", "located"]) {
+            delete account[field];
+          }
 
           current = {
             ...DEFAULT,
-            ...rest,
-            ...stored,
+            ...account,
             ...live,
-            located: current.located || Boolean(data.patient.located),
+            located: current.located,
             ready: true,
           };
         } else {
@@ -120,6 +119,7 @@ function hydrateOnce() {
         emit();
       })
       .catch(() => {
+        if (version !== hydrationVersion) return;
         // Even a failed fetch settles the question — forms must not hang
         // disabled forever because the network blipped.
         current = { ...current, ready: true };
@@ -137,7 +137,11 @@ function hydrateOnce() {
       const live = current.located
         ? { lat: current.lat, lng: current.lng, address: current.address, located: true }
         : {};
-      current = { ...DEFAULT, ...JSON.parse(raw), ...live, ready: true };
+      const stored = { ...(JSON.parse(raw) as Record<string, unknown>) };
+      for (const field of ["lat", "lng", "address", "addressFull", "located"]) {
+        delete stored[field];
+      }
+      current = { ...DEFAULT, ...stored, ...live, ready: true };
     } else {
       current = { ...DEFAULT, id: `patient-${Date.now().toString(36)}`, ready: true };
       persist();
@@ -187,14 +191,25 @@ export function updatePatient(patch: Partial<PatientIdentity>) {
  * Returns true only when a real position is now known.
  */
 export async function ensureLocated(p: {
-  // Only this one field matters, and several callers receive a narrowed
-  // patient prop rather than the whole identity.
   located?: boolean;
-}): Promise<boolean> {
-  if (p.located) return true;
+  lat?: number;
+  lng?: number;
+}): Promise<{ lat: number; lng: number } | null> {
+  if (p.located && typeof p.lat === "number" && typeof p.lng === "number") {
+    return { lat: p.lat, lng: p.lng };
+  }
   const { requestDeviceLocation } = await import("@/lib/geo/device-location");
   const fix = await requestDeviceLocation();
-  return fix.status === "granted" && fix.lat != null && fix.lng != null;
+  return fix.status === "granted" && fix.lat != null && fix.lng != null
+    ? { lat: fix.lat, lng: fix.lng }
+    : null;
+}
+
+export function resetPatientSession() {
+  hydrationVersion += 1;
+  hydrated = false;
+  current = DEFAULT;
+  emit();
 }
 
 /** The signed-in patient ("me") for the patient app.

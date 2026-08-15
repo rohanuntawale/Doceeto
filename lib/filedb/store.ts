@@ -154,6 +154,11 @@ function ensureTestAccounts(d: FileData): boolean {
     d.users.push(patient);
     changed = true;
   }
+  if (patient && patient.lat === MAP_CENTER.lat && patient.lng === MAP_CENTER.lng) {
+    delete patient.lat;
+    delete patient.lng;
+    changed = true;
+  }
 
   let docUser = d.users.find((u) => u.email === TEST_DOCTOR_EMAIL);
   if (!docUser) {

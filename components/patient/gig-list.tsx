@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { useActions } from "@/lib/hooks/data";
+import { ensureLocated } from "@/lib/hooks/use-current-patient";
 import { formatGigDuration } from "@/lib/gigs/rules";
 import { formatINR } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -68,6 +69,15 @@ export function GigList({
 
   async function hire(gig: Gig) {
     if (!hireable || busy) return;
+    const liveLocation = gig.type === "home_visit" ? await ensureLocated(patient) : null;
+    if (gig.type === "home_visit" && !liveLocation) {
+      toast.push({
+        tone: "error",
+        title: "We need your location",
+        desc: "Allow location access so the doctor reaches the right address.",
+      });
+      return;
+    }
     setBusy(true);
     try {
       await createRequest({
@@ -87,8 +97,8 @@ export function GigList({
             : gig.type === "clinic"
               ? doctor.clinicAddress || "At the doctor's clinic"
               : "Video call",
-        lat: patient.lat,
-        lng: patient.lng,
+        lat: liveLocation?.lat ?? patient.lat,
+        lng: liveLocation?.lng ?? patient.lng,
       });
       toast.push({
         tone: "success",

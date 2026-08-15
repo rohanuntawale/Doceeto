@@ -69,7 +69,7 @@ export default function PatientHome() {
     color: "#7C8B5E",
   }));
 
-  const located = Boolean(patient.address);
+  const located = Boolean(patient.located);
 
   // "Care activity": every real care event this week — symptom checks run,
   // consults booked, medicine ordered — bucketed per day, with the trend

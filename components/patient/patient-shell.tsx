@@ -9,6 +9,7 @@ import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { MEDICINE_ENABLED, isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
+import { resetPatientSession } from "@/lib/hooks/use-current-patient";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
 
@@ -81,6 +82,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
         /* ignore — the redirect below still gets them out */
       }
     }
+    resetPatientSession();
     router.push(isDemoMode ? "/" : "/login");
     router.refresh();
   }

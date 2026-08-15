@@ -103,7 +103,8 @@ export default function CareNowPage() {
      * city entirely. Ask now, from inside this click (the moment a browser is
      * most willing to show the prompt), and refuse rather than guess.
      */
-    if (type === "home_visit" && !(await ensureLocated(patient))) {
+    const liveLocation = type === "home_visit" ? await ensureLocated(patient) : null;
+    if (type === "home_visit" && !liveLocation) {
       toast.push({
         tone: "error",
         title: "We need your location",
@@ -131,8 +132,8 @@ export default function CareNowPage() {
           type === "home_visit"
             ? patient.addressFull || patient.address || "Your address"
             : "To be confirmed",
-        lat: patient.lat,
-        lng: patient.lng,
+        lat: liveLocation?.lat ?? patient.lat,
+        lng: liveLocation?.lng ?? patient.lng,
       });
       // The store assigns the id, so pick the row back up from the feed.
       setPostedId("pending");
