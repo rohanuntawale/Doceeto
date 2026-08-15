@@ -41,6 +41,7 @@ const IDLE: DeviceLocation = {
 let state: DeviceLocation = IDLE;
 let listeners: Array<() => void> = [];
 let watchId: number | null = null;
+let startToken = 0;
 
 /**
  * Movement below this is noise from GPS jitter, not the patient going
@@ -142,12 +143,31 @@ function onError(err: GeolocationPositionError) {
  * Start following the device. Idempotent — every consumer may call it on
  * mount, only the first one opens a watch.
  */
-export function startDeviceLocation() {
+export async function startDeviceLocation(options: { silent?: boolean } = {}) {
   if (watchId !== null) return;
+  const token = ++startToken;
   if (!supported()) {
     set({ status: "unsupported" });
     return;
   }
+
+  if (options.silent && !navigator.permissions?.query) return;
+
+  if (options.silent) {
+    let permission: PermissionStatus;
+    try {
+      permission = await navigator.permissions.query({ name: "geolocation" });
+    } catch {
+      return;
+    }
+    if (token !== startToken || watchId !== null) return;
+    if (permission.state === "denied") {
+      set({ status: "denied" });
+      return;
+    }
+    if (permission.state !== "granted") return;
+  }
+
   if (state.status === "idle") set({ status: "locating" });
 
   watchId = navigator.geolocation.watchPosition((p) => onPosition(p), onError, {
@@ -158,6 +178,7 @@ export function startDeviceLocation() {
 }
 
 export function stopDeviceLocation() {
+  startToken += 1;
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
   state = IDLE;
@@ -179,7 +200,6 @@ export function requestDeviceLocation(): Promise<DeviceLocation> {
   }
 
   set({ status: state.status === "granted" ? "granted" : "locating" });
-  startDeviceLocation();
 
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
@@ -187,6 +207,7 @@ export function requestDeviceLocation(): Promise<DeviceLocation> {
         // force: an explicit request should publish even a small correction,
         // otherwise pressing the button appears to do nothing.
         onPosition(pos, true);
+        void startDeviceLocation();
         resolve(state);
       },
       (err) => {

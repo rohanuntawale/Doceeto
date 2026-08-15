@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { MapPin, Stethoscope, Clock, Navigation } from "lucide-react";
+import { MapPin, Stethoscope, Clock, Navigation, LoaderCircle } from "lucide-react";
 import { DoctorMap } from "@/components/map/doctor-map";
 import { useDoctors } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
-import { useDeviceLocation } from "@/lib/geo/device-location";
+import { requestDeviceLocation, useDeviceLocation } from "@/lib/geo/device-location";
+import { useState } from "react";
 
 /**
  * Dashboard map card — a real (MapLibre) map centred on the patient with
@@ -15,12 +16,24 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
   const router = useRouter();
   const doctors = useDoctors();
   const geo = useDeviceLocation();
+  const [requesting, setRequesting] = useState(false);
   const nearby = doctors.filter((d) => d.status !== "offline");
   const area = patient.located && patient.address
     ? patient.address
-    : geo.status === "locating"
+    : geo.status === "locating" || requesting
       ? "Finding your area…"
-      : "Allow location";
+      : geo.status === "unsupported"
+        ? "Location unavailable"
+        : geo.status === "denied"
+          ? "Location blocked"
+        : "Allow location";
+
+  async function locate() {
+    if (requesting || geo.status === "unsupported") return;
+    setRequesting(true);
+    await requestDeviceLocation();
+    setRequesting(false);
+  }
 
   return (
     <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
@@ -38,10 +51,23 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
           attribution strip its own lane under the action row. */}
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-8">
         <div className="flex items-start justify-between gap-2">
-          <Chip>
-            <MapPin className="h-3.5 w-3.5 text-[rgb(var(--c-terracotta))]" />
+          <button
+            type="button"
+            onClick={locate}
+            disabled={requesting || geo.status === "unsupported"}
+            aria-label="Use my current location"
+            title={geo.status === "denied"
+              ? "Allow location for this site in your browser settings, then try again."
+              : "Use your current location"}
+            className="pointer-events-auto inline-flex max-w-[13rem] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--glass-bg-strong)] px-2.5 py-1.5 text-left text-[11px] font-medium text-cream backdrop-blur-md disabled:cursor-default"
+          >
+            {requesting || geo.status === "locating" ? (
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin text-[rgb(var(--c-terracotta))]" />
+            ) : (
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--c-terracotta))]" />
+            )}
             <span className="max-w-[9rem] truncate">{area}</span>
-          </Chip>
+          </button>
           <Chip>
             <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-status-ok))]" />
             <span className="text-[rgb(var(--c-status-ok))]">Live</span>

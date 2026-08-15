@@ -34,7 +34,7 @@ export function PatientLocationSync() {
 
   // One watch for the whole app, started here.
   useEffect(() => {
-    startDeviceLocation();
+    void startDeviceLocation({ silent: true });
     return stopDeviceLocation;
   }, []);
 
