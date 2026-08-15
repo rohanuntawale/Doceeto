@@ -6,16 +6,21 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingStory } from "@/components/landing/landing-story";
+import { LandingFilm } from "@/components/landing/landing-film";
 import { LandingTwoSides } from "@/components/landing/landing-two-sides";
 import { LandingTestimonials } from "@/components/landing/landing-testimonials";
 import { LandingProductShowcase } from "@/components/landing/landing-product-showcase";
 import { LandingFinalCta } from "@/components/landing/landing-final-cta";
 import { CheckerFab } from "@/components/landing/checker-fab";
+import {
+  SectionRail,
+  type RailSection,
+} from "@/components/landing/section-rail";
 import { SiteFooter } from "@/components/site/site-footer";
 import {
-  AnimatedNavigationTabs,
-  type AnimatedNavigationTab,
-} from "@/components/ui/animated-navigation-tabs";
+  LandingSidebar,
+  type SidebarLink,
+} from "@/components/landing/landing-sidebar";
 
 /**
  * The nav is a list of WHAT DOCEETO DOES, not a table of contents for this
@@ -33,15 +38,54 @@ import {
  * exactly there (the middleware carries `next`), which is a better funnel than
  * a marketing section about doctors.
  */
-const NAV_ITEMS: AnimatedNavigationTab[] = [
+/**
+ * The section rail, in document order.
+ *
+ * `tone` is what sits BEHIND the rail in that section, not the section's own
+ * mood: the page alternates forest bands and paper panels, and a single dot
+ * colour disappears against one of them. Keep this list in step with <main>.
+ */
+const RAIL_SECTIONS: RailSection[] = [
+  { id: "hero", label: "Top", tone: "light" },
+  { id: "story", label: "Manifesto", tone: "dark" },
+  // Same forest band as the manifesto — the film continues it rather than
+  // starting a new colour, so the rail stays on its dark treatment here.
+  { id: "film", label: "The film", tone: "dark" },
+  { id: "patient-doctor", label: "Roles", tone: "light" },
+  { id: "reviews", label: "Reviews", tone: "dark" },
+  { id: "showcase", label: "Experience", tone: "light" },
+  { id: "start", label: "Get started", tone: "dark" },
+];
+
+const NAV_ITEMS: SidebarLink[] = [
   // Each lands on a PREVIEW that works without an account (see app/try).
   // Pointing them straight at /patient/* sent every curious visitor to a
   // sign-in form before they had seen anything worth signing in for.
-  { id: "doctors", tile: "Doctors", href: "/try/doctors" },
-  { id: "nurses", tile: "Nurses", href: "/try/nurses" },
-  { id: "checker", tile: "Symptom check", href: "/try/checker" },
+  {
+    id: "doctors",
+    label: "Doctors",
+    href: "/try/doctors",
+    hint: "Browse verified doctors by specialty, language and fee.",
+  },
+  {
+    id: "nurses",
+    label: "Nurses",
+    href: "/try/nurses",
+    hint: "Home nursing — wound care, injections, vitals, elder care.",
+  },
+  {
+    id: "checker",
+    label: "Symptom check",
+    href: "/try/checker",
+    hint: "Describe what's wrong and find out who to see.",
+  },
   // The company, the mechanism, the policies and the ways to reach a person.
-  { id: "support", tile: "Support", href: "/support" },
+  {
+    id: "support",
+    label: "Support",
+    href: "/support",
+    hint: "How it works, verification, and who to contact.",
+  },
 ];
 
 /*
@@ -100,59 +144,63 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] relative selection:bg-[var(--accent)] selection:text-white">
-      {/* Inline Floating Landing Header (Replaces global SiteHeader for landing only) */}
-      <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? "py-3 bg-[rgb(var(--surface-rgb)/0.85)] backdrop-blur-xl border-b border-[var(--border)] shadow-soft"
-            : "py-5 bg-transparent"
-        }`}
-      >
-        {/* Two groups, not three. The rail used to sit in the middle of a
-            justify-between row, which meant the gap on its left (to the
-            wordmark) and the gap on its right (to the buttons) were whatever
-            the viewport happened to leave over — never equal, and never the
-            same at two window widths. Everything except the wordmark now lives
-            in ONE right-hand group, so the spacing inside it is set by the
-            items themselves rather than by leftover space. */}
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6">
+      {/* ── Floating glass pill header ──
+          A capsule that hugs its own content, centred, detached from the
+          page edges — not a bar spanning the viewport. Full-width chrome was
+          claiming ~90px of every screen for four controls; sized to fit, the
+          same controls read as an object floating over the page, and the hero
+          shows through around it.
+
+          The glass is real glassmorphism, not a tinted rectangle: a
+          translucent surface + backdrop-blur so the forest band and paper
+          panel genuinely refract through it as you scroll, a hairline border
+          to give the pane an edge, and an inset top highlight — the catch
+          light that makes it read as glass rather than fog. Opacity firms up
+          once scrolled, when busier content starts passing underneath. */}
+      <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3 sm:pt-4">
+        {/* Frosted WHITE glass, in every state. A smoked-green variant was
+            tried for "over the hero" — but the pill keys on scroll position,
+            not on what is actually behind it, and at the top of the page
+            that's the white paper panel: green glass over white paper read as
+            a muddy grey-green capsule. White glass is correct over paper and
+            still legible passing the forest bands, so one recipe it is. The
+            blur + saturate is what keeps it glass rather than paint — content
+            scrolling underneath visibly refracts through it. */}
+        <div
+          className={`flex items-center gap-1 rounded-full border border-white/50 py-1.5 pl-3 pr-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_8px_32px_rgb(16_45_35/0.15)] backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300 ${
+            scrolled ? "bg-white/[0.6]" : "bg-white/[0.35]"
+          }`}
+        >
+          {/* Compact wordmark: the tagline is what made the old bar tall. */}
           <Link href="/" className="transition-opacity hover:opacity-90">
-            <Wordmark />
+            <Wordmark compact />
           </Link>
 
-          <div className="flex items-center">
-            {/* `activeId={null}` on purpose: these tabs are destinations
-                elsewhere in the app, so none of them is ever "where you are"
-                while you're reading the landing page. A persistent underline
-                would claim otherwise; the hover wash is the feedback. */}
-            <AnimatedNavigationTabs
-              items={NAV_ITEMS}
-              activeId={null}
-              className="hidden text-xs font-semibold uppercase tracking-wider md:block"
-            />
+          <span aria-hidden className="mx-2 h-5 w-px bg-[var(--border)]" />
 
-            {/* The one seam in the group: what you can get, then who you are.
-                Its margin matches the tabs' own horizontal padding, so the
-                rhythm carries straight through it. */}
-            <span aria-hidden className="mx-3 hidden h-4 w-px bg-[var(--border)] md:block" />
+          {/* The destinations live in the drawer (see NAV_ITEMS); the pill
+              carries only the two account actions and the menu trigger. */}
+          <Link href="/login" className="hidden sm:inline-block">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full text-xs font-semibold"
+            >
+              Log in
+            </Button>
+          </Link>
+          <Link href="/signup" className="ml-1">
+            <Button
+              size="sm"
+              className="rounded-full border-0 bg-[var(--accent)] text-xs font-bold text-on-accent shadow-soft"
+            >
+              Get Started
+            </Button>
+          </Link>
 
-            <Link href="/login" className="hidden sm:inline-block">
-              <Button variant="ghost" size="sm" className="text-xs font-semibold">
-                Log in
-              </Button>
-            </Link>
-            {/* ml-2 rather than a gap on the row: a filled button reads as
-                heavier than bare text at the same distance, so it needs a
-                little more air to look like the same gap. */}
-            <Link href="/signup" className="ml-2">
-              <Button
-                size="sm"
-                className="border-0 bg-[var(--accent)] text-xs font-bold text-on-accent shadow-soft"
-              >
-                Get Started
-              </Button>
-            </Link>
-          </div>
+          <span className="ml-1">
+            <LandingSidebar links={NAV_ITEMS} />
+          </span>
         </div>
       </header>
 
@@ -160,11 +208,18 @@ export default function Page() {
       <main>
         <LandingHero />
         <LandingStory />
+        <LandingFilm />
         <LandingTwoSides />
         <LandingTestimonials />
         <LandingProductShowcase />
         <LandingFinalCta />
       </main>
+
+      {/* Where you are on the page, and a way to jump. Order and `tone` must
+          track <main> above: tone is what sits behind the rail in each
+          section, so it can stay legible as the page alternates between the
+          forest bands and the paper panels. */}
+      <SectionRail sections={RAIL_SECTIONS} />
 
       {/* Site Footer */}
       <SiteFooter />

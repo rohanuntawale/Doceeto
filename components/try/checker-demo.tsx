@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { LanguageSelector } from "@/components/ui/language-selector";
+import { useT } from "@/lib/i18n";
 import {
   applyAiAnswer,
   applyText,
@@ -63,10 +66,24 @@ const STORAGE_KEY = "doceeto.try.checker.runs";
 const FREE_RUNS = 2;
 const MAX_QUESTIONS = 6;
 
-const URGENCY_COPY: Record<Urgency, { label: string; tone: string }> = {
-  emergency: { label: "Emergency", tone: "text-status-critical" },
-  urgent: { label: "See someone today", tone: "text-tan" },
-  routine: { label: "Routine", tone: "text-status-ok" },
+/** Tone is fixed; the label is looked up per language at render time. */
+const URGENCY_TONE: Record<Urgency, string> = {
+  emergency: "text-status-critical",
+  urgent: "text-tan",
+  routine: "text-status-ok",
+};
+
+const URGENCY_KEY: Record<Urgency, string> = {
+  emergency: "checker.urgencyEmergency",
+  urgent: "checker.urgencyUrgent",
+  routine: "checker.urgencyRoutine",
+};
+
+/** "less-likely" → the translated chip beside a cause. */
+const LIKELIHOOD_KEY: Record<string, string> = {
+  likely: "checker.likely",
+  possible: "checker.possible",
+  "less-likely": "checker.lessLikely",
 };
 
 type Msg =
@@ -114,14 +131,18 @@ function fromAiStep(s: Record<string, unknown>): DStep {
   };
 }
 
-const OPENER =
-  "Hi — I'm here to help you work out who to see. Tell me what's going on, in your own words.";
+/** The page heading above the card, translated. */
+export function CheckerPageHeader() {
+  const { t } = useT();
+  return <PageHeader label={t("checker.pageLabel")} title={t("checker.pageTitle")} />;
+}
 
 export function CheckerDemo() {
+  const { t, lang } = useT();
   const [runsUsed, setRunsUsed] = useState<number | null>(null);
   const [state, setState] = useState<DState>(() => initState(""));
   const [step, setStep] = useState<DStep | null>(null);
-  const [msgs, setMsgs] = useState<Msg[]>([{ id: mkId(), from: "bot", text: OPENER }]);
+  const [msgs, setMsgs] = useState<Msg[]>([{ id: mkId(), from: "bot", text: "" }]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const [started, setStarted] = useState(false);
@@ -133,6 +154,23 @@ export function CheckerDemo() {
     const raw = Number(window.localStorage.getItem(STORAGE_KEY) ?? "0");
     setRunsUsed(Number.isFinite(raw) ? raw : 0);
   }, []);
+
+  /**
+   * Keep the greeting in the current language — and only the greeting.
+   *
+   * Language is chosen from inside the chat, so the common case is someone
+   * reading the English opener, realising they'd rather answer in Marathi, and
+   * switching. Re-rendering the opener means they never see the switch fail to
+   * do anything. Once the conversation has STARTED this stops: a transcript is
+   * a record of what was actually said, and silently rewriting the user's own
+   * words (or a question they already answered) in another language would make
+   * it a fiction. From then on only NEW turns arrive translated, which is what
+   * the model is now being told to do.
+   */
+  useEffect(() => {
+    if (started) return;
+    setMsgs([{ id: mkId(), from: "bot", text: t("checker.opener") }]);
+  }, [lang, started, t]);
 
   // Keep the newest message in view. Chat that grows off-screen silently is
   // worse than no chat — you cannot tell it responded.
@@ -171,6 +209,8 @@ export function CheckerDemo() {
           seed: next.seed,
           answers: next.answers.map((a) => ({ prompt: a.prompt, label: a.label })),
           history: [],
+          // What the questions, options and the differential come back in.
+          lang,
         }),
       });
       // 429 is the server's own ceiling. The offline engine still answers, so a
@@ -227,7 +267,7 @@ export function CheckerDemo() {
    *  anything at all — nobody should be trapped in a questionnaire. */
   function finishNow() {
     if (!started || thinking || done) return;
-    say({ id: mkId(), from: "me", text: "Just tell me what you think." });
+    say({ id: mkId(), from: "me", text: t("checker.skipSaid") });
     setStep(forceConclusion(state));
   }
 
@@ -244,7 +284,7 @@ export function CheckerDemo() {
   function reset() {
     setState(initState(""));
     setStep(null);
-    setMsgs([{ id: mkId(), from: "bot", text: OPENER }]);
+    setMsgs([{ id: mkId(), from: "bot", text: t("checker.opener") }]);
     setDraft("");
     setStarted(false);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -258,7 +298,7 @@ export function CheckerDemo() {
     );
   }
 
-  if (locked && !done) return <Wall />;
+  if (locked && !done) return <Wall t={t} />;
 
   const question = step?.kind === "question" ? step.question : null;
 
@@ -275,26 +315,36 @@ export function CheckerDemo() {
             <Stethoscope className="h-4 w-4" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-[var(--text)]">Symptom check</p>
+            <p className="text-sm font-semibold text-[var(--text)]">{t("checker.title")}</p>
             <p className="text-[11px] text-[var(--text-faint)]">
               {done
-                ? "Done"
+                ? t("checker.done")
                 : started
-                  ? `${asked} of up to ${MAX_QUESTIONS} answered`
-                  : `${remaining} free ${remaining === 1 ? "check" : "checks"} left`}
+                  ? t("checker.answered", { a: String(asked), b: String(MAX_QUESTIONS) })
+                  : remaining === 1
+                    ? t("checker.freeLeftOne")
+                    : t("checker.freeLeft", { n: String(remaining) })}
             </p>
           </div>
         </div>
-        {started && (
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Restart
-          </button>
-        )}
+        {/* The switcher lives IN the chat header, not in the page chrome.
+            This is the one screen where the language choice changes what the
+            product does rather than how it looks — pick Marathi and the
+            questions, the options and the differential all arrive in Marathi —
+            so it belongs beside the conversation it governs. */}
+        <div className="flex shrink-0 items-center gap-2">
+          <LanguageSelector />
+          {started && (
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {t("checker.restart")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Transcript */}
@@ -314,7 +364,7 @@ export function CheckerDemo() {
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--accent)]/10">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--accent)]" />
             </span>
-            Thinking it through…
+            {t("checker.thinking")}
           </div>
         )}
 
@@ -337,24 +387,24 @@ export function CheckerDemo() {
                 answer isn't on the list has to guess or abandon. */}
             <button
               type="button"
-              onClick={() => pick(question, { value: "unsure", label: "I'm not sure" })}
+              onClick={() => pick(question, { value: "unsure", label: t("checker.notSure") })}
               className="rounded-full border border-dashed border-[var(--border)] px-3 py-1.5 text-[13px] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
             >
-              I&apos;m not sure
+              {t("checker.notSure")}
             </button>
             <button
               type="button"
               onClick={() => inputRef.current?.focus()}
               className="rounded-full border border-dashed border-[var(--border)] px-3 py-1.5 text-[13px] text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
             >
-              Something else…
+              {t("checker.somethingElse")}
             </button>
           </div>
         )}
 
         {done && step?.kind === "conclusion" && (
           <div className="pt-1">
-            <Conclusion step={step} onReset={reset} locked={locked} />
+            <Conclusion step={step} onReset={reset} locked={locked} t={t} lang={lang} />
           </div>
         )}
       </div>
@@ -376,26 +426,31 @@ export function CheckerDemo() {
                 onChange={(e) => setDraft(e.target.value.slice(0, 300))}
                 disabled={thinking}
                 placeholder={
-                  started ? "Type your answer…" : "e.g. headache and fever since yesterday"
+                  started ? t("checker.placeholderAnswer") : t("checker.placeholder")
                 }
-                aria-label="Describe your symptoms"
+                aria-label={t("checker.aria")}
                 className="h-11 min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] disabled:opacity-60"
               />
               <Button type="submit" disabled={!draft.trim() || thinking} className="rounded-full">
                 <CornerDownLeft className="h-4 w-4" />
-                Send
+                {t("checker.send")}
               </Button>
             </form>
 
             {!started ? (
               // Suggestions are a nicety; on a short window the composer and
               // transcript matter more, so they drop out rather than compete.
-              <div className="mt-2.5 hidden flex-wrap gap-1.5 [@media(min-height:600px)]:flex">
+              <div className="mt-2.5 hidden flex-wrap items-center gap-1.5 [@media(min-height:600px)]:flex">
+                {/* Says out loud that typing in Hindi or Marathi works — the
+                    switcher only changes the chrome until someone tries it. */}
+                <span className="mr-0.5 text-[11px] text-[var(--text-faint)]">
+                  {t("checker.langHint")}
+                </span>
                 {[
-                  "Sore throat for 3 days",
-                  "Lower back pain",
-                  "Rash on my arm",
-                  "Child with fever",
+                  t("checker.ex1"),
+                  t("checker.ex2"),
+                  t("checker.ex3"),
+                  t("checker.ex4"),
                 ].map((ex) => (
                   <button
                     key={ex}
@@ -415,14 +470,14 @@ export function CheckerDemo() {
                 className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] disabled:opacity-50"
               >
                 <Wand2 className="h-3 w-3" />
-                Skip the rest — just tell me what you think
+                {t("checker.skip")}
               </button>
             )}
           </>
         ) : (
           <div className="flex items-center gap-2 text-[11px] text-[var(--text-faint)]">
             <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
-            Guidance only — not a diagnosis.
+            {t("checker.guidanceOnly")}
           </div>
         )}
       </div>
@@ -454,17 +509,59 @@ function Mine({ text }: { text: string }) {
   );
 }
 
+type T = (key: string, vars?: Record<string, string>) => string;
+
+/** Any Devanagari at all — good enough to tell AI copy from engine copy. */
+const DEVANAGARI = /[ऀ-ॿ]/;
+
+/**
+ * Translate a string the DETERMINISTIC engine produced, if we can.
+ *
+ * The offline engine returns English whatever language the patient chose, so
+ * a fallback answer arrives as English clinical text inside otherwise Marathi
+ * chrome. Red-flag names are a closed set, so they get a real translation; the
+ * check below is what keeps this from touching the AI's output, which is
+ * already in the right language and must pass through untouched.
+ */
+function engineText(t: T, lang: string, s: string | undefined, fallbackKey?: string): string {
+  if (!s) return "";
+  if (lang === "en" || DEVANAGARI.test(s)) return s;
+  const keyed = t(`flag.${s}`);
+  if (keyed !== `flag.${s}`) return keyed;
+  // The engine's generic, non-red-flag stock phrases.
+  const generic = t(`eng.${s}`);
+  if (generic !== `eng.${s}`) return generic;
+  return fallbackKey ? t(fallbackKey) : s;
+}
+
 function Conclusion({
   step,
   onReset,
   locked,
+  t,
+  lang,
 }: {
   step: DConclusion;
   onReset: () => void;
   locked: boolean;
+  t: T;
+  lang: string;
 }) {
-  const urgency = URGENCY_COPY[step.urgency];
   const causes = useMemo(() => step.causes?.slice(0, 3) ?? [], [step.causes]);
+  // Emergency copy has its own fallback keys — that is the case where leaving
+  // English on screen is not acceptable.
+  const summary = engineText(
+    t,
+    lang,
+    step.summary,
+    step.emergency ? "checker.offlineEmergencySummary" : undefined,
+  );
+  const advice = engineText(
+    t,
+    lang,
+    step.advice,
+    step.emergency ? "checker.offlineEmergencyAdvice" : undefined,
+  );
 
   return (
     <div className="space-y-3">
@@ -473,11 +570,10 @@ function Conclusion({
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-critical" />
           <div>
             <p className="text-sm font-semibold text-[var(--text)]">
-              What you described needs emergency care
+              {t("checker.emergencyTitle")}
             </p>
             <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-              Call 112 or go to the nearest emergency department now. Don&apos;t wait for an
-              appointment.
+              {t("checker.emergencyDesc")}
             </p>
           </div>
         </div>
@@ -486,14 +582,16 @@ function Conclusion({
       <div className="rounded-card border border-[var(--border)] bg-[var(--surface)] p-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">
-            What this points to
+            {t("checker.pointsTo")}
           </p>
-          <span className={cn("text-xs font-semibold", urgency.tone)}>{urgency.label}</span>
+          <span className={cn("text-xs font-semibold", URGENCY_TONE[step.urgency])}>
+            {t(URGENCY_KEY[step.urgency])}
+          </span>
         </div>
 
         <p className="mt-1.5 font-serif text-2xl text-[var(--text)]">{step.specialty}</p>
-        {step.summary && (
-          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{step.summary}</p>
+        {summary && (
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">{summary}</p>
         )}
 
         {causes.length > 0 && (
@@ -501,51 +599,64 @@ function Conclusion({
             {causes.map((cause) => (
               <li key={cause.name} className="rounded-lg border border-[var(--border)] px-3 py-2">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-[var(--text)]">{cause.name}</span>
+                  <span className="text-sm text-[var(--text)]">
+                    {engineText(t, lang, cause.name)}
+                  </span>
                   <span className="shrink-0 text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
-                    {cause.likelihood.replace("-", " ")}
+                    {LIKELIHOOD_KEY[cause.likelihood]
+                      ? t(LIKELIHOOD_KEY[cause.likelihood])
+                      : cause.likelihood.replace("-", " ")}
                   </span>
                 </div>
-                {cause.why && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{cause.why}</p>}
+                {cause.why && (
+                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                    {engineText(
+                      t,
+                      lang,
+                      cause.why,
+                      step.emergency ? "checker.offlineEmergencyWhy" : undefined,
+                    )}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
         )}
 
-        {step.advice && (
+        {advice && (
           <p className="mt-3 border-t border-[var(--border)] pt-3 text-sm text-[var(--text-muted)]">
-            {step.advice}
+            {advice}
           </p>
         )}
 
         <p className="mt-2.5 text-[11px] text-[var(--text-faint)]">
-          This is guidance, not a diagnosis. Only a doctor who examines you can give you one.
+          {t("checker.notDiagnosis")}
         </p>
       </div>
 
       <div className="rounded-card border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="font-serif text-lg text-[var(--text)]">
-          {locked ? "That was your second free check" : "Turn this into an appointment"}
+          {locked ? t("checker.secondFree") : t("checker.turnIntoAppt")}
         </p>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          With an account this check is saved so you can show a doctor exactly what you answered,
-          it&apos;s personalised against your history and medication, and it books you a{" "}
-          {step.specialty.toLowerCase()} in one tap.
-        </p>
+        {/* The specialty name is an English key (it routes a booking), so the
+            sentence is written NOT to inline it — a Hindi sentence with
+            "Cardiologist" dropped into the middle reads worse than one that
+            simply says "the right doctor". The card above already names it. */}
+        <p className="mt-1 text-sm text-[var(--text-muted)]">{t("checker.upsell")}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link href="/signup">
             <Button>
-              Create an account
+              {t("checker.createAccount")}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
           <Link href={`/login?next=${encodeURIComponent("/patient/care")}`}>
-            <Button variant="outline">Log in</Button>
+            <Button variant="outline">{t("checker.logIn")}</Button>
           </Link>
           {!locked && (
             <Button variant="ghost" onClick={onReset}>
               <RotateCcw className="h-4 w-4" />
-              Check something else
+              {t("checker.checkAnother")}
             </Button>
           )}
         </div>
@@ -554,33 +665,30 @@ function Conclusion({
   );
 }
 
-function Wall() {
+function Wall({ t }: { t: T }) {
   return (
     <Card className="p-6 text-center">
       <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--surface)] text-[var(--text-muted)]">
         <Lock className="h-5 w-5" />
       </span>
-      <p className="mt-4 font-serif text-2xl text-[var(--text)]">
-        You&apos;ve used both free checks
-      </p>
+      <p className="mt-4 font-serif text-2xl text-[var(--text)]">{t("checker.wallTitle")}</p>
       <p className="mx-auto mt-2 max-w-md text-sm text-[var(--text-muted)]">
-        Create an account for unlimited checks that remember your history, save every result, and
-        connect straight to a doctor who can act on them.
+        {t("checker.wallDesc")}
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <Link href="/signup">
           <Button>
-            Create an account
+            {t("checker.createAccount")}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
         <Link href={`/login?next=${encodeURIComponent("/patient/care")}`}>
-          <Button variant="outline">Log in</Button>
+          <Button variant="outline">{t("checker.logIn")}</Button>
         </Link>
         <Link href="/try/urgent">
           <Button variant="ghost">
             <Stethoscope className="h-4 w-4" />
-            See doctors free now
+            {t("checker.seeDoctors")}
           </Button>
         </Link>
       </div>

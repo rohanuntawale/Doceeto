@@ -16,21 +16,26 @@ import { FOOTER_SITEMAP } from "@/lib/legal/site-map";
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors">
+      {/* Two columns even on a phone. Stacked single-file, five groups of
+          links ran to several screens of scrolling before the brand or the
+          copyright ever appeared — a footer longer than the page it closes.
+          Side by side, tighter, and slightly smaller type on mobile roughly
+          halves its height without dropping a single link. */}
       <nav
         aria-label="Site map"
-        className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+        className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-8 px-6 py-10 sm:gap-10 sm:py-14 md:grid-cols-4"
       >
         {FOOTER_SITEMAP.map((group) => (
           <div key={group.heading}>
-            <h4 className="text-xs font-semibold uppercase tracking-label text-[var(--text-faint)] mb-3">
+            <h4 className="mb-2.5 text-[11px] font-semibold uppercase tracking-label text-[var(--text-faint)] sm:mb-3 sm:text-xs">
               {group.heading}
             </h4>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2 sm:space-y-2.5">
               {group.links.map((l) => (
                 <li key={`${group.heading}-${l.label}`}>
                   <Link
                     href={l.href}
-                    className="text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                    className="text-[13px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors sm:text-sm"
                   >
                     {l.label}
                   </Link>
@@ -42,8 +47,8 @@ export function SiteFooter() {
       </nav>
 
       {/* Brand sits under the map, the way a masthead closes a page. */}
-      <div className="mx-auto max-w-6xl px-6 pb-12">
-        <div className="flex flex-col gap-4 border-t border-[var(--border)] pt-10 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mx-auto max-w-6xl px-6 pb-8 sm:pb-12">
+        <div className="flex flex-col gap-4 border-t border-[var(--border)] pt-7 sm:flex-row sm:items-start sm:justify-between sm:pt-10">
           <div className="space-y-3">
             <Wordmark compact={false} />
             {/* No em-dash: 5ccdfc2 stripped the dashes from the landing copy.

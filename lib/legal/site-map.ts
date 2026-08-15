@@ -368,6 +368,38 @@ export interface FooterColumn {
   links: { label: string; href: string }[];
 }
 
+/**
+ * The footer map: one row per DESTINATION, never per phrasing.
+ *
+ * It carried 27 links to 19 pages. The repeats were not obvious in the source
+ * — they were one page wearing several names, spread across columns so no
+ * single screenful showed the duplication:
+ *
+ *   /login            ×3  "Patient sign in", "Doctor sign in", "Nurse sign in"
+ *   /legal/providers  ×2  "Provider terms", printed in both provider columns
+ *   /try/nurses       ×2  "Find a home nurse" and "Services you can offer"
+ *   /support          ×2  "Support" and "How verification works"
+ *   /legal/privacy    ─┐
+ *   /legal/terms       │  also in the condensed legal bar directly below
+ *   /legal             │
+ *   /sitemap          ─┘
+ *
+ * Plus one link that went nowhere useful: "Order medicine" pointed at
+ * /patient/medicine, which MEDICINE_ENABLED hides from patients entirely. A
+ * footer advertising a feature the product does not currently offer is worse
+ * than a short footer.
+ *
+ * Two rules now hold it down. Every href appears ONCE in this list — a reader
+ * scanning five columns for the thing they want should never find the same
+ * page twice under different words and wonder which is the real one. And
+ * nothing here repeats the legal bar that sits underneath it, so the bar
+ * carries Privacy, Terms and the full index, and this column carries only the
+ * health-specific policies the bar has no room for.
+ *
+ * The two provider columns are merged for the same reason: they were the same
+ * four links with "doctor" and "nurse" swapped, and a nurse never needed her
+ * own column to find one signup form.
+ */
 export const FOOTER_SITEMAP: FooterColumn[] = [
   {
     heading: "For patients",
@@ -376,25 +408,13 @@ export const FOOTER_SITEMAP: FooterColumn[] = [
       { label: "Find a home nurse", href: "/try/nurses" },
       { label: "Urgent care", href: "/try/urgent" },
       { label: "Check a symptom", href: "/try/checker" },
-      { label: "Order medicine", href: "/patient/medicine" },
-      { label: "Patient sign in", href: "/login" },
     ],
   },
   {
-    heading: "For doctors",
+    heading: "For providers",
     links: [
       { label: "Join as a doctor", href: "/signup?as=doctor" },
-      { label: "Doctor sign in", href: "/login" },
-      { label: "How verification works", href: "/support" },
-      { label: "Provider terms", href: "/legal/providers" },
-    ],
-  },
-  {
-    heading: "For nurses",
-    links: [
       { label: "Join as a nurse", href: "/signup?as=nurse" },
-      { label: "Nurse sign in", href: "/login" },
-      { label: "Services you can offer", href: "/try/nurses" },
       { label: "Provider terms", href: "/legal/providers" },
     ],
   },
@@ -404,18 +424,17 @@ export const FOOTER_SITEMAP: FooterColumn[] = [
       { label: "About", href: "/about" },
       { label: "Support", href: "/support" },
       { label: "Contact", href: "/contact" },
-      { label: "Site map", href: "/sitemap" },
+      // The one sign-in link. Which role you are is a question the login form
+      // answers better than three footer rows pointing at the same page.
+      { label: "Sign in", href: "/login" },
     ],
   },
   {
-    heading: "Legal",
+    heading: "Health & safety",
     links: [
-      { label: "Privacy policy", href: "/legal/privacy" },
-      { label: "Terms of use", href: "/legal/terms" },
       { label: "Medical disclaimer", href: "/legal/medical-disclaimer" },
       { label: "Telemedicine consent", href: "/legal/telemedicine-consent" },
       { label: "Grievance redressal", href: "/legal/grievance" },
-      { label: "All policies", href: "/legal" },
     ],
   },
 ];

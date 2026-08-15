@@ -191,6 +191,40 @@ const RED_FLAGS: Flag[] = [
   { test: /(high fever|very high temperature).{0,30}(confus|drowsy|shiver|rigor)|fever.{0,20}(not waking|unrespons)/, label: "Possible severe infection", sos: "other" },
   // Diabetic emergency.
   { test: /sugar.{0,15}(very (high|low)|too (high|low))|hypo(glycemi|glycaemi)|ketoacidos|breath smells sweet/, label: "Diabetic emergency", sos: "other" },
+
+  /**
+   * ── The same red flags in Hindi and Marathi ──
+   *
+   * Not a nicety. The checker invites people to answer in their own language,
+   * and every rule above is an English regex: without these, a patient typing
+   * "छाती में दर्द और पसीना" matched NOTHING, so the safety floor in the
+   * diagnose route never fired and a heart attack came back as whatever the
+   * model felt like saying. A triage net that only catches English is not a
+   * net for the people this product is built for.
+   *
+   * Written WITHOUT \b — the boundary class is [A-Za-z0-9_], so it does not
+   * mean anything next to Devanagari and only ever fails the match. Spelling
+   * varies more than in English (ज़/ज, साँस/सांस, स्ट्रोक/लकवा), so each
+   * pattern is deliberately loose: a false positive costs one unnecessary
+   * "go now", a false negative costs what it always costs.
+   */
+  { test: /साँस नहीं|सांस नहीं|साँस नही|दम घुट|दम घुट रहा|श्वास नाही|श्वास बंद|साँस रुक|सांस रुक/, label: "Not breathing", sos: "respiratory" },
+  { test: /बेहोश|बेशुद्ध|होश नहीं|होश नाही|शुद्ध हरप|अचेत/, label: "Unconscious", sos: "other" },
+  { test: /(छाती|सीने|छातीत|छातीमध्ये).{0,25}(दर्द|दुख|पीड़ा|वेदना).{0,25}(पसीन|घाम|बांह|बाजू|जबड़|जबडा|सांस|साँस|श्वास)|हार्ट अटैक|दिल का दौरा|हृदयविकाराचा झटका|हृदयाघात/, label: "Heart-attack signs", sos: "cardiac" },
+  { test: /लकवा|पक्षाघात|अर्धांगवायू|चेहरा टेढ़ा|तोंड वाकड|बोली लड़खड़ा|बोलणे अडख|स्ट्रोक/, label: "Stroke signs", sos: "stroke" },
+  { test: /बहुत खून|खूप रक्त|खून बह रहा|रक्त वाहत|खून रुक नहीं|रक्तस्राव|रक्तस्त्राव|खून बंद नहीं/, label: "Severe bleeding", sos: "trauma" },
+  { test: /मिर्गी|मिरगी|दौरा पड़|झटके आ|फेफरे|आकडी|अपस्मार/, label: "Seizure", sos: "other" },
+  { test: /गला बंद|गळा बंद|निगल नहीं|गिळता येत नाही|गले में सूजन|जीभ सूज|एलर्जी.{0,15}(गंभीर|तीव्र)/, label: "Choking / severe allergy", sos: "respiratory" },
+  { test: /आत्महत्या|जान देना|मरना चाहता|मरून जाव|खुद को नुकसान|स्वतःला इजा/, label: "Self-harm risk", sos: "other" },
+  { test: /ज़हर|जहर खा|विष खा|विषबाधा|गोलियां खा ली|गोळ्या खाल्ल्या|ओवरडोज/, label: "Poisoning / overdose", sos: "other" },
+  { test: /एक्सीडेंट|दुर्घटना|अपघात|गंभीर चोट|गंभीर जखम|हिल नहीं|हलता येत नाही/, label: "Serious injury", sos: "trauma" },
+  { test: /प्रसव|प्रसूती|पानी की थैली|पाणी गेल|बच्चा होने वाला|बाळंतपण/, label: "Childbirth", sos: "obstetric" },
+  { test: /साँप ने काटा|सांप ने काटा|सर्पदंश|साप चावला|बिच्छू|विंचू/, label: "Snake or scorpion bite", sos: "other" },
+  { test: /खून की उल्टी|उल्टी में खून|रक्ताची उलटी|उलटीत रक्त|काला पखाना|काळे शौच|मल में खून|शौचातून रक्त/, label: "Bleeding from the gut", sos: "other" },
+  { test: /(बहुत तेज़|बहुत तेज|अचानक तीव्र|असह्य).{0,15}(सिरदर्द|सिर दर्द|डोकेदुखी)|जिंदगी का सबसे तेज सिरदर्द/, label: "Sudden severe headache", sos: "stroke" },
+  { test: /(पेट).{0,20}(असहनीय|बहुत तेज़|बहुत तेज|तीव्र).{0,10}(दर्द|दुख|वेदना)|पेशाब नहीं|लघवी होत नाही|मूत्र नहीं आ/, label: "Severe abdominal problem", sos: "other" },
+  { test: /(बच्चा|बाळ|शिशु|नवजात).{0,25}(दूध नहीं|दूध पीत नाही|सुस्त|उठ नहीं|जागत नाही|निढाल)/, label: "Sick infant", sos: "other" },
+  { test: /(गर्भ|प्रेग्नन्ट|प्रेग्नेंट|गरोदर).{0,25}(खून|रक्त|ब्लीडिंग)|(खून|रक्त).{0,25}(गर्भ|गरोदर)|बच्चा हिल नहीं|बाळाची हालचाल बंद/, label: "Pregnancy emergency", sos: "obstetric" },
 ];
 
 const RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency: 2 };
@@ -257,8 +291,10 @@ export function analyzeSymptoms(input: string): TriageResult | null {
     specialtyScores,
     advice:
       urgency === "urgent"
-        ? `Best seen soon by a ${specialties[0]}. If it gets worse, seek emergency care.`
-        : `A ${specialties[0]} is a good fit. Book a visit below.`,
+        ? // "an ENT", not "a ENT". The specialty list is closed and holds no
+          // awkward cases, so the first letter settles it.
+          `Best seen soon by ${/^[AEIOU]/i.test(specialties[0]) ? "an" : "a"} ${specialties[0]}. If it gets worse, seek emergency care.`
+        : `${/^[AEIOU]/i.test(specialties[0]) ? "An" : "A"} ${specialties[0]} is a good fit. Book a visit below.`,
   };
 }
 
@@ -295,9 +331,28 @@ const SYMPTOM_WORDS =
  * this work" are the two things people genuinely do open with that are not
  * complaints.
  */
+/**
+ * The same question in Devanagari.
+ *
+ * Kept separate from SYMPTOM_WORDS because \b cannot delimit Devanagari (the
+ * word-boundary class is ASCII), so these have to match as bare substrings —
+ * which is fine here: Hindi and Marathi share most of this vocabulary, and a
+ * substring hit on "दर्द" or "ताप" is exactly as much evidence as "pain" is.
+ * Without it every Hindi complaint read as small talk and the model was told
+ * to ask "what's troubling you?" to someone who had just said.
+ */
+const SYMPTOM_WORDS_DEV =
+  /दर्द|दुखत|दुखणे|वेदना|पीड़ा|बुखार|ताप|थंडी|खांसी|खोकला|सर्दी|जुकाम|छींक|शिंक|साँस|सांस|श्वास|दम|खून|रक्त|सूजन|सूज|गाँठ|गाठ|चकत्ते|पुरळ|खुजली|खाज|जलन|आग|सुन्न|बधिर|झुनझुनी|मुंग्या|कमजोर|अशक्त|थकान|थकवा|चक्कर|भोवळ|बेहोश|मळमळ|उल्टी|उलटी|दस्त|जुलाब|संडास|कब्ज|बद्धकोष्ठ|गैस|गॅस|अपच|एसिडिटी|मरोड|पेटके|अकड|मोच|फ्रैक्चर|चोट|जखम|घाव|जख्म|संक्रमण|इन्फेक्शन|पस|फोड़ा|छाला|अल्सर|सिरदर्द|सिर दर्द|डोकेदुखी|माइग्रेन|मायग्रेन|मिर्गी|दौरा|नींद|झोप|अनिद्रा|चिंता|तणाव|तनाव|घबराहट|उदास|नैराश्य|डिप्रेशन|भूख|वजन|प्यास|तहान|पेशाब|लघवी|मूत्र|मल|शौच|पीरियड|मासिक|पाळी|गर्भ|गरोदर|प्रेग्नन्ट|नज़र|नजर|दृष्टी|दिखाई|दिसत नाही|धुंधला|सुनाई|ऐकू|कान|कानदुखी|गला|घसा|टॉन्सिल|दांत|दात|मसूड़|हिरड|मुंह|तोंड|जीभ|त्वचा|कातडी|बाल गिर|केस गळ|कोंडा|मुँहासे|पिंपल|एलर्जी|ॲलर्जी|दमा|अस्थमा|मधुमेह|डायबिटीज|शुगर|साखर|बीपी|रक्तदाब|दबाव|धड़कन|ठोके|हृदय|दिल|छाती|छातीत|सीने|पेट|पोट|पोटात|कमर|कंबर|पाठ|पीठ|गर्दन|मान|कंधा|खांदा|घुटन|गुडघ|जोड़|सांध|मांसपेशी|स्नायू|पैर|पाय|हाथ|हात|सिर|डोक|डोळ|आँख|आंख|नाक|लिवर|यकृत|किडनी|मूत्रपिंड|बवासीर|मूळव्याध|फिशर|हर्निया|थायरॉ|खून की कमी|अ‍ॅनिमिया|एनीमिया|पीलिया|कावीळ|टाइफाइड|मलेरिया|हिवताप|डेंगू|कोविड|फ्लू|वायरल|व्हायरल|तबीयत|तब्येत|बीमार|आजारी|अस्वस्थ|बरं वाटत नाही|ठीक नहीं|बरे नाही/;
+
 export function mentionsSymptom(text: string): boolean {
   const t = (text ?? "").trim();
   if (t.length < 2) return false;
+  // Devanagari first: a Hindi/Marathi greeting is caught by the list below in
+  // its own script, so there is no risk of "नमस्ते" reading as a complaint.
+  if (/^(नमस्ते|नमस्कार|हाय|हॅलो|हैलो|ठीक|धन्यवाद|शुक्रिया|आभारी)[\s!.,।]*$/.test(t)) {
+    return false;
+  }
+  if (SYMPTOM_WORDS_DEV.test(t)) return true;
   // A pure greeting or a question about the product is not a complaint, even
   // if a body word slips into it ("hi, how does this app work?").
   if (/^(hi|hey|hello|namaste|namaskar|hola|yo|test+|ok|okay|thanks?|thank you)\b[\s!.,]*$/i.test(t)) {

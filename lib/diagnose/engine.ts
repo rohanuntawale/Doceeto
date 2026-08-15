@@ -273,7 +273,7 @@ const Q_HEAD: DQuestion = {
       score: { "General Physician": 2, Neurologist: 2 },
       conditions: ["Headache / migraine"],
       causes: [
-        { name: "Tension headache", likelihood: "likely", why: "The commonest cause — tight band-like head pain.", specialty: "General Physician" },
+        { name: "Tension headache", likelihood: "likely", why: "The commonest cause. Tight, band-like head pain.", specialty: "General Physician" },
         { name: "Migraine", likelihood: "possible", why: "Fits if it throbs, or light and sound make it worse.", specialty: "Neurologist" },
         { name: "Sinus-related headache", likelihood: "possible", why: "Fits if the pain sits over the forehead or cheeks.", specialty: "ENT" },
       ],
@@ -383,7 +383,7 @@ const Q_SKIN: DQuestion = {
       emoji: "🔴",
       score: { Dermatologist: 3 },
       causes: [
-        { name: "Acne", likelihood: "likely", why: "Blocked oil glands — the standard cause.", specialty: "Dermatologist" },
+        { name: "Acne", likelihood: "likely", why: "Blocked oil glands, the standard cause.", specialty: "Dermatologist" },
         { name: "A hormonal cause such as PCOS", likelihood: "possible", why: "Considered with irregular periods or jawline acne.", specialty: "Gynecologist" },
       ],
     },
@@ -394,7 +394,7 @@ const Q_SKIN: DQuestion = {
       score: { Dermatologist: 3 },
       causes: [
         { name: "Pattern hair loss", likelihood: "likely", why: "The commonest cause, often runs in the family.", specialty: "Dermatologist" },
-        { name: "Low iron, thyroid or vitamin problem", likelihood: "possible", why: "Very common and reversible — worth a blood test.", specialty: "General Physician" },
+        { name: "Low iron, thyroid or vitamin problem", likelihood: "possible", why: "Very common and reversible, so worth a blood test.", specialty: "General Physician" },
         { name: "Scalp fungal infection", likelihood: "possible", why: "Fits with flaking, itching or patchy loss.", specialty: "Dermatologist" },
       ],
     },
@@ -661,7 +661,7 @@ const Q_CHILD: DQuestion = {
       urgency: "urgent",
       causes: [
         { name: "Stomach infection", likelihood: "likely", why: "The usual cause of vomiting and motions in children.", specialty: "Pediatrician" },
-        { name: "Dehydration", likelihood: "possible", why: "The main risk in small children — watch for dry mouth and less urine.", specialty: "Pediatrician" },
+        { name: "Dehydration", likelihood: "possible", why: "The main risk in small children. Watch for dry mouth and less urine.", specialty: "Pediatrician" },
       ],
     },
     {
@@ -777,6 +777,20 @@ export function initState(seed = "", historyConditions: string[] = []): DState {
 
   return state;
 }
+
+/**
+ * "a Cardiologist", but "an ENT".
+ *
+ * The advice line used to hard-code "a ${specialty}" and rendered "Best seen
+ * soon by a ENT" on screen. The specialty list is closed and none of its
+ * members are the awkward cases (no "a university", no silent H), so testing
+ * the first letter is exactly right here and not a general-purpose rule.
+ */
+function withArticle(specialty: string): string {
+  return `${/^[AEIOU]/i.test(specialty) ? "an" : "a"} ${specialty}`;
+}
+
+const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function addScore(s: DState, sp: Specialty, n: number) {
   s.scores[sp] = (s.scores[sp] ?? 0) + n;
@@ -1054,10 +1068,13 @@ function conclude(s: DState, emergency = false): DConclusion {
       conditions: [flag?.label ?? "Emergency", ...conditions],
       emergency: true,
       sosCategory: flag?.sos ?? "other",
-      // Phrased so the flag label is never the grammatical subject — labels are
+      // Phrased so the flag label is never the grammatical subject. Labels are
       // a mix of singular and plural ("Severe bleeding", "Heart-attack signs")
-      // and interpolating them before a verb gets the agreement wrong.
-      summary: `This needs emergency assessment right now, not an appointment${flag?.label ? ` — ${flag.label.toLowerCase()}` : ""}.`,
+      // and interpolating them before a verb gets the agreement wrong, so the
+      // label is presented as a reported item rather than made to agree.
+      summary: flag?.label
+        ? `Reported: ${flag.label.toLowerCase()}. This needs emergency assessment right now, not an appointment.`
+        : "This needs emergency assessment right now, not an appointment.",
       causes: [
         {
           name: flag?.label ?? "Possible emergency",
@@ -1068,14 +1085,14 @@ function conclude(s: DState, emergency = false): DConclusion {
         ...causes.filter((c) => c.name !== flag?.label),
       ],
       advice:
-        "This looks like it could be an emergency. Get help immediately — call your local emergency number or go to the nearest hospital.",
+        "This looks like it could be an emergency. Get help immediately. Call your local emergency number or go to the nearest hospital.",
     };
   }
 
   const advice =
     s.urgency === "urgent"
-      ? `Best seen soon by a ${specialty}. Book a home visit or video call below — seek emergency care if it gets worse.`
-      : `A ${specialty} is a good fit for this. Book a visit whenever you're ready.`;
+      ? `Best seen soon by ${withArticle(specialty)}. Book a home visit or video call below. Seek emergency care if it gets worse.`
+      : `${capitalise(withArticle(specialty))} is a good fit for this. Book a visit whenever you're ready.`;
 
   return {
     kind: "conclusion",

@@ -135,6 +135,12 @@ a closed episode, and asking about it out of nowhere is wrong and alarming. Hist
 exist to RANK and personalise a complaint the patient has actually raised in THIS conversation —
 never to invent one.
 
+HOUSE STYLE — applies to every word the patient reads, in every language:
+- NEVER use an em dash or an en dash (— or –) anywhere in your output: not in prompts, hints, option
+  labels, cause names, "why" lines, summaries or advice. Write a comma, a full stop and a second
+  sentence, or a colon instead. A hyphen inside a single compound word ("band-like") is fine.
+- Prefer two short sentences to one long one joined by punctuation.
+
 Question rules:
 - Keep language simple; a first-time smartphone user in a small Indian city should understand it.
 - Ask ONE question per turn. Options must be specific and mutually exclusive, each with a short label and an optional emoji.
@@ -190,6 +196,79 @@ interface Body {
   seed?: string;
   answers?: { prompt: string; label: string }[];
   history?: string[];
+  /** UI language the patient is reading in — "en" | "hi" | "mr". */
+  lang?: string;
+}
+
+/**
+ * What language the patient should be ANSWERED in.
+ *
+ * The specialty list stays English on purpose: those strings are keys, not
+ * copy. They become `?specialty=Cardiologist` links and are matched against
+ * doctor records, so a translated "हृदयरोग तज्ञ" would route to an empty
+ * results page. Everything the patient READS is translated; everything the
+ * app ROUTES on is not.
+ */
+const LANGUAGE_DIRECTIVE: Record<string, string> = {
+  hi: `LANGUAGE — CRITICAL: The patient is using the app in HINDI. Write EVERY word they will read in
+natural, everyday Hindi (Devanagari script): the question prompt, the hint, every option label, the
+summary, each cause "name" and "why", and the advice. Use the plain spoken Hindi of an ordinary
+conversation, not formal or Sanskritised vocabulary — the way a doctor in a Nagpur clinic actually
+speaks. Common English medical words that people genuinely use in Hindi (BP, sugar, X-ray) may stay
+as they are, in Devanagari where natural.
+The ONLY exception: every "specialty" and "alt" value MUST remain in English, spelled exactly as
+given in the list — they are internal identifiers the app books on, not text for the patient.
+The patient may type in Hindi, English, or Roman-script Hinglish; understand all three and always
+reply in Hindi.`,
+  mr: `LANGUAGE — CRITICAL: The patient is using the app in MARATHI. Write EVERY word they will read in
+natural, everyday Marathi (Devanagari script): the question prompt, the hint, every option label, the
+summary, each cause "name" and "why", and the advice. Use the plain spoken Marathi of an ordinary
+conversation, not formal or literary vocabulary — the way a doctor in a Nagpur clinic actually
+speaks. Common English medical words that people genuinely use in Marathi (BP, sugar, X-ray) may
+stay as they are, in Devanagari where natural.
+The ONLY exception: every "specialty" and "alt" value MUST remain in English, spelled exactly as
+given in the list — they are internal identifiers the app books on, not text for the patient.
+The patient may type in Marathi, Hindi, or English; understand all three and always reply in
+Marathi.`,
+};
+
+/**
+ * No dashes in patient-facing copy.
+ *
+ * The house style is stated in the prompt, and a prompt is a request, not a
+ * guarantee — this model in particular has already shown it will ignore an
+ * instruction it finds inconvenient. Every string the patient reads goes
+ * through here on the way out, so the rule holds whatever the model felt like
+ * writing. A hyphen INSIDE a word ("band-like", "less-likely") is untouched;
+ * only the dashes used as punctuation are.
+ */
+function dedash(s: string): string {
+  return s
+    .replace(/\s*[—–]\s*/g, ", ")
+    // " , " artefacts from a dash that already followed a comma.
+    .replace(/,\s*,/g, ",")
+    .replace(/\s+([.,!?;:।])/g, "$1")
+    .trim();
+}
+
+/** Apply dedash to every patient-facing field of a step, in place. */
+function dedashStep(s: Record<string, unknown>): void {
+  for (const k of ["prompt", "hint", "summary", "advice", "nurseWhy"]) {
+    if (typeof s[k] === "string") s[k] = dedash(s[k] as string);
+  }
+  if (Array.isArray(s.options)) {
+    s.options = (s.options as Record<string, unknown>[]).map((o) => ({
+      ...o,
+      label: typeof o.label === "string" ? dedash(o.label) : o.label,
+    }));
+  }
+  if (Array.isArray(s.causes)) {
+    s.causes = (s.causes as Record<string, unknown>[]).map((c) => ({
+      ...c,
+      name: typeof c.name === "string" ? dedash(c.name) : c.name,
+      why: typeof c.why === "string" ? dedash(c.why) : c.why,
+    }));
+  }
 }
 
 /** Pull the JSON object out of a reply that may be fenced or prefixed. */
@@ -236,6 +315,31 @@ const LIKELIHOODS = ["likely", "possible", "less-likely"] as const;
 const URGENCY_RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency: 2 };
 
 /**
+ * The emergency instruction, in every language the app speaks.
+ *
+ * This is the single most consequential sentence the product produces, and it
+ * is written HERE in code rather than by the model — the safety floor fires
+ * exactly when the model cannot be trusted to have understood, so asking it to
+ * translate its own override would defeat the point. A frightened person reads
+ * the first line and nothing else; it has to be in their language.
+ */
+const EMERGENCY_CALL: Record<string, string> = {
+  en: "Call 112 (or 108 for an ambulance) now, or go straight to the nearest emergency department. Do not wait for an appointment.",
+  hi: "अभी 112 (या एम्बुलेंस के लिए 108) पर कॉल करें, या सीधे नज़दीकी अस्पताल के इमरजेंसी विभाग जाएँ। अपॉइंटमेंट का इंतज़ार न करें।",
+  mr: "आत्ताच 112 (किंवा रुग्णवाहिकेसाठी 108) वर फोन करा, किंवा थेट जवळच्या रुग्णालयाच्या इमर्जन्सी विभागात जा. अपॉइंटमेंटची वाट पाहू नका.",
+};
+
+/** The one-line summary that accompanies a rules-forced emergency. */
+const EMERGENCY_SUMMARY: Record<string, (flags: string) => string> = {
+  en: (f) => `What you've described (${f}) needs to be seen right now, not booked.`,
+  hi: () => "आपने जो बताया है, उसे अभी डॉक्टर को दिखाना ज़रूरी है। अपॉइंटमेंट लेने का समय नहीं है।",
+  mr: () => "तुम्ही जे सांगितले आहे ते आत्ताच डॉक्टरांना दाखवणे गरजेचे आहे. अपॉइंटमेंट घेण्याची वेळ नाही.",
+};
+
+const pickLang = (lang: string | undefined) =>
+  lang === "hi" || lang === "mr" ? lang : "en";
+
+/**
  * THE SAFETY FLOOR — the most important function in this file.
  *
  * A language model is the best thing we have for ranking a differential, and
@@ -254,7 +358,7 @@ const URGENCY_RANK: Record<Urgency, number> = { routine: 0, urgent: 1, emergency
  * This can only ever raise urgency. It never downgrades a model that was more
  * worried than the rules were.
  */
-function applySafetyFloor(s: Record<string, unknown>, spoken: string): void {
+function applySafetyFloor(s: Record<string, unknown>, spoken: string, lang = "en"): void {
   const floor = analyzeSymptoms(spoken);
   if (!floor) return;
 
@@ -276,10 +380,12 @@ function applySafetyFloor(s: Record<string, unknown>, spoken: string): void {
     s.redFlags = floor.redFlags;
 
     const advice = typeof s.advice === "string" ? s.advice.trim() : "";
-    const call =
-      "Call 112 (or 108 for an ambulance) now, or go straight to the nearest emergency department. Do not wait for an appointment.";
+    const call = EMERGENCY_CALL[pickLang(lang)];
     // Lead with the instruction. Someone frightened reads the first sentence.
-    if (!/\b112\b|\b108\b|emergency department|nearest hospital/i.test(advice)) {
+    // The check is on the NUMBERS, not the English words — in Hindi or Marathi
+    // the model's own advice carries 112/108 and none of the English phrases,
+    // and prepending a second copy of the instruction reads as panic.
+    if (!/112|108|११२|१०८|emergency department|nearest hospital|इमरजेंसी|इमर्जन्सी|अस्पताल|रुग्णालय/i.test(advice)) {
       s.advice = advice ? `${call} ${advice}` : call;
     }
   }
@@ -376,6 +482,20 @@ export async function POST(req: Request) {
   }
 
   const asked = body.answers?.length ?? 0;
+  const langDirective = LANGUAGE_DIRECTIVE[String(body.lang ?? "en")] ?? "";
+  /**
+   * Devanagari is expensive on both axes, and both had to be raised.
+   *
+   * A tokenizer built for English splits Hindi and Marathi into several tokens
+   * per syllable, so the SAME question costs roughly two to three times the
+   * tokens — it takes longer to generate (measured: English ~11s, Hindi 8-16s+
+   * on the same model) and it comes far closer to the output cap, where the
+   * JSON is cut mid-string and parses to nothing. Sharing English's budgets
+   * meant Hindi timed out or returned bad JSON often enough that the offline
+   * English engine answered most turns, which is precisely the bug this whole
+   * change set exists to remove.
+   */
+  const wideScript = body.lang === "hi" || body.lang === "mr";
   /** Deterministic: has the patient described a problem at all? */
   const complained = mentionsSymptom(spokenText(body));
   const transcript = [
@@ -408,7 +528,15 @@ export async function POST(req: Request) {
     ...(body.answers ?? []).map((a) => `Q: ${a.prompt}\nA: ${a.label}`),
     asked >= MAX_QUESTIONS
       ? "You have asked enough. Give the CONCLUSION now as strict JSON — do not ask another question."
-      : "Give the next step now (question or conclusion) as strict JSON.",
+      : complained
+        ? // Repeated at the END on purpose. The gate is stated once near the
+          // top, and in Hindi the model was still opening with "आज आपको क्या
+          // परेशानी है?" to a patient who had just written "कल से बुखार और
+          // सिरदर्द" — asking a worried person to repeat themselves, which is
+          // the one failure they always notice. The last line of a prompt is
+          // the one that survives, so the rule is restated where it lands.
+          "Give the next step now as strict JSON. The patient HAS already told you their problem — your question must NARROW IT DOWN. Do not open with \"what is troubling you\" or any variant of it."
+        : "Give the next step now (question or conclusion) as strict JSON.",
   ].join("\n");
 
   try {
@@ -436,10 +564,13 @@ export async function POST(req: Request) {
          * model think for a conclusion's worth of time before answering
          * "where does it hurt?", and the patient waited for all of it.
          */
-        max_tokens: asked >= MAX_QUESTIONS ? 1200 : 500,
+        max_tokens: asked >= MAX_QUESTIONS ? (wideScript ? 2000 : 1200) : wideScript ? 900 : 500,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },
+          // Appended as its own system turn rather than folded into SYSTEM so
+          // the English prompt stays one cacheable constant across languages.
+          ...(langDirective ? [{ role: "system", content: langDirective }] : []),
           { role: "user", content: transcript },
         ],
       }),
@@ -449,8 +580,22 @@ export async function POST(req: Request) {
        * is always there, so failing over to it fast is strictly better than
        * waiting. The conclusion gets longer, because arriving late with the
        * real answer still beats a generic one.
+       *
+       * MEASURED, not guessed. The question budget was 8s, which the model in
+       * OPENROUTER_MODEL (a 550B) never once met: every question timed out and
+       * silently fell through to the offline engine, so the AI checker was
+       * effectively switched off — and because that engine only speaks English,
+       * a Hindi or Marathi patient got English options under translated chrome.
+       * A fallback that fires 100% of the time is not a fallback, it is the
+       * product. Measured round-trips here sit around 9-13s, so the budget is
+       * the far side of that with room for a slow day.
+       *
+       * If you swap in a faster model, bring this back down — the number should
+       * track the model, not drift upward on its own.
        */
-      signal: AbortSignal.timeout(asked >= MAX_QUESTIONS ? 20_000 : 8_000),
+      signal: AbortSignal.timeout(
+        asked >= MAX_QUESTIONS ? (wideScript ? 34_000 : 25_000) : wideScript ? 22_000 : 16_000,
+      ),
     });
 
     if (!res.ok) {
@@ -492,9 +637,10 @@ export async function POST(req: Request) {
               likelihood: i === 0 ? "likely" : "possible",
               specialty: normaliseSpecialty(floor.specialties[i] ?? floor.specialties[0]) ?? "General Physician",
             })),
-            summary: `What you've described (${floor.redFlags.join(", ").toLowerCase()}) needs to be seen right now, not booked.`,
-            advice:
-              "Call 112 (or 108 for an ambulance) now, or go straight to the nearest emergency department. Do not wait for an appointment.",
+            summary: EMERGENCY_SUMMARY[pickLang(body.lang)](
+              floor.redFlags.join(", ").toLowerCase(),
+            ),
+            advice: EMERGENCY_CALL[pickLang(body.lang)],
           },
           model: "safety-floor",
           personalised: Boolean(profile),
@@ -564,8 +710,12 @@ export async function POST(req: Request) {
 
       // LAST WORD. Runs after every other normalisation so nothing downstream
       // can quietly relax an urgency the rules insisted on.
-      applySafetyFloor(s, spoken);
+      applySafetyFloor(s, spoken, body.lang);
     }
+    // Last thing before it leaves: strip the punctuation dashes the prompt
+    // asked for and the model may still have written. After the safety floor,
+    // so its own wording is covered too.
+    dedashStep(s);
     // `data.model` is what actually served it (may be a fallback, not `model`).
     // `personalised` lets the UI say the answer used their health record.
     return NextResponse.json({ step: s, model: data?.model ?? model, personalised: Boolean(profile) });

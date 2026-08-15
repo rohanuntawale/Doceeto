@@ -395,6 +395,102 @@ const EN: Dict = {
   "nurse.acceptedToast": "Visit accepted",
   "nurse.acceptFailed": "Could not accept",
   "nurse.tryAgain": "Please try again.",
+
+  // Public symptom checker (/try/checker). Translated because it is the first
+  // thing a stranger touches — asking someone to describe what hurts in a
+  // second language is where a health product loses them.
+  "checker.title": "Symptom check",
+  "checker.pageLabel": "Two free checks",
+  "checker.pageTitle": "What's going on?",
+  "checker.opener":
+    "Hi, I'm here to help you work out who to see. Tell me what's going on, in your own words.",
+  "checker.freeLeft": "{n} free checks left",
+  "checker.freeLeftOne": "1 free check left",
+  "checker.answered": "{a} of up to {b} answered",
+  "checker.done": "Done",
+  "checker.restart": "Restart",
+  "checker.thinking": "Thinking it through…",
+  "checker.notSure": "I'm not sure",
+  "checker.somethingElse": "Something else…",
+  "checker.placeholder": "e.g. headache and fever since yesterday",
+  "checker.placeholderAnswer": "Type your answer…",
+  "checker.send": "Send",
+  "checker.aria": "Describe your symptoms",
+  "checker.skip": "Skip the rest, just tell me what you think",
+  "checker.skipSaid": "Just tell me what you think.",
+  "checker.guidanceOnly": "Guidance only, not a diagnosis.",
+  "checker.langHint": "Answer in your own language",
+  "checker.ex1": "Sore throat for 3 days",
+  "checker.ex2": "Lower back pain",
+  "checker.ex3": "Rash on my arm",
+  "checker.ex4": "Child with fever",
+  // Conclusion
+  "checker.emergencyTitle": "What you described needs emergency care",
+  "checker.emergencyDesc":
+    "Call 112 or go to the nearest emergency department now. Don't wait for an appointment.",
+  "checker.pointsTo": "What this points to",
+  "checker.urgencyEmergency": "Emergency",
+  "checker.urgencyUrgent": "See someone today",
+  "checker.urgencyRoutine": "Routine",
+  "checker.likely": "likely",
+  "checker.possible": "possible",
+  "checker.lessLikely": "less likely",
+  "checker.notDiagnosis":
+    "This is guidance, not a diagnosis. Only a doctor who examines you can give you one.",
+  "checker.turnIntoAppt": "Turn this into an appointment",
+  "checker.secondFree": "That was your second free check",
+  "checker.upsell":
+    "With an account this check is saved so you can show a doctor exactly what you answered, it's personalised against your history and medication, and it books you the right doctor in one tap.",
+  "checker.createAccount": "Create an account",
+  "checker.logIn": "Log in",
+  "checker.checkAnother": "Check something else",
+  // Wall
+  "checker.wallTitle": "You've used both free checks",
+  "checker.wallDesc":
+    "Create an account for unlimited checks that remember your history, save every result, and connect straight to a doctor who can act on them.",
+  "checker.seeDoctors": "See doctors free now",
+
+  /**
+   * Offline-engine emergency copy, and the red-flag names.
+   *
+   * When the AI route is unavailable (no key, a timeout, a rate limit) the
+   * deterministic engine answers instead — and it is English by construction.
+   * That is survivable for a routine result and NOT survivable for an
+   * emergency, which is exactly the case the offline path exists to catch. So
+   * the emergency wording and the closed set of red-flag names are translated
+   * here and swapped in at render time; the engine keeps returning English and
+   * every other consumer of it is untouched.
+   */
+  "checker.offlineEmergencySummary":
+    "This needs emergency assessment right now, not an appointment.",
+  "checker.offlineEmergencyWhy": "Reported as happening right now.",
+  "checker.offlineEmergencyAdvice":
+    "This looks like it could be an emergency. Get help immediately. Call 112 (or 108 for an ambulance) or go to the nearest hospital.",
+  "flag.Not breathing": "Not breathing",
+  "flag.Unconscious": "Unconscious",
+  "flag.Heart-attack signs": "Heart-attack signs",
+  "flag.Stroke signs": "Stroke signs",
+  "flag.Severe bleeding": "Severe bleeding",
+  "flag.Seizure": "Seizure",
+  "flag.Choking / severe allergy": "Choking / severe allergy",
+  "flag.Self-harm risk": "Self-harm risk",
+  "flag.Poisoning / overdose": "Poisoning / overdose",
+  "flag.Serious injury": "Serious injury",
+  "flag.Childbirth": "Childbirth",
+  "flag.Sudden severe headache": "Sudden severe headache",
+  "flag.Possible meningitis": "Possible meningitis",
+  "flag.Bleeding from the gut": "Bleeding from the gut",
+  "flag.Severe abdominal problem": "Severe abdominal problem",
+  "flag.Sudden testicular pain": "Sudden testicular pain",
+  "flag.Sudden vision loss": "Sudden vision loss",
+  "flag.Pregnancy emergency": "Pregnancy emergency",
+  "flag.Sick infant": "Sick infant",
+  "flag.Snake or scorpion bite": "Snake or scorpion bite",
+  "flag.Serious burn or shock": "Serious burn or shock",
+  "flag.Possible severe infection": "Possible severe infection",
+  "flag.Diabetic emergency": "Diabetic emergency",
+  "flag.Possible emergency": "Possible emergency",
+  "eng.General consultation": "General consultation",
 };
 
 const HI: Dict = {
@@ -759,6 +855,90 @@ const HI: Dict = {
   "nurse.acceptedToast": "विज़िट स्वीकार की गई",
   "nurse.acceptFailed": "स्वीकार नहीं हो सका",
   "nurse.tryAgain": "कृपया फिर कोशिश करें।",
+
+  // Public symptom checker
+  "checker.title": "लक्षण जाँच",
+  "checker.pageLabel": "दो मुफ़्त जाँच",
+  "checker.pageTitle": "क्या तकलीफ़ है?",
+  "checker.opener":
+    "नमस्ते, मैं आपकी मदद करूँगा कि आपको किसे दिखाना चाहिए। अपने शब्दों में बताइए क्या तकलीफ़ है।",
+  "checker.freeLeft": "{n} मुफ़्त जाँच बाकी",
+  "checker.freeLeftOne": "1 मुफ़्त जाँच बाकी",
+  "checker.answered": "{b} में से {a} के जवाब दिए",
+  "checker.done": "पूरा",
+  "checker.restart": "फिर से शुरू",
+  "checker.thinking": "सोच रहा हूँ…",
+  "checker.notSure": "मुझे ठीक से पता नहीं",
+  "checker.somethingElse": "कुछ और…",
+  "checker.placeholder": "जैसे, कल से सिरदर्द और बुखार",
+  "checker.placeholderAnswer": "अपना जवाब लिखें…",
+  "checker.send": "भेजें",
+  "checker.aria": "अपने लक्षण बताएँ",
+  "checker.skip": "बाकी छोड़िए, बस बता दीजिए क्या लगता है",
+  "checker.skipSaid": "बस बता दीजिए क्या लगता है।",
+  "checker.guidanceOnly": "यह सिर्फ़ मार्गदर्शन है, निदान नहीं।",
+  "checker.langHint": "अपनी भाषा में जवाब दें",
+  "checker.ex1": "3 दिन से गले में दर्द",
+  "checker.ex2": "कमर के निचले हिस्से में दर्द",
+  "checker.ex3": "बाँह पर चकत्ते",
+  "checker.ex4": "बच्चे को बुखार",
+  // Conclusion
+  "checker.emergencyTitle": "आपने जो बताया, उसमें तुरंत इलाज ज़रूरी है",
+  "checker.emergencyDesc":
+    "अभी 112 पर कॉल करें या नज़दीकी अस्पताल के इमरजेंसी विभाग जाएँ। अपॉइंटमेंट का इंतज़ार न करें।",
+  "checker.pointsTo": "यह किस ओर इशारा करता है",
+  "checker.urgencyEmergency": "आपातकाल",
+  "checker.urgencyUrgent": "आज ही दिखाएँ",
+  "checker.urgencyRoutine": "सामान्य",
+  "checker.likely": "संभावित",
+  "checker.possible": "हो सकता है",
+  "checker.lessLikely": "कम संभावना",
+  "checker.notDiagnosis":
+    "यह मार्गदर्शन है, निदान नहीं। निदान सिर्फ़ वही डॉक्टर दे सकते हैं जो आपको देखकर जाँचें।",
+  "checker.turnIntoAppt": "इसे अपॉइंटमेंट में बदलें",
+  "checker.secondFree": "यह आपकी दूसरी मुफ़्त जाँच थी",
+  "checker.upsell":
+    "खाता बनाने पर यह जाँच सहेजी जाती है, ताकि आप डॉक्टर को ठीक-ठीक दिखा सकें कि आपने क्या बताया; यह आपके इतिहास और दवाओं के हिसाब से होती है, और एक टैप में सही डॉक्टर बुक कर देती है।",
+  "checker.createAccount": "खाता बनाएँ",
+  "checker.logIn": "लॉग इन",
+  "checker.checkAnother": "कुछ और जाँचें",
+  // Wall
+  "checker.wallTitle": "आपकी दोनों मुफ़्त जाँचें हो चुकी हैं",
+  "checker.wallDesc":
+    "खाता बनाइए और पाइए असीमित जाँच, हर नतीजा सहेजा हुआ, आपका इतिहास याद रखने वाला, और सीधे उस डॉक्टर तक पहुँच जो उस पर कुछ कर सके।",
+  "checker.seeDoctors": "अभी मुफ़्त डॉक्टर देखें",
+
+  // Offline-engine emergency copy + red-flag names
+  "checker.offlineEmergencySummary":
+    "इसे अभी आपातकालीन जाँच की ज़रूरत है, अपॉइंटमेंट की नहीं।",
+  "checker.offlineEmergencyWhy": "अभी हो रहा बताया गया है।",
+  "checker.offlineEmergencyAdvice":
+    "यह आपातकाल हो सकता है। तुरंत मदद लें। 112 (या एम्बुलेंस के लिए 108) पर कॉल करें या नज़दीकी अस्पताल जाएँ।",
+  "flag.Not breathing": "साँस नहीं आ रही",
+  "flag.Unconscious": "बेहोशी",
+  "flag.Heart-attack signs": "दिल के दौरे के लक्षण",
+  "flag.Stroke signs": "लकवे के लक्षण",
+  "flag.Severe bleeding": "बहुत ज़्यादा खून बहना",
+  "flag.Seizure": "दौरा पड़ना",
+  "flag.Choking / severe allergy": "गला बंद होना / गंभीर एलर्जी",
+  "flag.Self-harm risk": "खुद को नुकसान पहुँचाने का खतरा",
+  "flag.Poisoning / overdose": "ज़हर / ओवरडोज़",
+  "flag.Serious injury": "गंभीर चोट",
+  "flag.Childbirth": "प्रसव",
+  "flag.Sudden severe headache": "अचानक बहुत तेज़ सिरदर्द",
+  "flag.Possible meningitis": "दिमागी बुखार की आशंका",
+  "flag.Bleeding from the gut": "पेट से खून आना",
+  "flag.Severe abdominal problem": "पेट की गंभीर तकलीफ़",
+  "flag.Sudden testicular pain": "अंडकोष में अचानक दर्द",
+  "flag.Sudden vision loss": "अचानक दिखना बंद",
+  "flag.Pregnancy emergency": "गर्भावस्था की आपात स्थिति",
+  "flag.Sick infant": "बीमार शिशु",
+  "flag.Snake or scorpion bite": "साँप या बिच्छू का काटना",
+  "flag.Serious burn or shock": "गंभीर जलन या करंट",
+  "flag.Possible severe infection": "गंभीर संक्रमण की आशंका",
+  "flag.Diabetic emergency": "मधुमेह की आपात स्थिति",
+  "flag.Possible emergency": "संभावित आपातकाल",
+  "eng.General consultation": "सामान्य परामर्श",
 };
 
 const MR: Dict = {
@@ -1123,6 +1303,90 @@ const MR: Dict = {
   "nurse.acceptedToast": "भेट स्वीकारली",
   "nurse.acceptFailed": "स्वीकारता आले नाही",
   "nurse.tryAgain": "कृपया पुन्हा प्रयत्न करा.",
+
+  // Public symptom checker
+  "checker.title": "लक्षण तपासणी",
+  "checker.pageLabel": "दोन मोफत तपासण्या",
+  "checker.pageTitle": "काय त्रास होतोय?",
+  "checker.opener":
+    "नमस्कार, तुम्हाला कोणाला दाखवायचे हे ठरवायला मी मदत करतो. तुमच्या शब्दांत सांगा काय त्रास होतोय.",
+  "checker.freeLeft": "{n} मोफत तपासण्या शिल्लक",
+  "checker.freeLeftOne": "1 मोफत तपासणी शिल्लक",
+  "checker.answered": "{b} पैकी {a} उत्तरे दिली",
+  "checker.done": "पूर्ण",
+  "checker.restart": "पुन्हा सुरू",
+  "checker.thinking": "विचार करतोय…",
+  "checker.notSure": "मला नक्की माहीत नाही",
+  "checker.somethingElse": "आणखी काही…",
+  "checker.placeholder": "उदा. कालपासून डोकेदुखी आणि ताप",
+  "checker.placeholderAnswer": "तुमचे उत्तर लिहा…",
+  "checker.send": "पाठवा",
+  "checker.aria": "तुमची लक्षणे सांगा",
+  "checker.skip": "बाकीचे राहू द्या, काय वाटतंय तेच सांगा",
+  "checker.skipSaid": "काय वाटतंय तेच सांगा.",
+  "checker.guidanceOnly": "हे फक्त मार्गदर्शन आहे, निदान नाही.",
+  "checker.langHint": "तुमच्या भाषेत उत्तर द्या",
+  "checker.ex1": "3 दिवसांपासून घसा दुखतोय",
+  "checker.ex2": "कंबरेच्या खालच्या भागात दुखणे",
+  "checker.ex3": "हातावर पुरळ",
+  "checker.ex4": "मुलाला ताप",
+  // Conclusion
+  "checker.emergencyTitle": "तुम्ही सांगितलेल्या त्रासाला तातडीने उपचार हवेत",
+  "checker.emergencyDesc":
+    "आत्ताच 112 वर फोन करा किंवा जवळच्या रुग्णालयाच्या इमर्जन्सी विभागात जा. अपॉइंटमेंटची वाट पाहू नका.",
+  "checker.pointsTo": "हे कशाकडे निर्देश करते",
+  "checker.urgencyEmergency": "आणीबाणी",
+  "checker.urgencyUrgent": "आजच दाखवा",
+  "checker.urgencyRoutine": "सामान्य",
+  "checker.likely": "शक्यता जास्त",
+  "checker.possible": "असू शकते",
+  "checker.lessLikely": "शक्यता कमी",
+  "checker.notDiagnosis":
+    "हे मार्गदर्शन आहे, निदान नाही. निदान फक्त तुम्हाला तपासणारे डॉक्टरच देऊ शकतात.",
+  "checker.turnIntoAppt": "याचे अपॉइंटमेंटमध्ये रूपांतर करा",
+  "checker.secondFree": "ही तुमची दुसरी मोफत तपासणी होती",
+  "checker.upsell":
+    "खाते काढल्यावर ही तपासणी जतन होते, म्हणजे तुम्ही डॉक्टरांना नेमके काय सांगितले ते दाखवू शकता; ती तुमचा इतिहास आणि औषधांनुसार वैयक्तिक होते, आणि एका टॅपमध्ये योग्य डॉक्टर बुक करते.",
+  "checker.createAccount": "खाते काढा",
+  "checker.logIn": "लॉग इन",
+  "checker.checkAnother": "आणखी काही तपासा",
+  // Wall
+  "checker.wallTitle": "तुमच्या दोन्ही मोफत तपासण्या झाल्या",
+  "checker.wallDesc":
+    "खाते काढा आणि मिळवा अमर्याद तपासण्या, प्रत्येक निकाल जतन, तुमचा इतिहास लक्षात ठेवणाऱ्या, आणि थेट त्या डॉक्टरांपर्यंत पोहोच जे त्यावर काही करू शकतील.",
+  "checker.seeDoctors": "आत्ताच मोफत डॉक्टर पहा",
+
+  // Offline-engine emergency copy + red-flag names
+  "checker.offlineEmergencySummary":
+    "याला आत्ताच आपत्कालीन तपासणी हवी, अपॉइंटमेंट नाही.",
+  "checker.offlineEmergencyWhy": "आत्ता घडत असल्याचे सांगितले आहे.",
+  "checker.offlineEmergencyAdvice":
+    "ही आणीबाणी असू शकते. लगेच मदत घ्या. 112 (किंवा रुग्णवाहिकेसाठी 108) वर फोन करा किंवा जवळच्या रुग्णालयात जा.",
+  "flag.Not breathing": "श्वास घेता येत नाही",
+  "flag.Unconscious": "बेशुद्धी",
+  "flag.Heart-attack signs": "हृदयविकाराच्या झटक्याची लक्षणे",
+  "flag.Stroke signs": "पक्षाघाताची लक्षणे",
+  "flag.Severe bleeding": "खूप रक्तस्राव",
+  "flag.Seizure": "फेफरे",
+  "flag.Choking / severe allergy": "गळा बंद होणे / तीव्र ॲलर्जी",
+  "flag.Self-harm risk": "स्वतःला इजा करण्याचा धोका",
+  "flag.Poisoning / overdose": "विषबाधा / ओव्हरडोस",
+  "flag.Serious injury": "गंभीर दुखापत",
+  "flag.Childbirth": "बाळंतपण",
+  "flag.Sudden severe headache": "अचानक तीव्र डोकेदुखी",
+  "flag.Possible meningitis": "मेंदूज्वराची शक्यता",
+  "flag.Bleeding from the gut": "पोटातून रक्त येणे",
+  "flag.Severe abdominal problem": "पोटाचा गंभीर त्रास",
+  "flag.Sudden testicular pain": "अंडकोषात अचानक वेदना",
+  "flag.Sudden vision loss": "अचानक दृष्टी जाणे",
+  "flag.Pregnancy emergency": "गर्भारपणातील आणीबाणी",
+  "flag.Sick infant": "आजारी बाळ",
+  "flag.Snake or scorpion bite": "साप किंवा विंचू चावणे",
+  "flag.Serious burn or shock": "गंभीर भाजणे किंवा विजेचा धक्का",
+  "flag.Possible severe infection": "गंभीर संसर्गाची शक्यता",
+  "flag.Diabetic emergency": "मधुमेहाची आणीबाणी",
+  "flag.Possible emergency": "संभाव्य आणीबाणी",
+  "eng.General consultation": "सामान्य सल्ला",
 };
 
 const DICT: Record<LangCode, Dict> = { en: EN, hi: HI, mr: MR };

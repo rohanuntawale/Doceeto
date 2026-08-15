@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ForestScene } from "./forest-scene";
 import { LandingHeroStats } from "./landing-hero-stats";
 import { LandingTicker } from "./landing-ticker";
 
@@ -19,8 +20,14 @@ export function LandingHero() {
        through the rest of the page. Its bottom corners curve away, so the
        green reads through at the edges and the manifesto below continues the
        same colour — the panel lifts off the page rather than ending on it. */
-    <section className="relative bg-forest">
+    // id: the section rail observes and scrolls to it, and it gives the
+    // "back to top" dot somewhere real to land.
+    <section id="hero" className="relative bg-forest">
       <div className="paper-panel relative overflow-hidden rounded-b-[2rem] sm:rounded-b-[3rem] lg:rounded-b-[4.5rem]">
+        {/* The house-call footage that was briefly staged here now has its own
+            section further down (LandingFilm), where it is watched rather than
+            washed out. The hero's background is the forest below. */}
+
         {/* Background ambient glow washes + brutalist grid lines */}
         <div
           className="absolute inset-0 overflow-hidden pointer-events-none"
@@ -30,6 +37,43 @@ export function LandingHero() {
           <div className="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full bg-[#2F7BC4]/10 blur-[150px]" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[rgb(var(--c-salmon)/0.10)] blur-[180px]" />
           <div className="absolute inset-0 pattern-dots opacity-25 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,#000_0%,transparent_80%)]" />
+        </div>
+
+        {/* ── The forest, behind the whole screen ──
+            Full-bleed scenery, not an object parked in the right half: the
+            camera frames the landscape to the container's width (see
+            ForestScene), so it spans the section and reads as the horizon the
+            copy is standing in front of. It stays BEHIND the copy (z-0 under
+            the z-10 content), and the wash layer directly below this one is
+            what keeps the headline legible where the two overlap — the model
+            itself is only masked at its edges so the canvas has no visible
+            border.
+
+            lg and up only. Below that the hero is already a full screen of
+            headline and three buttons, and there is no room for scenery worth
+            12 MB — ForestScene declines to load at all under 1024px. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden opacity-60 [mask-image:radial-gradient(125%_105%_at_50%_58%,#000_35%,rgb(0_0_0/0.55)_72%,transparent_100%)] lg:block"
+        >
+          <ForestScene className="h-full w-full" />
+        </div>
+
+        {/* ── Readability wash ──
+            The one layer that makes the forest survivable behind type. A flat
+            paper veil knocks the whole scene back, a left-to-right gradient
+            buries it entirely under the headline and buttons, and the top and
+            bottom fades hand the panel back to solid paper — at the top so the
+            glass header has something quiet to float on, at the bottom so the
+            stats row starts on clean ground. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0"
+        >
+          <div className="absolute inset-0 bg-[rgb(var(--bg-rgb)/0.38)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(var(--bg-rgb)/0.92)_0%,rgb(var(--bg-rgb)/0.72)_38%,rgb(var(--bg-rgb)/0.28)_66%,rgb(var(--bg-rgb)/0)_100%)]" />
+          <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,rgb(var(--bg-rgb)/0.85),rgb(var(--bg-rgb)/0))]" />
+          <div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(to_top,rgb(var(--bg-rgb))_0%,rgb(var(--bg-rgb))_28%,rgb(var(--bg-rgb)/0)_100%)]" />
         </div>
 
         <div className="relative z-10 flex min-h-[82vh] items-center px-6 pt-28 pb-16">

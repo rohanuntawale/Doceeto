@@ -43,16 +43,17 @@ export function Wordmark({
   );
 }
 
-/** The "doc·ee·to" lockup with the middle pair in brand gold. */
+/** The "Doc·ee·to" lockup with the middle pair in brand gold. Title case —
+ *  the name is a proper noun and reads as one everywhere it appears. */
 export function Name({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "font-serif font-bold lowercase tracking-tight text-[var(--text)]",
+        "font-serif font-bold tracking-tight text-[var(--text)]",
         className,
       )}
     >
-      doc<span style={{ color: BRAND.gold }}>ee</span>to
+      Doc<span style={{ color: BRAND.gold }}>ee</span>to
     </span>
   );
 }
@@ -72,15 +73,18 @@ export function BrandMark({
 }) {
   return (
     <svg
-      viewBox="0 0 512 512"
+      /* Cropped to the ARTWORK, not the 512-square app-icon canvas it was
+         drawn on. The art spans x 110–448, y 135–377; against the full canvas
+         that left ~13% dead space on every side, so in a lockup the flexbox
+         centred the invisible canvas while the visible D sat small and off
+         to one side, with phantom padding widening the gap to the name.
+         14 units of breathing room on each edge keeps strokes off the crop. */
+      viewBox="96 121 366 270"
       className={cn("h-[34px] w-[34px] shrink-0", className)}
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Doceeto"
     >
-      {/* Background */}
-      <rect width="512" height="512" rx="80" fill="#ffffff00" />
-
       {/* Main green D-shaped logo */}
       <path
         d="
