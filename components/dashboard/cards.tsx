@@ -105,16 +105,19 @@ export function GaugeCard({
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - Math.max(0, Math.min(100, value)) / 100);
   return (
-    <section className="fh-card relative flex h-full flex-col overflow-hidden rounded-3xl p-5">
+    <section className="fh-card relative flex h-full min-h-[430px] flex-col overflow-hidden rounded-[28px] p-4 sm:p-5">
       <div className="pattern-grid pointer-events-none absolute inset-0" aria-hidden />
-      <div className="relative flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-cream">
-          <Activity className="h-4 w-4 text-[rgb(var(--c-terracotta))]" /> {title}
+      <div className="relative flex items-center justify-between gap-3">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-cream">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-[rgb(var(--c-terracotta))]/12 ring-1 ring-inset ring-[rgb(var(--c-terracotta))]/20">
+            <Activity className="h-4 w-4 text-[rgb(var(--c-terracotta))]" />
+          </span>
+          <span className="truncate">{title}</span>
         </h3>
         {trend !== undefined && <TrendBadge value={trend} />}
       </div>
-      <div className="relative mx-auto mt-3 grid flex-1 place-items-center">
-        <svg viewBox="0 0 120 120" className="h-32 w-32 -rotate-90">
+      <div className="relative flex h-[204px] shrink-0 items-center justify-center sm:h-[218px]">
+        <svg viewBox="0 0 120 120" className="h-[158px] w-[158px] -rotate-90 sm:h-[170px] sm:w-[170px]">
           <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-[rgb(var(--c-espresso-700))]" />
           <circle
             cx="60"
@@ -128,17 +131,17 @@ export function GaugeCard({
             strokeDashoffset={offset}
           />
         </svg>
-        <div className="absolute text-center">
-          <p className="text-2xl font-bold text-cream">{value}%</p>
-          <p className="text-[11px] text-[var(--text-muted)]">{caption}</p>
+        <div className="absolute inset-x-0 top-1/2 mx-auto w-[132px] -translate-y-1/2 text-center">
+          <p className="text-[2.15rem] font-bold leading-none tracking-[-0.04em] text-cream">{value}%</p>
+          <p className="mt-2 text-[11px] leading-[1.35] text-[var(--text-muted)]">{caption}</p>
         </div>
       </div>
       {spark && (
-        <div className="relative mt-2 h-7 opacity-90">
+        <div className="relative h-7 shrink-0 opacity-90">
           <Sparkline data={spark} />
         </div>
       )}
-      {footer && <div className="relative mt-3">{footer}</div>}
+      {footer && <div className="relative mt-auto border-t border-[var(--border)]/70 pt-3">{footer}</div>}
     </section>
   );
 }

@@ -110,6 +110,8 @@ const mapDoctor = (r: Row): Doctor => ({
   about: r.about ?? undefined,
   registrationNo: r.registration_no ?? undefined,
   clinicAddress: r.clinic_address ?? undefined,
+  clinicLat: r.clinic_lat ?? undefined,
+  clinicLng: r.clinic_lng ?? undefined,
   availability: (r.availability as DoctorAvailability | null) ?? undefined,
 });
 
@@ -257,7 +259,8 @@ const mapUser = (r: Row): UserRecord => ({
 
 const DOCTOR_COLS = `id, full_name, specialty, cadre, skills, kind, gender, age, experience_years, languages,
   status, verified, rating, consult_fee, home_visit_fee, avatar_color, avatar_url, lat, lng, last_seen,
-  qualifications, education, about, registration_no, clinic_address, availability, created_at`;
+  qualifications, education, about, registration_no, clinic_address, clinic_lat, clinic_lng,
+  availability, created_at`;
 
 // ── Lazy self-heal migrations ────────────────────────────────
 /**
@@ -352,6 +355,40 @@ const ensureProviderColumns = lazyMigration(
     await sql(`ALTER TABLE pending_signups DROP CONSTRAINT IF EXISTS pending_signups_role_check`);
     await sql(
       `ALTER TABLE pending_signups ADD CONSTRAINT pending_signups_role_check CHECK (role IN ('patient','doctor','nurse'))`,
+    );
+  },
+);
+
+/**
+ * Clinic coordinates — the public landing map's geography.
+ *
+ * Needed as a self-heal because DOCTOR_COLS now names these columns, so a
+ * database that predates them fails EVERY doctor read rather than degrading:
+ * the whole site goes down on a SELECT, not just the map.
+ *
+ * The backfill is limited to seeded catalog rows (`doc-seed-%`). Those are
+ * fictional entries whose lat/lng was always a made-up clinic position, so
+ * copying it across is honest. A REAL doctor's lat/lng is their live position
+ * and is emphatically not their clinic — those rows stay NULL until the doctor
+ * sets a clinic themselves, and simply have no pin until then.
+ */
+const ensureClinicColumns = lazyMigration(
+  "clinic columns",
+  async () =>
+    !(
+      (await hasColumn("doctors", "clinic_lat")) &&
+      (await hasColumn("doctors", "clinic_lng"))
+    ),
+  async () => {
+    await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic_lat DOUBLE PRECISION`);
+    await sql(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic_lng DOUBLE PRECISION`);
+    await sql(
+      `UPDATE doctors
+          SET clinic_lat = lat, clinic_lng = lng
+        WHERE id LIKE 'doc-seed-%'
+          AND clinic_lat IS NULL
+          AND clinic_address IS NOT NULL
+          AND clinic_address <> ''`,
     );
   },
 );
@@ -509,6 +546,21 @@ async function ensureTestAccounts(): Promise<void> {
     // Table missing (setup not run yet) or transient DB error — retry on the
     // next lookup rather than failing the caller's request.
   }
+}
+
+/**
+ * The account behind a session id.
+ *
+ * Needed by the set-password route, which has a session (so it knows WHO) but
+ * must read `passwordHash` to decide whether this is a first password being
+ * added or an existing one being changed — those have different rules.
+ */
+export async function findUserById(id: string): Promise<UserRecord | null> {
+  const r = await one(
+    `SELECT id, email, password_hash, role, name FROM users WHERE id = $1`,
+    [id],
+  );
+  return r ? mapUser(r) : null;
 }
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
@@ -987,6 +1039,7 @@ export async function setUserAvatar(
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {
   await ensureProviderColumns();
+  await ensureClinicColumns();
   const r = await one(`SELECT ${DOCTOR_COLS} FROM doctors WHERE id = $1`, [id]);
   return r ? mapDoctor(r) : null;
 }
@@ -1113,6 +1166,7 @@ export async function deleteDoctor(id: string): Promise<DoctorDeletion> {
 // ── Reads ────────────────────────────────────────────────────
 export async function getDoctors(near?: Near): Promise<Doctor[]> {
   await ensureProviderColumns();
+  await ensureClinicColumns();
   if (!near) {
     const rows = await sql(`SELECT ${DOCTOR_COLS} FROM doctors ORDER BY last_seen DESC`);
     return rows.map(mapDoctor);
@@ -2295,6 +2349,50 @@ export async function audit(entry: {
 }
 
 // ── One-time setup: schema + the ops (admin) login ───────────
+/**
+ * Insert the demo clinic catalog — the twelve fictional Nagpur doctors in
+ * lib/seed-doctors.ts, with their clinic addresses and coordinates.
+ *
+ * OPT-IN, and deliberately not part of `setup()`. setup() is documented as
+ * safe to re-run on every deploy, and quietly adding a dozen VERIFIED doctors
+ * to a production database on deploy would be an unpleasant surprise: they
+ * would appear on the public landing map as real, checked clinicians. So this
+ * runs only when someone explicitly asks for it.
+ *
+ * Idempotent and reversible. Every row uses a `doc-seed-N` id, so re-running
+ * inserts nothing new and removing the catalog is one statement:
+ *   DELETE FROM doctors WHERE id LIKE 'doc-seed-%';
+ */
+export async function seedClinicCatalog() {
+  const { seedDoctors } = await import("@/lib/seed-doctors");
+  const roster = seedDoctors();
+  let inserted = 0;
+
+  for (const d of roster) {
+    const res = await sql(
+      `INSERT INTO doctors
+         (id, full_name, specialty, cadre, kind, gender, experience_years, languages,
+          status, verified, rating, consult_fee, home_visit_fee, avatar_color,
+          lat, lng, qualifications, education, about, registration_no,
+          clinic_address, clinic_lat, clinic_lng)
+       VALUES ($1,$2,$3,'doctor',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+       ON CONFLICT (id) DO NOTHING
+       RETURNING id`,
+      [
+        d.id, d.fullName, d.specialty, d.kind, d.gender, d.experienceYears,
+        d.languages, d.status, d.verified, d.rating, d.consultFee,
+        d.homeVisitFee, d.avatarColor, d.lat, d.lng, d.qualifications ?? null,
+        d.education ?? null, d.about ?? null, d.registrationNo ?? null,
+        d.clinicAddress ?? null, d.clinicLat ?? null, d.clinicLng ?? null,
+      ],
+    );
+    // `sql()` yields rows, not a pg QueryResult — RETURNING is what makes an
+    // insert countable here, and an empty array means the row already existed.
+    inserted += res.length;
+  }
+  return { inserted, total: roster.length };
+}
+
 export async function setup() {
   // The schema file is the single source of truth and is idempotent, so this
   // is safe to re-run after every deploy.

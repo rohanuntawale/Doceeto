@@ -54,7 +54,12 @@ export async function GET(req: Request) {
     },
   );
 
+  // Forwarded from the sign-in form when the address they typed turned out to
+  // be a Google account — Google then opens on that account instead of making
+  // them pick it out of a list they just told us about.
+  const loginHint = new URL(req.url).searchParams.get("email") ?? undefined;
+
   return NextResponse.redirect(
-    authorizeUrl({ redirectUri: redirectUri(req), state, codeChallenge }),
+    authorizeUrl({ redirectUri: redirectUri(req), state, codeChallenge, loginHint }),
   );
 }

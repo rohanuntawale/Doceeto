@@ -424,6 +424,14 @@ function OnboardingPanel() {
           </div>
         </div>
 
+        <Link
+          href="/"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-cream"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+
         {/* headline */}
         <h1
           className="animate-rise mt-8 font-serif text-4xl leading-[1.03] tracking-tight text-cream min-[380px]:text-[2.6rem] sm:text-[3rem]"

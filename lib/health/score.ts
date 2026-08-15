@@ -8,7 +8,7 @@
  * risk data at all there is no score, and the UI shows a "fill your health
  * profile" state rather than a flattering number.
  *
- *   Body       — BMI against Asian-Indian bands (ICMR 2022: 18.5 / 23 / 25).
+ *   Body       — BMI against standard adult bands (18.5 / 25 / 30 / 35).
  *   Lifestyle  — smoking, alcohol, daily activity.
  *   Risk       — the validated Indian Diabetes Risk Score (age, waist,
  *                activity, family history) plus diagnosed diabetes/BP.
@@ -125,12 +125,13 @@ function bodyPillar(p: HealthProfile): ScorePillar | undefined {
   const bmi = bmiOf(p);
   if (bmi === undefined) return undefined;
   const band = bmiBand(bmi);
-  const earned = { healthy: 25, overweight: 15, underweight: 12, obese: 6 }[band];
+  const earned = { healthy: 25, overweight: 15, underweight: 12, obese: 6, extremelyObese: 3 }[band];
   const note = {
-    healthy: `BMI ${bmi} sits in the healthy range for Indian adults.`,
-    overweight: `BMI ${bmi} is above the healthy Indian range (23).`,
+    healthy: `BMI ${bmi} sits in the healthy range (18.5–24.9).`,
+    overweight: `BMI ${bmi} is in the overweight range (25–29.9).`,
     underweight: `BMI ${bmi} is below the healthy range (18.5).`,
-    obese: `BMI ${bmi} is in the obese range for Indian adults (25+).`,
+    obese: `BMI ${bmi} is in the obese range (30–34.9).`,
+    extremelyObese: `BMI ${bmi} is in the extremely obese range (35+).`,
   }[band];
   return { key: "body", label: "Body", earned, max: 25, note };
 }
@@ -232,6 +233,49 @@ function eventsPillarAt(inputs: ScoreInputs, at: number): ScorePillar {
   return { key: "events", label: "Recent health", earned, max: 25, note };
 }
 
+/**
+ * The gauge caption is a next step, not a generic description of the score.
+ * Keep it derived from the profile so two people with the same score can
+ * still get different, useful guidance.
+ */
+function personalizedCaption(
+  profile: HealthProfile,
+  value: number,
+  weakest: ScorePillar,
+): string {
+  const bmi = bmiOf(profile);
+  if (bmi !== undefined) {
+    const band = bmiBand(bmi);
+    if (band === "underweight") {
+      return `BMI ${bmi} is below normal. Add nourishing meals and a protein-rich snack.`;
+    }
+    if (band === "healthy" && bmi >= 24) {
+      return `BMI ${bmi} is normal, but close to overweight. Keep moving and limit fried snacks.`;
+    }
+    if (band === "healthy") {
+      return `BMI ${bmi} is normal. Keep meals balanced and stay active.`;
+    }
+    if (band === "overweight") {
+      return `BMI ${bmi} is above normal. Walk 20–30 minutes most days and cut back on sugary foods.`;
+    }
+    if (band === "obese") {
+      return `BMI ${bmi} is in the obese range. Start one small change and ask a doctor for a safe plan.`;
+    }
+    return `BMI ${bmi} needs personalised support. Ask a doctor for a safe food and movement plan.`;
+  }
+
+  if (profile.activity === "sedentary") {
+    return "You are mostly sitting. Start with a 10–20 minute walk and build gradually.";
+  }
+  if (profile.diabetes === "yes" || profile.hypertension === "yes") {
+    return "Keep your follow-ups regular and ask your doctor what target matters most next.";
+  }
+  if (value >= 75 && weakest.earned / weakest.max >= 0.6) {
+    return "You are doing well across the areas we know about. Keep the routine going and complete the remaining profile details for a clearer picture.";
+  }
+  return weakest.note;
+}
+
 // ── The score ────────────────────────────────────────────────
 
 function scoreValueAt(inputs: ScoreInputs, at: number): number | null {
@@ -273,10 +317,7 @@ export function realHealthScore(inputs: ScoreInputs, now = Date.now()): RealHeal
 
   // The caption speaks to the weakest pillar — the one worth acting on.
   const weakest = [...pillars].sort((a, b) => a.earned / a.max - b.earned / b.max)[0];
-  const caption =
-    value >= 75 && weakest.earned / weakest.max >= 0.6
-      ? "Looking good — keep it up"
-      : weakest.note;
+  const caption = personalizedCaption(inputs.profile, value, weakest);
 
   return {
     value,

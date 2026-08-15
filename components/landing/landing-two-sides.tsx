@@ -68,7 +68,6 @@ export function LandingTwoSides() {
                 <ul className="mt-6 space-y-2.5 text-sm text-white/95">
                   {[
                     "Clear upfront consultation pricing",
-                    "Direct messaging with your assigned practitioner",
                     "Digital prescriptions delivered straight to your account",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2.5">

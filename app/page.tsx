@@ -8,8 +8,7 @@ import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingStory } from "@/components/landing/landing-story";
 import { LandingFilm } from "@/components/landing/landing-film";
 import { LandingTwoSides } from "@/components/landing/landing-two-sides";
-import { LandingTestimonials } from "@/components/landing/landing-testimonials";
-import { LandingProductShowcase } from "@/components/landing/landing-product-showcase";
+import { LandingClinicMap } from "@/components/landing/landing-clinic-map";
 import { LandingFinalCta } from "@/components/landing/landing-final-cta";
 import { CheckerFab } from "@/components/landing/checker-fab";
 import {
@@ -52,8 +51,7 @@ const RAIL_SECTIONS: RailSection[] = [
   // starting a new colour, so the rail stays on its dark treatment here.
   { id: "film", label: "The film", tone: "dark" },
   { id: "patient-doctor", label: "Roles", tone: "light" },
-  { id: "reviews", label: "Reviews", tone: "dark" },
-  { id: "showcase", label: "Experience", tone: "light" },
+  { id: "clinics", label: "Clinics", tone: "light" },
   { id: "start", label: "Get started", tone: "dark" },
 ];
 
@@ -210,8 +208,7 @@ export default function Page() {
         <LandingStory />
         <LandingFilm />
         <LandingTwoSides />
-        <LandingTestimonials />
-        <LandingProductShowcase />
+        <LandingClinicMap />
         <LandingFinalCta />
       </main>
 

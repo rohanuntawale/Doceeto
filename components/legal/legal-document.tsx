@@ -62,7 +62,6 @@ export function LegalDocument({
         {/* Title block */}
         <header className="mt-6 max-w-3xl">
           <div className="flex items-center gap-3">
-            <span className="h-px w-8 bg-terracotta" />
             <span className="label">Legal</span>
           </div>
           <h1 className="mt-4 font-serif text-4xl leading-tight text-cream md:text-5xl">

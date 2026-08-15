@@ -161,6 +161,12 @@ export async function purgeExpiredSessions(): Promise<void> {
 }
 
 // ── Auth ─────────────────────────────────────────────────────
+/** The account behind a session id — see the note in the Postgres repo. */
+export async function findUserById(id: string): Promise<UserRecord | null> {
+  const u = data().users.find((x) => x.id === id);
+  return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
+}
+
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const u = data().users.find((x) => x.email === email.toLowerCase());
   return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;

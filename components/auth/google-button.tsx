@@ -20,19 +20,31 @@ import { cn } from "@/lib/utils/cn";
 export function GoogleButton({
   role,
   next,
+  email,
   label,
   className,
 }: {
   role: "patient" | "doctor";
   /** Where to land afterwards; ignored unless it belongs to that role's app. */
   next?: string;
+  /**
+   * An address to open Google's picker on (`login_hint`). Used when the person
+   * already typed it into the sign-in form and it turned out to be a Google
+   * account — making them pick it out of a list they just told us about is a
+   * step for nothing.
+   *
+   * A hint only. Google decides who they are, and the callback trusts the
+   * verified token rather than this.
+   */
+  email?: string;
   label?: string;
   className?: string;
 }) {
   const [leaving, setLeaving] = useState(false);
   const href =
     `/api/auth/google/start?role=${role}` +
-    (next ? `&next=${encodeURIComponent(next)}` : "");
+    (next ? `&next=${encodeURIComponent(next)}` : "") +
+    (email ? `&email=${encodeURIComponent(email)}` : "");
 
   return (
     <a

@@ -96,9 +96,10 @@ const EN: Dict = {
   "pillar.risk": "Risk factors",
   "pillar.events": "Recent health",
   "bmi.underweight": "Underweight",
-  "bmi.healthy": "Healthy range",
+  "bmi.healthy": "Normal",
   "bmi.overweight": "Overweight",
   "bmi.obese": "Obese range",
+  "bmi.extremelyObese": "Extremely obese",
 
   // Health profile form
   "health.profileTitle": "Health profile",
@@ -562,9 +563,10 @@ const HI: Dict = {
   "pillar.risk": "जोखिम कारक",
   "pillar.events": "हाल का स्वास्थ्य",
   "bmi.underweight": "कम वज़न",
-  "bmi.healthy": "स्वस्थ सीमा",
+  "bmi.healthy": "सामान्य",
   "bmi.overweight": "अधिक वज़न",
   "bmi.obese": "मोटापे की सीमा",
+  "bmi.extremelyObese": "अत्यधिक मोटापा",
 
   "health.profileTitle": "स्वास्थ्य प्रोफ़ाइल",
   "health.profileDesc": "इलाज से पहले डॉक्टर को ज़रूरी बुनियादी जानकारी। यह सिर्फ़ उस डॉक्टर को दिखती है जो आपका परामर्श स्वीकार करता है।",
@@ -1010,9 +1012,10 @@ const MR: Dict = {
   "pillar.risk": "जोखीम घटक",
   "pillar.events": "अलीकडील आरोग्य",
   "bmi.underweight": "कमी वजन",
-  "bmi.healthy": "निरोगी श्रेणी",
+  "bmi.healthy": "सामान्य",
   "bmi.overweight": "जास्त वजन",
   "bmi.obese": "लठ्ठपणाची श्रेणी",
+  "bmi.extremelyObese": "अत्यंत लठ्ठपणा",
 
   "health.profileTitle": "आरोग्य प्रोफाइल",
   "health.profileDesc": "उपचारापूर्वी डॉक्टरांना लागणारी मूलभूत माहिती. तुमचा सल्ला स्वीकारणाऱ्या डॉक्टरांनाच ती दिसते.",

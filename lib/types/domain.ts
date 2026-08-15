@@ -191,6 +191,12 @@ export interface Doctor {
   about?: string; // short bio
   registrationNo?: string; // medical council registration
   clinicAddress?: string; // where the doctor practises — shown to patients, used for clinic visits
+  /** The clinic's own coordinates. Distinct from `lat`/`lng` above, which is
+   *  the doctor's LIVE position: that one is private and never published to
+   *  anonymous visitors, this one is a business address and is what the public
+   *  map pins. Undefined for teleconsult-only or home-visit-only doctors. */
+  clinicLat?: number;
+  clinicLng?: number;
   /** Bookable calendar. Undefined = the platform defaults; read it through
    *  availabilityOf() in lib/scheduling/slots.ts, never raw. */
   availability?: DoctorAvailability;

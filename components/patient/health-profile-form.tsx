@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeartPulse, Save } from "lucide-react";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import {
@@ -55,6 +55,9 @@ export function HealthProfileForm() {
   const [ecName, setEcName] = useState(p.emergencyContactName ?? "");
   const [ecPhone, setEcPhone] = useState(p.emergencyContactPhone ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const localDraftDirty = useRef(false);
+  const currentDraftSignature = useRef("");
 
   /**
    * Fill the form once the saved profile arrives.
@@ -72,6 +75,14 @@ export function HealthProfileForm() {
     if (!saved) return;
     const stamp = saved.updatedAt ?? "loaded";
     if (hydratedFrom.current === stamp) return;
+
+    // A save response can arrive after the patient has started editing the
+    // next field. Keep that newer local draft instead of snapping the inputs
+    // back to the older response.
+    if (localDraftDirty.current) {
+      hydratedFrom.current = stamp;
+      return;
+    }
     hydratedFrom.current = stamp;
 
     setHeightCm(saved.heightCm?.toString() ?? "");
@@ -100,18 +111,32 @@ export function HealthProfileForm() {
 
   const completion = healthProfileCompletion(p);
 
-  async function save() {
+  const buildProfile = useCallback((): HealthProfile => sanitizeHealthProfile({
+    heightCm, weightKg,
+    waistCm: inchesToCm(Number(waistIn) || undefined),
+    dob, gender, bloodGroup, activity,
+    diabetes, hypertension, allergies, conditions,
+    medications, surgeries, familyHistory,
+    emergencyContactName: ecName, emergencyContactPhone: ecPhone,
+  }), [
+    heightCm, weightKg, waistIn, dob, gender, bloodGroup, activity,
+    diabetes, hypertension, allergies, conditions, medications, surgeries,
+    familyHistory, ecName, ecPhone,
+  ]);
+
+  const profileSignature = useCallback((profile: HealthProfile) => {
+    const { updatedAt: _updatedAt, ...persisted } = profile;
+    return JSON.stringify(persisted);
+  }, []);
+
+  currentDraftSignature.current = profileSignature(buildProfile());
+
+  const save = useCallback(async (silent = false) => {
     // Same sanitizer the server runs — what you see saved is what it keeps.
-    const profile: HealthProfile = sanitizeHealthProfile({
-      heightCm, weightKg,
-      waistCm: inchesToCm(Number(waistIn) || undefined),
-      dob, gender, bloodGroup, activity,
-      diabetes, hypertension, allergies, conditions,
-      medications, surgeries, familyHistory,
-      emergencyContactName: ecName, emergencyContactPhone: ecPhone,
-    });
+    const profile = buildProfile();
 
     setSaving(true);
+    setSaveStatus("idle");
     try {
       if (!isDemoMode) {
         const res = await apiFetch("/api/auth/health-profile", {
@@ -126,12 +151,20 @@ export function HealthProfileForm() {
         profile.updatedAt = new Date().toISOString();
         update({ healthProfile: profile });
       }
-      toast.push({
-        tone: "success",
-        title: t("health.saved"),
-        desc: t("health.savedDesc"),
-      });
+      // Only clear the dirty guard when the response contains the latest
+      // draft. If the user edited during the request, the autosave effect will
+      // persist that newer draft next.
+      localDraftDirty.current = currentDraftSignature.current !== profileSignature(profile);
+      setSaveStatus("saved");
+      if (!silent) {
+        toast.push({
+          tone: "success",
+          title: t("health.saved"),
+          desc: t("health.savedDesc"),
+        });
+      }
     } catch (err) {
+      setSaveStatus("error");
       toast.push({
         tone: "error",
         title: t("health.saveFailed"),
@@ -140,7 +173,34 @@ export function HealthProfileForm() {
     } finally {
       setSaving(false);
     }
-  }
+  }, [buildProfile, profileSignature, update, toast, t]);
+
+  /**
+   * Persist edits after a short pause. The saved-profile signature prevents
+   * hydration and the update caused by a successful save from triggering a
+   * second request.
+   */
+  useEffect(() => {
+    if (!patient.ready) return;
+    const saved = patient.healthProfile;
+    const stamp = saved?.updatedAt ?? "loaded";
+    if (saved && hydratedFrom.current !== stamp) return;
+
+    const draft = buildProfile();
+    if (saved && profileSignature(draft) === profileSignature(saved)) {
+      localDraftDirty.current = false;
+      setSaveStatus("saved");
+      return;
+    }
+
+    localDraftDirty.current = true;
+    const timer = window.setTimeout(() => {
+      void save(true);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [
+    patient.ready, patient.healthProfile, buildProfile, profileSignature, save,
+  ]);
 
   return (
     <section className="rounded-3xl fh-card p-5 shadow-soft">
@@ -288,10 +348,22 @@ export function HealthProfileForm() {
           </Field>
         </div>
 
-        {/* Disabled until the account has loaded: saving a form that hasn't
-            been filled from the record yet would overwrite the record. */}
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white/[0.025] px-3 py-2.5">
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {saving ? "Saving your changes…" : saveStatus === "error" ? "Couldn’t save — try again" : "Changes save automatically"}
+          </span>
+          <span
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              saving ? "animate-pulse bg-tan" : saveStatus === "error" ? "bg-[rgb(var(--c-status-critical))]" : "bg-[rgb(var(--c-status-ok))]",
+            )}
+            aria-hidden
+          />
+        </div>
+
+        {/* Manual retry remains available for a failed network save. */}
         <button
-          onClick={save}
+          onClick={() => void save()}
           disabled={saving || !patient.ready}
           className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[15px] font-semibold text-on-accent transition-transform active:scale-[0.98] disabled:opacity-60"
         >

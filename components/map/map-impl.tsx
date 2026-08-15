@@ -26,6 +26,10 @@ const REQ_SRC = "iy-live-requests";
 const DOC_LAYER = "iy-live-doctors-dots";
 const REQ_LAYER = "iy-live-requests-dots";
 
+function statusLabel(status: Doctor["status"]) {
+  return status === "online" ? "online" : status === "busy" ? "busy" : "offline";
+}
+
 export default function MapImpl({
   doctors = [],
   requests = [],
@@ -63,7 +67,15 @@ export default function MapImpl({
         source: DOC_SRC,
         paint: {
           "circle-radius": 5,
-          "circle-color": palette.pin,
+          "circle-color": [
+            "match",
+            ["get", "status"],
+            "online",
+            "#3E826E",
+            "busy",
+            "#C99A4B",
+            "#9AA7A2",
+          ] as never,
           "circle-opacity": 0.9,
           "circle-stroke-width": 1,
           "circle-stroke-color": palette.casing,
@@ -133,10 +145,13 @@ export default function MapImpl({
     src.setData({
       type: "FeatureCollection",
       features: doctors
-        .filter((d) => d.status !== "offline" && d.lat && d.lng)
+        .filter((d) => d.lat && d.lng)
         .map((d) => ({
           type: "Feature",
-          properties: { label: `${d.fullName} · ${d.specialty}` },
+          properties: {
+            status: d.status,
+            label: `${d.fullName} · ${d.specialty} · ${statusLabel(d.status)}`,
+          },
           geometry: { type: "Point", coordinates: [d.lng, d.lat] },
         })),
     });

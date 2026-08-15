@@ -193,17 +193,13 @@ export function LandingHero() {
           <LandingHeroStats />
         </div>
 
-        {/* Quiet care rail */}
-        <div className="relative z-10 mt-14">
+        {/* Quiet care rail. Closes the panel — the "Scroll to explore Doceeto"
+            cue that used to sit under it is gone: the section rail down the
+            right edge already shows there is more page, and a panel that ends
+            by instructing you to scroll is a panel that doesn't trust its own
+            content to pull you down. */}
+        <div className="relative z-10 mt-14 pb-14">
           <LandingTicker variant="minimal" />
-        </div>
-
-        {/* Subtle Scroll Cue, sitting just above the curve */}
-        <div className="relative z-10 flex flex-col items-center gap-2 pt-10 pb-14 text-[var(--text-faint)]">
-          <span className="text-[10px] uppercase tracking-widest font-semibold">
-            Scroll to explore Doceeto
-          </span>
-          <div className="w-px h-6 bg-gradient-to-b from-[var(--text-faint)] to-transparent" />
         </div>
       </div>
     </section>

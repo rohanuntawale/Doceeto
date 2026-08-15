@@ -238,6 +238,7 @@ export default function ProfilePage() {
         open={editing}
         onClose={() => setEditing(false)}
       />
+
     </>
   );
 }

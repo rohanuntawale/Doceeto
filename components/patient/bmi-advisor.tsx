@@ -26,6 +26,8 @@ const LOCAL_TIP: Record<string, string> = {
     "Your BMI is a little above the healthy range. A 20–30 minute daily walk and easing off fried snacks go a long way. A doctor here can help you plan.",
   obese:
     "Your BMI is in a range that deserves extra care for your heart, joints and sugar levels. Start with daily walks and lighter dinners — and consider a consult to build a plan.",
+  extremelyObese:
+    "Your BMI is in a range where extra support can help protect your heart, joints and sugar levels. A doctor can help you make a safe, gradual plan that fits your routine.",
 };
 
 export function BmiAdvisor() {

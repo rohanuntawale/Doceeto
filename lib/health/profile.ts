@@ -150,7 +150,12 @@ export function ageFrom(dob?: string): number | undefined {
 
 // ── BMI ──────────────────────────────────────────────────────
 
-export type BmiBand = "underweight" | "healthy" | "overweight" | "obese";
+export type BmiBand = "underweight" | "healthy" | "overweight" | "obese" | "extremelyObese";
+
+/** Shared adult BMI boundaries used by the score and every BMI label. */
+export const BMI_HEALTHY_MAX = 25;
+export const BMI_OBESE_MAX = 30;
+export const BMI_EXTREMELY_OBESE_MAX = 35;
 
 /** kg / m², one decimal — undefined until both measurements exist. */
 export function bmiOf(p: Pick<HealthProfile, "heightCm" | "weightKg">): number | undefined {
@@ -160,16 +165,17 @@ export function bmiOf(p: Pick<HealthProfile, "heightCm" | "weightKg">): number |
 }
 
 /**
- * Asian-Indian cut-offs (ICMR 2022 consensus): overweight from 23, obese from
- * 25 — NOT the Western 25/30. Indians develop diabetes and heart disease at
- * markedly lower BMI, so Western bands under-warn the entire audience of this
- * app. This is the one place the bands live; everything reads through here.
+ * Standard adult BMI cut-offs shown in the product reference: underweight
+ * below 18.5, normal from 18.5 to 24.9, overweight from 25 to 29.9, obese
+ * from 30 to 34.9, and extremely obese at 35 or above. This is the one place
+ * the bands live; everything reads through here.
  */
 export function bmiBand(bmi: number): BmiBand {
   if (bmi < 18.5) return "underweight";
-  if (bmi < 23) return "healthy";
-  if (bmi < 25) return "overweight";
-  return "obese";
+  if (bmi < BMI_HEALTHY_MAX) return "healthy";
+  if (bmi < BMI_OBESE_MAX) return "overweight";
+  if (bmi < BMI_EXTREMELY_OBESE_MAX) return "obese";
+  return "extremelyObese";
 }
 
 export const BMI_BAND_LABEL: Record<BmiBand, string> = {
@@ -177,6 +183,7 @@ export const BMI_BAND_LABEL: Record<BmiBand, string> = {
   healthy: "Healthy range",
   overweight: "Overweight",
   obese: "Obese range",
+  extremelyObese: "Extremely obese",
 };
 
 /** How filled-in the profile is, 0–100 — drives the account page nudge. */

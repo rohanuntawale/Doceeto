@@ -50,6 +50,9 @@ function publicProvider(d: {
   qualifications?: string;
   status: string;
   available: boolean;
+  clinicAddress?: string;
+  clinicLat?: number;
+  clinicLng?: number;
 }) {
   return {
     id: d.id,
@@ -68,6 +71,20 @@ function publicProvider(d: {
     avatarColor: d.avatarColor,
     /** Online AND not already committed to someone else. */
     available: d.available,
+    /**
+     * The CLINIC — a published business address, and the only geography in
+     * this projection. Note what is still absent: `lat`/`lng`, the doctor's
+     * live position. The distinction is the whole point. A clinic is where a
+     * practice advertises itself to be found; a live position is where a named
+     * person is standing right now, and no URL should hand that to a stranger.
+     *
+     * Both are gated on `verified`. An unverified doctor's self-declared
+     * address has been checked by nobody, and putting an unchecked address on
+     * a public map is how a patient ends up at a door that isn't a clinic.
+     */
+    clinicAddress: d.verified ? (d.clinicAddress ?? "") : "",
+    clinicLat: d.verified ? d.clinicLat : undefined,
+    clinicLng: d.verified ? d.clinicLng : undefined,
   };
 }
 
@@ -127,6 +144,39 @@ export async function GET(req: Request) {
           // leaving a short list to imply the platform is empty.
           total: rows.length,
           availableNow: rows.filter((d) => d.available).length,
+        });
+      }
+
+      /**
+       * The clinic directory behind the landing map.
+       *
+       * Separate from `providers` because it asks a different question. That
+       * one means "who could see me right now", so it filters on derived
+       * presence. A clinic is a PLACE: it is on the corner whether or not its
+       * doctor happens to hold a session this minute, and a map that empties
+       * itself overnight would tell a visitor the platform has no doctors.
+       *
+       * Still verified-only, and still no live coordinates — the projection is
+       * the same one, so it cannot drift from the privacy rules above.
+       */
+      case "clinics": {
+        const all = await repo.getDoctors();
+        const rows = all
+          .filter((d) => cadreOf(d) === "doctor")
+          .filter((d) => d.verified)
+          .filter(
+            (d) =>
+              typeof d.clinicLat === "number" &&
+              typeof d.clinicLng === "number" &&
+              Boolean(d.clinicAddress?.trim()),
+          )
+          // `available` is not knowable here and not claimed. The landing map
+          // says where a clinic is, never that someone is sitting in it.
+          .map((d) => ({ ...d, available: false }));
+
+        return NextResponse.json({
+          clinics: rows.map(publicProvider),
+          total: rows.length,
         });
       }
 

@@ -85,7 +85,13 @@ export async function GET(req: Request) {
         // and flip back online, and it must survive whichever roster is asked
         // for.
         const ofCadre = decorated.filter((d) => cadreOf(d) === wantCadre || d.id === me);
-        if (role === "ops") return NextResponse.json(ofCadre);
+        if (role === "ops") {
+          // The seed clinic catalog is public showcase data, not a staff
+          // roster. Keep it out of the team console so Ops sees only provider
+          // accounts that were actually registered and whose status can
+          // update from the live presence/session data.
+          return NextResponse.json(ofCadre.filter((d) => !d.id.startsWith("doc-seed-")));
+        }
         // Offline means OFF the platform: an offline doctor is not
         // discoverable at all — no pin, no list row, no gig teasers, no
         // profile. Two carve-outs keep existing relationships intact:

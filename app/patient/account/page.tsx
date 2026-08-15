@@ -79,6 +79,7 @@ export default function PatientAccount() {
       {/* Health basics — what a doctor reads before treating them. */}
       <HealthProfileForm />
 
+
       {/* Language */}
       <Section icon={<Languages className="h-4 w-4" />} title={t("account.language")}>
         <div className="grid grid-cols-3 gap-2">

@@ -84,7 +84,9 @@ export default function OpsOverview() {
 function Legend() {
   return (
     <div className="hidden items-center gap-3 text-[11px] text-[var(--text-muted)] sm:flex">
-      <Dot color="#C9A876" label="Doctor" />
+      <Dot color="#3E826E" label="Online" />
+      <Dot color="#C9A876" label="Busy" />
+      <Dot color="#9AA7A2" label="Offline" />
     </div>
   );
 }

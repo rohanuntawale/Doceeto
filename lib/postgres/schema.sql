@@ -185,6 +185,19 @@ END $$;
 -- specialty instead.
 ALTER TABLE doctors ADD COLUMN IF NOT EXISTS skills TEXT[] NOT NULL DEFAULT '{}';
 
+-- Where the doctor's CLINIC stands, as opposed to where the doctor is.
+--
+-- `lat`/`lng` above is a live position: it moves with the person and is the
+-- most sensitive field on the row, which is why the anonymous /api/public
+-- projection refuses to publish it. A clinic is the opposite — a business
+-- address a doctor advertises so patients can find them — so it is safe to
+-- show on a public map, and it is what the landing page pins.
+--
+-- Nullable on purpose. A purely home-visit or teleconsult doctor has no clinic,
+-- and must not be forced to invent coordinates to appear in search.
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic_lat DOUBLE PRECISION;
+ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic_lng DOUBLE PRECISION;
+
 CREATE INDEX IF NOT EXISTS doctors_status_idx ON doctors(status);
 CREATE INDEX IF NOT EXISTS doctors_cadre_idx  ON doctors(cadre, status);
 -- Geo filtering (?near=lat,lng&km=10) sorts by distance from a point. Without

@@ -289,13 +289,13 @@ export default function PatientHome() {
             trend={score.trend !== 0 ? score.trend : undefined}
             spark={score.spark}
             footer={
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {/* BMI in the health card itself — the number patients look
                     for, with the band that decides whether it's a concern. */}
                 <Link
                   href="/patient/account"
                   className={cn(
-                    "mb-2 flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-opacity hover:opacity-80",
+                    "flex min-h-10 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-xs transition-opacity hover:opacity-80",
                     bmi === undefined
                       ? "bg-white/5 text-[var(--text-muted)]"
                       : bmiBand(bmi) === "healthy"
@@ -313,17 +313,17 @@ export default function PatientHome() {
                   </span>
                 </Link>
                 {score.pillars.map((pl) => (
-                  <div key={pl.key} className="flex items-center gap-2" title={pl.note}>
-                    <span className="w-[86px] shrink-0 text-[11px] text-[var(--text-muted)]">
+                  <div key={pl.key} className="grid grid-cols-[minmax(82px,0.8fr)_minmax(70px,1fr)_36px] items-center gap-2" title={pl.note}>
+                    <span className="min-w-0 truncate text-[11px] text-[var(--text-muted)]">
                       {pl.label}
                     </span>
-                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgb(var(--c-espresso-700))]">
+                    <span className="h-1.5 min-w-0 overflow-hidden rounded-full bg-[rgb(var(--c-espresso-700))]">
                       <span
                         className="block h-full rounded-full bg-[rgb(var(--c-terracotta))]"
                         style={{ width: `${(pl.earned / pl.max) * 100}%` }}
                       />
                     </span>
-                    <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-cream">
+                    <span className="text-right text-[11px] font-semibold text-cream">
                       {pl.earned}/{pl.max}
                     </span>
                   </div>
@@ -331,7 +331,7 @@ export default function PatientHome() {
                 {score.coverage.known < score.coverage.total && (
                   <Link
                     href="/patient/account"
-                    className="block pt-1 text-[11px] text-salmon transition-colors hover:text-cream"
+                    className="block pt-0.5 text-[11px] leading-snug text-salmon transition-colors hover:text-cream"
                   >
                     {t("health.basedOn", { a: String(score.coverage.known), b: String(score.coverage.total) })}
                   </Link>

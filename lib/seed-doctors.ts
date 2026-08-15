@@ -33,6 +33,10 @@ type SeedDoctor = {
   /** Small offset from the map center, in degrees (~0.01° ≈ 1.1 km). */
   dLat: number;
   dLng: number;
+  /** The clinic they practise from — the address patients are given, and the
+   *  pin the public map shows. Its coordinates are derived from dLat/dLng in
+   *  the builder, so a seeded doctor's clinic sits where their card says. */
+  clinicAddress: string;
 };
 
 const ROSTER: SeedDoctor[] = [
@@ -43,6 +47,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD (General Medicine)", education: "Seth GS Medical College, Mumbai (2013)",
     about: "Family physician focused on preventive care, everyday infections and chronic-disease management. Calm, thorough, and big on explaining the why behind every prescription.",
     registrationNo: "MMC-2013-48213", dLat: 0.006, dLng: 0.004,
+    clinicAddress: "Sunrise Family Clinic, Sadar",
     reviews: [
       { patientName: "Sanya M.", rating: 5, comment: "Very patient and clear. Explained my mother's BP medication properly." },
       { patientName: "Rahul T.", rating: 5, comment: "Came home within the hour, professional and kind." },
@@ -55,6 +60,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD (General Medicine)", education: "Grant Medical College, Mumbai (2010)",
     about: "Twelve years across clinic and home visits. Special interest in diabetes and thyroid care for working adults.",
     registrationNo: "MMC-2010-33902", dLat: -0.005, dLng: 0.007,
+    clinicAddress: "Deshmukh Family Practice, Ramdaspeth",
     reviews: [{ patientName: "Imtiaz K.", rating: 5, comment: "Straightforward, no unnecessary tests. Recommended." }],
   },
   {
@@ -64,6 +70,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS", education: "BJ Medical College, Nagpur (2019)",
     about: "Junior physician taking home visits alongside hospital duty. Friendly with first-time patients and students.",
     registrationNo: "MMC-2019-71140", dLat: 0.009, dLng: -0.006,
+    clinicAddress: "Dharampeth Day Clinic, Dharampeth",
   },
   {
     fullName: "Dr. Aditya Joshi", specialty: "General Physician", kind: "practising", gender: "male",
@@ -72,6 +79,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS", education: "Government Medical College, Nagpur (2016)",
     about: "General practice with a focus on quick, affordable video consults for seasonal illness and minor concerns.",
     registrationNo: "MMC-2016-60455", dLat: -0.008, dLng: -0.003,
+    clinicAddress: "Sitabuldi Medical Centre, Sitabuldi",
   },
   {
     fullName: "Dr. Rohan Iyer", specialty: "Cardiologist", kind: "practising", gender: "male",
@@ -80,6 +88,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD, DM (Cardiology)", education: "KEM Hospital, Mumbai (2007)",
     about: "Interventional cardiologist. Sees patients for chest pain, blood pressure, palpitations and post-procedure follow-up.",
     registrationNo: "MMC-2007-19008", dLat: 0.004, dLng: 0.011,
+    clinicAddress: "Orange City Heart Centre, Civil Lines",
     reviews: [
       { patientName: "Deepa R.", rating: 5, comment: "Reassuring during a scary night. Knew exactly what to check." },
       { patientName: "Family of A.S.", rating: 5, comment: "Followed up personally the next day. Rare these days." },
@@ -92,6 +101,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD (Pediatrics)", education: "Christian Medical College, Vellore (2011)",
     about: "Paediatrician for newborns to teens — fevers, vaccinations, growth and anxious first-time parents.",
     registrationNo: "MMC-2011-40771", dLat: 0.011, dLng: 0.006,
+    clinicAddress: "Little Steps Child Clinic, Laxmi Nagar",
     reviews: [{ patientName: "Priyanka & Sam", rating: 5, comment: "Gentle with our 2-year-old. Didn't rush us at all." }],
   },
   {
@@ -101,6 +111,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MS (Orthopedics)", education: "AIIMS, New Delhi (2008)",
     about: "Orthopaedic surgeon. Sprains, fractures, back and joint pain, and sports injuries. Practical, non-surgical-first approach.",
     registrationNo: "MMC-2008-22314", dLat: -0.010, dLng: 0.009,
+    clinicAddress: "Orange City Bone & Joint, Ramdaspeth",
     reviews: [{ patientName: "Karan V.", rating: 4, comment: "Good advice on my knee, avoided surgery for now." }],
   },
   {
@@ -110,6 +121,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD (Dermatology)", education: "Osmania Medical College, Hyderabad (2014)",
     about: "Skin, hair and nails — acne, eczema, pigmentation and allergies. Evidence-based, no-nonsense routines.",
     registrationNo: "MMC-2014-51260", dLat: 0.002, dLng: -0.010,
+    clinicAddress: "Aarogya Skin & Laser, Dharampeth",
     reviews: [{ patientName: "Aisha N.", rating: 5, comment: "Finally someone who fixed my acne without 10 products." }],
   },
   {
@@ -119,6 +131,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MS (Obstetrics & Gynecology)", education: "JIPMER, Puducherry (2009)",
     about: "Women's health across all ages — periods, PCOS, pregnancy care and menopause. Warm, private and unhurried.",
     registrationNo: "MMC-2009-28840", dLat: -0.006, dLng: -0.009,
+    clinicAddress: "Shreeya Women's Clinic, Bajaj Nagar",
     reviews: [
       { patientName: "Meghna P.", rating: 5, comment: "Made a difficult consult feel safe and normal." },
       { patientName: "R.K.", rating: 5, comment: "Extremely knowledgeable, answered every question." },
@@ -131,6 +144,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MS (ENT)", education: "Government Medical College, Aurangabad (2012)",
     about: "Ear, nose and throat — sinus trouble, sore throats, ear infections and hearing concerns.",
     registrationNo: "MMC-2012-45119", dLat: 0.013, dLng: -0.002,
+    clinicAddress: "ClearTone ENT Care, Manish Nagar",
   },
   {
     fullName: "Dr. Kavya Reddy", specialty: "Psychiatrist", kind: "practising", gender: "female",
@@ -139,6 +153,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD (Psychiatry)", education: "NIMHANS, Bengaluru (2013)",
     about: "Mental health for adults — anxiety, low mood, sleep and stress. Confidential, non-judgemental video consults.",
     registrationNo: "MMC-2013-49302", dLat: -0.003, dLng: 0.012,
+    clinicAddress: "Mind & Wellness Studio, Pratap Nagar",
     reviews: [{ patientName: "Anonymous", rating: 5, comment: "First doctor who actually listened. Felt heard." }],
   },
   // Append new entries — IDs are `doc-seed-<index>`, so inserting above would
@@ -150,6 +165,7 @@ const ROSTER: SeedDoctor[] = [
     qualifications: "MBBS, MD, DM (Neurology)", education: "King Edward Memorial Hospital, Mumbai (2008)",
     about: "Brain and nerve care — migraines, seizures, giddiness, numbness and tremors. Fourteen years in stroke and epilepsy clinics.",
     registrationNo: "MMC-2008-30871", dLat: 0.009, dLng: -0.008,
+    clinicAddress: "NeuroCare Nagpur, Wardha Road",
     reviews: [
       { patientName: "Deepa V.", rating: 5, comment: "Sorted out migraines I'd had for years. Took the time to explain the triggers." },
       { patientName: "Mahesh P.", rating: 4, comment: "Thorough with my father's tremor. Clear about what the scans meant." },
@@ -181,6 +197,13 @@ export function seedDoctors(): Doctor[] {
     education: d.education,
     about: d.about,
     registrationNo: d.registrationNo,
+    clinicAddress: d.clinicAddress,
+    // A seeded doctor is a catalog entry, not a real person carrying a phone,
+    // so their clinic simply sits where their pin sits. For a REAL doctor the
+    // two are genuinely different — lat/lng follows them, clinicLat/Lng does
+    // not — and only the clinic pair is ever published to anonymous visitors.
+    clinicLat: MAP_CENTER.lat + d.dLat,
+    clinicLng: MAP_CENTER.lng + d.dLng,
   }));
 }
 

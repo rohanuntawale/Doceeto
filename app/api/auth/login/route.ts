@@ -22,12 +22,24 @@ export async function POST(req: Request) {
     if (email && !rateLimit(`login:email:${email}`, 8, 15 * 60_000)) return tooMany();
 
     const user = await db.findUserByEmail(email);
-    // A Google account has no password hash. Say so plainly rather than
-    // "wrong password" — the person has no password to get right, and would
-    // otherwise be stuck guessing at one that never existed.
+    /**
+     * A Google account has no password hash, so there is nothing to compare
+     * against and this can never succeed. Say which account it is rather than
+     * "wrong password" — the person has no password to get right and would
+     * otherwise sit there guessing at one that never existed.
+     *
+     * `code` is the part that matters: the form uses it to swap the red error
+     * for a Continue-with-Google button carrying this address, so the dead end
+     * becomes one tap. There is deliberately no "set a Doceeto password"
+     * offer — Google is already their password, and a second one is another
+     * credential to forget.
+     */
     if (user && !user.passwordHash) {
       return NextResponse.json(
-        { error: "This account uses Google sign-in. Use the Continue with Google button." },
+        {
+          code: "GOOGLE_ONLY",
+          error: "You created this account with Google. Continue with Google to sign in.",
+        },
         { status: 401 },
       );
     }

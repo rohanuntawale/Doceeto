@@ -43,6 +43,15 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
   const [password, setPassword] = useState("");
   // The OAuth callback reports failures by bouncing back here with ?error=
   const [error, setError] = useState<string | null>(params.get("error"));
+  /**
+   * Set when the address they typed belongs to a Google account.
+   *
+   * That is not a mistake to scold them for — it is the wrong door, and we
+   * know which one is right. The form swaps the red box for a Continue with
+   * Google button carrying this address, so it costs one tap instead of a
+   * re-read of the error and a hunt back up the page.
+   */
+  const [googleOnly, setGoogleOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   /** Google needs to know which app is being entered; default to the patient. */
   const googleRole = wantedSurface === "doctor" ? "doctor" : "patient";
@@ -50,6 +59,7 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setGoogleOnly(false);
     setLoading(true);
     const res = await fetch("/api/auth/login", {
       method: "POST",
@@ -60,6 +70,7 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
     setLoading(false);
     if (!res.ok) {
       setError(data.error ?? "Could not sign in.");
+      setGoogleOnly(data.code === "GOOGLE_ONLY");
       return;
     }
     const home =
@@ -175,11 +186,25 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
               </Field>
             </div>
 
-            {error && (
+            {/* A Google account is a routing problem, not a failure — so it
+                gets the accent treatment and a button, not a red box. The
+                address they already typed rides along as login_hint, so
+                Google opens on that account instead of a picker. */}
+            {error && googleOnly ? (
+              <div className="space-y-3 rounded-xl border border-[rgb(var(--accent-rgb)/0.3)] bg-[rgb(var(--accent-rgb)/0.07)] p-3.5">
+                <p className="text-xs font-medium text-[var(--text)]">{error}</p>
+                <GoogleButton
+                  role={googleRole}
+                  next={params.get("next") ?? undefined}
+                  email={email}
+                  label="Continue with Google"
+                />
+              </div>
+            ) : error ? (
               <div className="rounded-xl bg-status-critical/10 border border-status-critical/30 p-3 text-xs font-medium text-status-critical">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <Button
               type="submit"

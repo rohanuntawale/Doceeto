@@ -46,6 +46,14 @@ export function authorizeUrl(input: {
   redirectUri: string;
   state: string;
   codeChallenge: string;
+  /**
+   * The address the person already typed on the sign-in form, passed to Google
+   * as `login_hint` so their picker opens on the right account.
+   *
+   * Only a convenience, never a claim: Google decides who they actually are,
+   * and the callback trusts the verified `sub` from the id token — not this.
+   */
+  loginHint?: string;
 }): string {
   const url = new URL(AUTH_ENDPOINT);
   url.searchParams.set("client_id", clientId());
@@ -59,6 +67,7 @@ export function authorizeUrl(input: {
   // browser happens to be signed into — this app has separate patient and
   // doctor accounts, and picking the wrong one is a confusing thing to undo.
   url.searchParams.set("prompt", "select_account");
+  if (input.loginHint) url.searchParams.set("login_hint", input.loginHint);
   return url.toString();
 }
 
