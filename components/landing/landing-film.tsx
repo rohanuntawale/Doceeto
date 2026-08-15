@@ -128,7 +128,7 @@ export function LandingFilm() {
        of it. No new colour is introduced for a section that is mostly image. */
     <section
       id="film"
-      className="forest-band relative overflow-hidden py-16 sm:py-24 lg:py-32"
+      className="forest-band relative -mt-4 overflow-hidden pb-16 pt-8 sm:-mt-6 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16"
     >
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute left-1/2 top-1/2 h-[700px] w-[1100px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgb(var(--c-forest-600)/0.5)] blur-[150px]" />

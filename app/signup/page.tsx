@@ -450,47 +450,40 @@ function OnboardingPanel() {
 
         {step === 1 && (
           <>
-            {/* social sign-in. Google is live; the ROLE rides in the query
-                string because whichever toggle is active decides what kind of
-                account Google's identity creates. Apple stays a teaser. */}
-            <div
-              className="animate-rise mt-7 flex justify-center"
-              style={{ animationDelay: "90ms" }}
-            >
-              <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
-                <SocialButton label="Continue with Apple">
-                  <AppleGlyph />
-                </SocialButton>
-                <SocialButton
-                  label={
-                    role === "doctor"
-                      ? "Continue with Google as a doctor"
-                      : role === "nurse"
-                        ? "Continue with Google as a nurse"
-                        : "Continue with Google"
-                  }
-                  // Whichever toggle is active decides what kind of account
-                  // Google's identity creates — all three roles ride through.
-                  href={
-                    googleEnabled && !isDemoMode
-                      ? `/api/auth/google/start?role=${role}`
-                      : undefined
-                  }
-                >
-                  <GoogleGlyph />
-                </SocialButton>
+            {/* Google sign-in is shown only when its OAuth client is configured. */}
+            {googleEnabled && (
+              <div
+                className="animate-rise mt-7 flex justify-center"
+                style={{ animationDelay: "90ms" }}
+              >
+                <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
+                  <SocialButton
+                    label={
+                      role === "doctor"
+                        ? "Continue with Google as a doctor"
+                        : role === "nurse"
+                          ? "Continue with Google as a nurse"
+                          : "Continue with Google"
+                    }
+                    href={`/api/auth/google/start?role=${role}`}
+                  >
+                    <GoogleGlyph />
+                  </SocialButton>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* or divider */}
-            <div
-              className="animate-rise mt-6 flex items-center gap-3"
-              style={{ animationDelay: "120ms" }}
-            >
-              <span className="h-px flex-1 bg-[var(--border)]" />
-              <span className="text-xs text-[var(--text-faint)]">or</span>
-              <span className="h-px flex-1 bg-[var(--border)]" />
-            </div>
+            {googleEnabled && (
+              <div
+                className="animate-rise mt-6 flex items-center gap-3"
+                style={{ animationDelay: "120ms" }}
+              >
+                <span className="h-px flex-1 bg-[var(--border)]" />
+                <span className="text-xs text-[var(--text-faint)]">or</span>
+                <span className="h-px flex-1 bg-[var(--border)]" />
+              </div>
+            )}
 
             {/* role toggle */}
             <div
@@ -1056,11 +1049,9 @@ function Field({
   );
 }
 
-// Small circular social button. With an href it is a real link (OAuth is a
-// full-page journey, so the browser must navigate); without one it nudges the
-// user with a toast so the affordance never feels broken. The link flips to a
-// spinner on first click — a cold serverless redirect can take seconds, and a
-// silent button invites the double-click that used to break the flow.
+// Small circular social button. The link flips to a spinner on first click —
+// a cold serverless redirect can take seconds, and a silent button invites the
+// double-click that used to break the flow.
 function SocialButton({
   label,
   href,
@@ -1200,15 +1191,3 @@ function GoogleGlyph() {
   );
 }
 
-function AppleGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className="h-5 w-5"
-      aria-hidden
-    >
-      <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.46z" />
-    </svg>
-  );
-}

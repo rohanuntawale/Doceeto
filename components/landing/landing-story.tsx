@@ -49,7 +49,7 @@ export function LandingStory() {
        tokens, so everything below styles itself for the dark ground. */
     <section
       id="story"
-      className="forest-band relative overflow-hidden py-28 sm:py-36"
+      className="forest-band relative overflow-hidden pb-16 pt-28 sm:pb-20 sm:pt-36"
     >
       {/* Background brutalist typography watermark */}
       <div
