@@ -42,7 +42,7 @@ export function LoadingSplash({ src = "/loading/app-load.mp4" }: { src?: string 
         muted
         playsInline
         onEnded={end}
-        className="h-full w-full object-cover md:h-auto md:max-h-[72vh] md:w-auto md:object-contain"
+        className="block h-auto w-auto max-h-[calc(100dvh-2rem)] max-w-full object-contain md:max-h-[82vh] md:max-w-[92vw]"
       />
       <span className="absolute bottom-8 text-[11px] tracking-wide text-[var(--text-faint)]">
         tap to skip
