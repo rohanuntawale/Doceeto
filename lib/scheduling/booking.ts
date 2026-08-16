@@ -120,20 +120,20 @@ export function assertCanAccept(
       throw new DomainError("Finish your current gig before taking another.", 409);
     }
     if (hasOngoingConsult(doctorRequests, doctorId, nowMs)) {
-      throw new DomainError("You're in a consult — complete it first.", 409);
+      throw new DomainError("You're in a consult, complete it first.", 409);
     }
     return;
   }
   if (mode === "emergency") {
     if (onGig) {
       throw new DomainError(
-        "You're on a gig — complete it to take urgent visits again.",
+        "You're on a gig, complete it to take urgent visits again.",
         409,
       );
     }
     if (hasOngoingConsult(doctorRequests, doctorId, nowMs)) {
       throw new DomainError(
-        "You already have a consult in progress — complete it first.",
+        "You already have a consult in progress, complete it first.",
         409,
       );
     }

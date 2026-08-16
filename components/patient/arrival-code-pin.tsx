@@ -178,7 +178,7 @@ function CodeSheet({ req, onClose }: { req: ConsultRequest; onClose: () => void 
           </button>
         </div>
 
-        {/* The digits as a stamped token — the largest thing on the screen,
+        {/* The digits as a stamped token, the largest thing on the screen,
             readable at arm's length across a doorway. */}
         <div className="mt-5 flex justify-center gap-2.5">
           {(req.startCode ?? "····").split("").map((d, i) => (

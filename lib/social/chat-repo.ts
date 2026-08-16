@@ -713,7 +713,7 @@ export async function handleJoinRequest(
   void notify({
     userId,
     type: "community_join",
-    title: `You're in — ${row.name}`,
+    title: `You're in, ${row.name}`,
     link: `/doctor/network?tab=communities&community=${communityId}`,
     senderId: adminId,
     metadata: { communityId },

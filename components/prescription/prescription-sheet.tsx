@@ -74,7 +74,7 @@ export function DoseLedger({ schedule }: { schedule: string }) {
           >
             <Icon className={cn("h-3.5 w-3.5", !due && "opacity-45")} aria-hidden />
             <span className="font-mono text-[13px] font-bold leading-none">
-              {n === 0 ? "—" : n === 0.5 ? "½" : n}
+              {n === 0 ? ", " : n === 0.5 ? "½" : n}
             </span>
             <span className="text-[8px] font-semibold uppercase tracking-[0.08em] leading-none">
               {label.slice(0, 3)}
@@ -191,7 +191,7 @@ export function PrescriptionSheet({
             <p className="mt-0.5 font-mono text-[11px] tracking-wider text-terracotta">{rx.code}</p>
           </div>
         </div>
-        {/* The double rule — the letterhead convention that separates who wrote
+        {/* The double rule, the letterhead convention that separates who wrote
             this from what it says. */}
         <div className="mt-4 border-t-[3px] border-double border-[var(--border)]" aria-hidden />
       </header>
@@ -227,7 +227,7 @@ export function PrescriptionSheet({
           <div className="min-w-0 flex-1">
             {rx.items.length === 0 ? (
               <p className="py-2 text-sm text-[var(--text-muted)]">
-                No medicines prescribed — follow the advice below.
+                No medicines prescribed, follow the advice below.
               </p>
             ) : (
               <ul className="divide-y divide-[var(--border)]">

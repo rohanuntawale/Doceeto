@@ -22,7 +22,7 @@ export function LandingHeroStats() {
 
   return (
     <div ref={ref} className="mx-auto w-full max-w-7xl px-6">
-      {/* Scrub rail — the hairline with a knob riding its left end. Purely
+      {/* Scrub rail, the hairline with a knob riding its left end. Purely
           decorative pacing between the hero card and the figures. */}
       <div className="relative h-4" aria-hidden="true">
         <motion.div

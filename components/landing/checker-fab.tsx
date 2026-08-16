@@ -99,7 +99,7 @@ export function CheckerFab() {
               : "pointer-events-none invisible translate-y-2 scale-95 opacity-0",
           )}
           /* Opaque, and inline so it wins.
-             `.rounded-card` is globally a FROSTED surface (see globals.css) —
+             `.rounded-card` is globally a FROSTED surface (see globals.css)
              correct for a card sitting on a page, wrong for a panel floating
              over whatever the visitor happens to be scrolled to. Over the
              forest bands and the film, a 70%-translucent chat went muddy and
@@ -110,7 +110,7 @@ export function CheckerFab() {
              lose to it. */
           style={{ backgroundColor: "rgb(var(--surface-rgb))" }}
         >
-          {/* CheckerDemo is h-full by design — it fills whatever slot it is
+          {/* CheckerDemo is h-full by design, it fills whatever slot it is
               given, which is why the same component works as a full page and
               as this panel with no variant of its own. */}
           <CheckerDemo />
@@ -127,7 +127,7 @@ export function CheckerFab() {
       >
         {/* One quiet ring, so the button reads as live rather than parked.
             Sits behind the pill and never intercepts the click. It stops once
-            the panel is open — the thing it was advertising is on screen. */}
+            the panel is open, the thing it was advertising is on screen. */}
         {!open && (
           <span
             aria-hidden
@@ -146,7 +146,7 @@ export function CheckerFab() {
             <>
               Check a symptom
               {/* The offer is the reason to tap it, so it travels with the
-                  label — but quietly, at half a step down. */}
+                  label, but quietly, at half a step down. */}
               <span className="ml-1.5 hidden text-xs font-medium opacity-75 sm:inline">
                 · free
               </span>

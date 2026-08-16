@@ -136,7 +136,7 @@ export default function ProfilePage() {
             {me.lat.toFixed(3)}, {me.lng.toFixed(3)}
           </p>
 
-          {/* About + credentials — exactly what patients see. Use “Edit
+          {/* About + credentials, exactly what patients see. Use “Edit
               profile” to change any of it. */}
           <div className="mt-5 space-y-3 border-t border-[var(--border)] pt-4">
             <div className="flex items-center justify-between">
@@ -174,7 +174,7 @@ export default function ProfilePage() {
             <CredLine
               icon={<LanguagesIcon className="h-4 w-4 text-salmon" />}
               label="Languages"
-              value={me.languages.join(", ") || "—"}
+              value={me.languages.join(", ") || ", "}
             />
             <CredLine
               icon={<ShieldCheck className="h-4 w-4 text-salmon" />}
@@ -185,7 +185,7 @@ export default function ProfilePage() {
 
           {!me.avatarUrl && (
             <p className="mt-4 rounded-xl border border-tan/30 bg-tan/10 px-3.5 py-2.5 text-xs leading-relaxed text-tan">
-              Add a profile photo (tap the avatar above) — it&apos;s required
+              Add a profile photo (tap the avatar above), it&apos;s required
               before you can go online or publish a gig, so patients can see
               who&apos;s treating them.
             </p>

@@ -82,7 +82,7 @@ export function RequestCard({
         </div>
       </div>
 
-      {/* How they reached you, and when — the first thing a doctor triages on. */}
+      {/* How they reached you, and when, the first thing a doctor triages on. */}
       <div
         className={`mt-3 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
           gig

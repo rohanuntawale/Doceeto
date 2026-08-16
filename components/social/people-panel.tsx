@@ -110,7 +110,7 @@ export function PeoplePanel({ onMessage }: { onMessage: (userId: string) => void
             searching
               ? "Try a specialty, or part of a name."
               : section === "followers"
-                ? "Post something — colleagues find you through the feed."
+                ? "Post something, colleagues find you through the feed."
                 : "Follow a few colleagues and their posts will fill your feed."
           }
         />

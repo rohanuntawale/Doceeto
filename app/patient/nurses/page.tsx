@@ -88,7 +88,7 @@ export default function PatientNursesPage() {
         </p>
       </div>
 
-      {/* Service filter — the nurse equivalent of the doctor list's specialty
+      {/* Service filter, the nurse equivalent of the doctor list's specialty
           filter, reading the same ids the nurse's profile stores. */}
       <div className="mt-6 flex flex-wrap gap-2">
         {NURSE_SERVICES.map((s) => {

@@ -77,13 +77,13 @@ export function RegistryAutofill({
       {state === "none" && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
           No match on the register for that number. Check it, or just fill the
-          form in yourself — our team verifies either way.
+          form in yourself, our team verifies either way.
         </p>
       )}
       {(state === "unavailable" || state === "error") && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
           The medical register isn&apos;t responding right now. Fill the form in
-          yourself — this only saves typing.
+          yourself, this only saves typing.
         </p>
       )}
 

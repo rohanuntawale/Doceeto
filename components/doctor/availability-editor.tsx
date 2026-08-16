@@ -308,7 +308,7 @@ export function AvailabilityEditor({ doctor }: { doctor: Doctor }) {
           />
         </div>
         <p className="mt-1.5 text-xs text-[var(--text-faint)]">
-          Blocks the whole day. Appointments already confirmed for it stay —
+          Blocks the whole day. Appointments already confirmed for it stay
           cancel those yourself.
         </p>
       </div>

@@ -111,7 +111,7 @@ export function LandingTestimonials() {
 
       <div className="relative z-10 mx-auto mt-12 max-w-7xl px-6">
         <p className="text-sm text-[var(--text-faint)]">
-          Real patients, in their own words — the shelf fills as they come in.
+          Real patients, in their own words, the shelf fills as they come in.
         </p>
       </div>
     </section>
@@ -170,7 +170,7 @@ function EmptySlot({ index }: { index: number }) {
           <Play className="h-5 w-5 translate-x-[1px] text-[rgb(var(--c-forest-paper)/0.45)]" />
         </span>
       </span>
-      {/* A light sweeping across the empty frame — the slot reads as waiting
+      {/* A light sweeping across the empty frame, the slot reads as waiting
           for something rather than as a hole in the page. Offset per card so
           the rail does not flash in unison. */}
       <span

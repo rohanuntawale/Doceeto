@@ -22,7 +22,7 @@ import {
 
 export const metadata: Metadata = {
   title: `Legal · ${COMPANY.brand}`,
-  description: `Every ${COMPANY.brand} policy in one place — privacy, terms, medical disclaimers, sales, provider terms, grievance redressal and data deletion.`,
+  description: `Every ${COMPANY.brand} policy in one place, privacy, terms, medical disclaimers, sales, provider terms, grievance redressal and data deletion.`,
   alternates: { canonical: "/legal" },
 };
 
@@ -44,7 +44,7 @@ export default function LegalHubPage() {
           <p className="mt-5 text-lg leading-relaxed text-[var(--text-muted)]">
             Healthcare runs on trust, and trust is easier to give when the terms
             are legible. These documents are written to be read by the people
-            they bind — not to be scrolled past.
+            they bind, not to be scrolled past.
           </p>
           <p className="mt-4 text-xs text-[var(--text-faint)]">
             All documents at version {POLICY_VERSION.version}, effective{" "}
@@ -52,7 +52,7 @@ export default function LegalHubPage() {
           </p>
         </header>
 
-        {/* Emergency banner — the one thing worth interrupting for. */}
+        {/* Emergency banner, the one thing worth interrupting for. */}
         <div className="mt-10 flex gap-3 rounded-card border border-status-critical/35 bg-status-critical/[0.07] p-5">
           <ShieldAlert
             aria-hidden

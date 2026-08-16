@@ -78,8 +78,8 @@ export default function ProviderTermsPage() {
                   the Indian Nursing Council Act, 1947.
                 </LI>
                 <LI>
-                  A recognised qualification — <T>ANM, GNM, B.Sc Nursing or M.Sc
-                  Nursing</T> — with certificates.
+                  A recognised qualification, <T>ANM, GNM, B.Sc Nursing or M.Sc
+                  Nursing</T>, with certificates.
                 </LI>
                 <LI>
                   Demonstrated competence in each service capability you list:
@@ -138,7 +138,7 @@ export default function ProviderTermsPage() {
               <UL>
                 <LI>
                   We re-verify periodically and whenever a document expires.
-                  Keep them current — an expired registration means your listing
+                  Keep them current, an expired registration means your listing
                   stops.
                 </LI>
                 <LI>
@@ -202,7 +202,7 @@ export default function ProviderTermsPage() {
                 </LI>
                 <LI>
                   Follow the <T>Telemedicine Practice Guidelines, 2020</T> in
-                  full — mode-appropriate prescribing, the List O / A / B
+                  full, mode-appropriate prescribing, the List O / A / B
                   framework, identity verification, and the prohibited list.{" "}
                   <T>
                     Never prescribe a Schedule X drug or any narcotic or
@@ -281,7 +281,7 @@ export default function ProviderTermsPage() {
                   <T>Boundaries.</T> No personal relationship with a patient. No
                   contact outside the platform except for clinical follow-up. No
                   soliciting patients away from {COMPANY.brand} to avoid
-                  commission — that is a material breach.
+                  commission, that is a material breach.
                 </LI>
                 <LI>
                   <T>No discrimination</T> on caste, religion, gender, sexual
@@ -300,7 +300,7 @@ export default function ProviderTermsPage() {
                 <LI>
                   <T>Punctuality and communication.</T> Arrive when you said, or
                   tell the patient early. Confirm arrival with the four-digit code
-                  the patient reads to you — never ask them to share it in
+                  the patient reads to you, never ask them to share it in
                   advance.
                 </LI>
                 <LI>
@@ -364,7 +364,7 @@ export default function ProviderTermsPage() {
                   <T>30 days</T> in advance and never applies retrospectively.
                 </LI>
                 <LI>
-                  Every completed encounter posts a ledger line —{" "}
+                  Every completed encounter posts a ledger line, {" "}
                   <T>gross, commission, net</T>. Nothing is deducted that is not
                   itemised.
                 </LI>
@@ -446,7 +446,7 @@ export default function ProviderTermsPage() {
                 </OLI>
                 <OLI>
                   We indemnify you against claims arising from a failure of{" "}
-                  <T>our</T> platform — a data breach caused by us, or a defect in
+                  <T>our</T> platform, a data breach caused by us, or a defect in
                   our software that causes harm. Where a technology failure at our
                   end breaches patient confidentiality, the Telemedicine Practice
                   Guidelines place that responsibility on us and we accept it.
@@ -498,7 +498,7 @@ export default function ProviderTermsPage() {
               </UL>
               <P>
                 <T>You will be told the reason</T> and may appeal to{" "}
-                <MailLink address={CONTACTS.grievance} />. A person reviews it —
+                <MailLink address={CONTACTS.grievance} />. A person reviews it
                 where the matter is clinical, a clinician does. Earnings already
                 due are paid, less any recovery. Where the conduct is reportable,
                 we report it to your State Medical or Nursing Council, as the

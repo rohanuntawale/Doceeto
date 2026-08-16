@@ -69,7 +69,7 @@ const NAV_ITEMS: SidebarLink[] = [
     id: "nurses",
     label: "Nurses",
     href: "/try/nurses",
-    hint: "Home nursing — wound care, injections, vitals, elder care.",
+    hint: "Home nursing, wound care, injections, vitals, elder care.",
   },
   {
     id: "checker",
@@ -121,7 +121,7 @@ export default function Page() {
      it will end up. Re-run the scroll once the element actually exists.
 
      Instant, not smooth: you asked to arrive at a section, not to watch the
-     whole page scroll past. Same-page nav bar clicks are unaffected — they are
+     whole page scroll past. Same-page nav bar clicks are unaffected, they are
      plain anchors and keep the smooth behaviour from globals.css. */
   useEffect(() => {
     const id = decodeURIComponent(window.location.hash.slice(1));
@@ -144,7 +144,7 @@ export default function Page() {
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] relative selection:bg-[var(--accent)] selection:text-white">
       {/* ── Floating glass pill header ──
           A capsule that hugs its own content, centred, detached from the
-          page edges — not a bar spanning the viewport. Full-width chrome was
+          page edges, not a bar spanning the viewport. Full-width chrome was
           claiming ~90px of every screen for four controls; sized to fit, the
           same controls read as an object floating over the page, and the hero
           shows through around it.
@@ -152,17 +152,17 @@ export default function Page() {
           The glass is real glassmorphism, not a tinted rectangle: a
           translucent surface + backdrop-blur so the forest band and paper
           panel genuinely refract through it as you scroll, a hairline border
-          to give the pane an edge, and an inset top highlight — the catch
+          to give the pane an edge, and an inset top highlight, the catch
           light that makes it read as glass rather than fog. Opacity firms up
           once scrolled, when busier content starts passing underneath. */}
       <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3 sm:pt-4">
         {/* Frosted WHITE glass, in every state. A smoked-green variant was
-            tried for "over the hero" — but the pill keys on scroll position,
+            tried for "over the hero", but the pill keys on scroll position,
             not on what is actually behind it, and at the top of the page
             that's the white paper panel: green glass over white paper read as
             a muddy grey-green capsule. White glass is correct over paper and
             still legible passing the forest bands, so one recipe it is. The
-            blur + saturate is what keeps it glass rather than paint — content
+            blur + saturate is what keeps it glass rather than paint, content
             scrolling underneath visibly refracts through it. */}
         <div
           className={`flex items-center gap-1 rounded-full border border-white/50 py-1.5 pl-3 pr-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.6),0_8px_32px_rgb(16_45_35/0.15)] backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300 ${
@@ -221,7 +221,7 @@ export default function Page() {
       {/* Site Footer */}
       <SiteFooter />
 
-      {/* Follows the scroll — the checker stays one tap away all the way down. */}
+      {/* Follows the scroll, the checker stays one tap away all the way down. */}
       <CheckerFab />
     </div>
   );

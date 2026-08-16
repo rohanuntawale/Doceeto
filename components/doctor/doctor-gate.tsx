@@ -59,7 +59,7 @@ function DoctorOnboarding() {
         </span>
         <h1 className="mt-4 font-serif text-2xl text-cream">Set up your doctor profile</h1>
         <p className="mx-auto mt-2 max-w-sm text-sm text-[var(--text-muted)]">
-          Create your profile to start receiving patients near you — home
+          Create your profile to start receiving patients near you, home
           visits, clinic visits and video calls.
         </p>
 

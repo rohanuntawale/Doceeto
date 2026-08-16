@@ -108,7 +108,7 @@ export function LandingFilm() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     /* Play only while visible. `play()` rejects routinely — a tab restored in
-       the background, a policy that wants a gesture first — and that is not an
+       the background, a policy that wants a gesture first, and that is not an
        error worth surfacing: with no controls there is nothing to fall back to
        except the poster, which is already a finished frame. */
     const observer = new IntersectionObserver(
@@ -140,8 +140,8 @@ export function LandingFilm() {
 
             On a phone this block was the whole problem: at the desktop type
             scale the eyebrow, a four-line serif headline and a four-line
-            paragraph filled the entire screen, and the film — the reason the
-            section exists — began below the fold. Nobody scrolled to it. The
+            paragraph filled the entire screen, and the film, the reason the
+            section exists, began below the fold. Nobody scrolled to it. The
             type steps down properly now, and the supporting paragraph is held
             back until there is a second column to put it in. */}
         <motion.div
@@ -169,7 +169,7 @@ export function LandingFilm() {
           </p>
         </motion.div>
 
-        {/* The film itself. On a phone a 16:9 strip is 190px of a 844px screen —
+        {/* The film itself. On a phone a 16:9 strip is 190px of a 844px screen
             present but not worth the download, so the frame goes taller and the
             footage is cropped to it rather than shrunk into it. */}
         <motion.div
@@ -201,7 +201,7 @@ export function LandingFilm() {
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_45%,transparent_58%,rgb(0_0_0/0.32)_100%)]"
           />
 
-          {/* The supporting line, on phones only — it was cut from the header
+          {/* The supporting line, on phones only, it was cut from the header
               above to get the film on screen, and it belongs somewhere. Over
               the footage it costs no vertical space at all. */}
           <div

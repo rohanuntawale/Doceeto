@@ -69,7 +69,7 @@ export default function TelemedicineConsentPage() {
                 </LI>
                 <LI>
                   The Guidelines oblige an RMP to display that registration
-                  number on all communications — you are entitled to ask for it
+                  number on all communications, you are entitled to ask for it
                   and to verify it on the NMC register.
                 </LI>
                 <LI>
@@ -115,7 +115,7 @@ export default function TelemedicineConsentPage() {
                 ]}
               />
               <P>
-                A doctor may ask to switch modes — usually onto video — and may
+                A doctor may ask to switch modes, usually onto video, and may
                 decline to proceed until you do. That is a clinical safety
                 judgement, and the Guidelines require them to make it.
               </P>
@@ -129,7 +129,7 @@ export default function TelemedicineConsentPage() {
             <>
               <P>
                 Under the Guidelines, consent is <T>implied</T> when you initiate
-                the consultation yourself — which is what happens whenever you
+                the consultation yourself, which is what happens whenever you
                 book on {COMPANY.brand}. <T>Explicit</T> consent is required, and
                 recorded, when a health worker, caregiver or the doctor initiates
                 it on your behalf.
@@ -160,7 +160,7 @@ export default function TelemedicineConsentPage() {
                 You may stop at any moment, including part-way through, without
                 giving a reason. Refunds follow the{" "}
                 <Xref href="/legal/sales#cancellation">Sales Policy</Xref>.
-                Withdrawing does not delete a record of care already given —
+                Withdrawing does not delete a record of care already given
                 that record is a medical document, and the doctor is required to
                 keep it.
               </P>
@@ -210,7 +210,7 @@ export default function TelemedicineConsentPage() {
                 rows={[
                   [
                     "List O",
-                    "Over-the-counter medicines that are safe without a prescription — paracetamol, oral rehydration salts, antacids, simple antiseptics, common vitamins.",
+                    "Over-the-counter medicines that are safe without a prescription, paracetamol, oral rehydration salts, antacids, simple antiseptics, common vitamins.",
                     "Any mode: video, audio or text.",
                   ],
                   [
@@ -255,7 +255,7 @@ export default function TelemedicineConsentPage() {
                 </LI>
                 <LI>
                   It can be shared with a chemist through an unlisted link.
-                  Anyone holding that link can read it —{" "}
+                  Anyone holding that link can read it, {" "}
                   <Xref href="/legal/privacy#sharing">see the warning</Xref>.
                 </LI>
                 <LI>
@@ -272,7 +272,7 @@ export default function TelemedicineConsentPage() {
           content: (
             <>
               <P>
-                The Guidelines give — and require — full professional discretion
+                The Guidelines give, and require, full professional discretion
                 to decline. A doctor should refuse, or convert the consultation
                 into a referral, where:
               </P>
@@ -325,7 +325,7 @@ export default function TelemedicineConsentPage() {
               <OL>
                 <OLI>
                   give <T>complete and truthful</T> information about your
-                  symptoms, history, allergies and current medication —
+                  symptoms, history, allergies and current medication
                   including anything ayurvedic, homoeopathic or herbal, and
                   anything bought over the counter;
                 </OLI>
@@ -359,7 +359,7 @@ export default function TelemedicineConsentPage() {
           content: (
             <>
               <P>
-                The doctor is required to keep a log of the consultation — the
+                The doctor is required to keep a log of the consultation, the
                 mode used, what was discussed, and what was prescribed. That
                 record is retained as set out in{" "}
                 <Xref href="/legal/privacy#retention">retention</Xref>. Your
@@ -375,7 +375,7 @@ export default function TelemedicineConsentPage() {
               <P>
                 Where a technology failure at our end causes a breach of
                 confidentiality, the Guidelines place that responsibility on us,
-                not on the doctor. We accept it — see{" "}
+                not on the doctor. We accept it, see{" "}
                 <Xref href="/legal/security">Security</Xref>.
               </P>
             </>
@@ -389,7 +389,7 @@ export default function TelemedicineConsentPage() {
               <P>
                 Nurses on {COMPANY.brand} are registered with a State Nursing
                 Council under the Indian Nursing Council Act, 1947. They deliver{" "}
-                <T>hands-on nursing care at your home</T> — injections and
+                <T>hands-on nursing care at your home</T>, injections and
                 infusions, wound care and dressings, catheter and stoma care,
                 vitals monitoring, post-operative care, and elder care.
               </P>

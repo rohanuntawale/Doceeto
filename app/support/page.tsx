@@ -48,7 +48,7 @@ const HOW_IT_WORKS = [
   {
     icon: Users,
     title: "It goes out to everyone free nearby",
-    body: "You don't chase a doctor. The request reaches every verified provider in range at once, and the first to accept takes it — the rest see it disappear.",
+    body: "You don't chase a doctor. The request reaches every verified provider in range at once, and the first to accept takes it, the rest see it disappear.",
   },
   {
     icon: HeartPulse,
@@ -58,7 +58,7 @@ const HOW_IT_WORKS = [
   {
     icon: ShieldCheck,
     title: "A 4-digit code confirms it happened",
-    body: "At the door you read a code aloud that only you were given. The visit isn't marked complete — and nobody is paid — until you do.",
+    body: "At the door you read a code aloud that only you were given. The visit isn't marked complete, and nobody is paid, until you do.",
   },
 ];
 
@@ -93,7 +93,7 @@ const FAQS = [
   },
   {
     q: "How do you check that a doctor is real?",
-    a: "Every provider is reviewed by our team before they can be found by patients — registration number, qualifications and identity. Nurses are checked before they can ever be sent to a home. An unverified provider is not discoverable at all.",
+    a: "Every provider is reviewed by our team before they can be found by patients, registration number, qualifications and identity. Nurses are checked before they can ever be sent to a home. An unverified provider is not discoverable at all.",
   },
   {
     q: "What does it cost?",
@@ -101,7 +101,7 @@ const FAQS = [
   },
   {
     q: "Can I get a prescription?",
-    a: "A doctor can issue one after a consultation, and it arrives as a document you can share with any pharmacy. Nurses cannot prescribe — that stays with doctors.",
+    a: "A doctor can issue one after a consultation, and it arrives as a document you can share with any pharmacy. Nurses cannot prescribe, that stays with doctors.",
   },
   {
     q: "Where does Doceeto work?",
@@ -138,7 +138,7 @@ export default function SupportPage() {
           <AlertTriangle className="h-5 w-5 shrink-0 text-status-critical" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[var(--text)]">
-              In an emergency, call 112 — don&apos;t wait for us
+              In an emergency, call 112, don&apos;t wait for us
             </p>
             <p className="mt-0.5 text-xs text-[var(--text-muted)]">
               Doceeto is not an emergency service and cannot dispatch an ambulance.{" "}
@@ -176,7 +176,7 @@ export default function SupportPage() {
 
         {/* ── The mechanism ── */}
         <Section title="How a visit actually happens" label="02">
-          {/* Numbered because it IS a sequence — each step only makes sense
+          {/* Numbered because it IS a sequence, each step only makes sense
               after the one before it. */}
           <ol className="grid gap-px overflow-hidden rounded-card border border-[var(--border)] bg-[var(--border)] sm:grid-cols-2">
             {HOW_IT_WORKS.map(({ icon: Icon, title, body }, i) => (
@@ -275,7 +275,7 @@ export default function SupportPage() {
         {/* ── Policies ── */}
         <Section title="Everything we publish" label="05">
           <p className="mb-3 text-sm text-[var(--text-muted)]">
-            Every policy, in full. Nothing here is summarised away —{" "}
+            Every policy, in full. Nothing here is summarised away, {" "}
             <Link href="/legal" className="underline underline-offset-2">
               the legal hub
             </Link>{" "}

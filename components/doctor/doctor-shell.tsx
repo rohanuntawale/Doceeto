@@ -92,7 +92,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   return (
     // The app keeps the terracotta accent; green is the public brand.
     <div className="min-h-screen app-accent-warm">
-      {/* Top bar — solid glass at exactly --chrome-top tall, so scrolled
+      {/* Top bar, solid glass at exactly --chrome-top tall, so scrolled
           content never collides with the controls floating on it. */}
       <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
         <Link href="/doctor" aria-label="Doceeto doctor home">
@@ -114,7 +114,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom scrim — pages fade out into the background under the floating
+      {/* Bottom scrim, pages fade out into the background under the floating
           dock instead of colliding with it at full strength. */}
       <div
         aria-hidden

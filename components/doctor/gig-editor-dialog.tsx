@@ -30,7 +30,7 @@ const WHERE: { type: ConsultType; label: string; icon: React.ReactNode; help: st
 ];
 
 const EXAMPLES = [
-  "Home visit — fever & flu care",
+  "Home visit, fever & flu care",
   "Night clinic cover (12h shift)",
   "Post-op wound dressing at home",
 ];
@@ -147,7 +147,7 @@ export function GigEditorDialog({
           )}
 
           <Field label="Where does it happen?">
-            {/* Stacks on the narrowest phones — three-up leaves ~60px per
+            {/* Stacks on the narrowest phones, three-up leaves ~60px per
                 tile at 320px, too little for the helper line. */}
             <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
               {WHERE.map((w) => {
@@ -214,7 +214,7 @@ export function GigEditorDialog({
           {/* The one consequence a doctor must understand before publishing. */}
           <p className="flex items-start gap-2 rounded-lg bg-tan/10 p-3 text-xs leading-relaxed text-tan">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            While you&apos;re on a gig you&apos;re marked unavailable — no new bookings or
+            While you&apos;re on a gig you&apos;re marked unavailable, no new bookings or
             urgent requests reach you until you mark it complete. Appointments you&apos;ve
             already confirmed still stand.
           </p>

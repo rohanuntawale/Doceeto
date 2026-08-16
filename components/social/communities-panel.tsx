@@ -645,7 +645,7 @@ function CreateCommunityDialog({ onClose }: { onClose: () => void }) {
             onChange={(e) => setIsPrivate(e.target.checked)}
             className="accent-[rgb(var(--c-terracotta))]"
           />
-          Private — people have to ask to join
+          Private, people have to ask to join
         </label>
 
         <div className="mt-4 flex justify-end gap-2">

@@ -155,7 +155,7 @@ function Keypad({ req, onClose }: { req: ConsultRequest; onClose: () => void }) 
 
         {/* Four slots, filled left to right. Read-only display: the keypad
             below is the only way in, so there is never a hidden focus state to
-            hunt for — the commonest way an OTP field fails an older user. */}
+            hunt for, the commonest way an OTP field fails an older user. */}
         <div className="mt-5 flex justify-center gap-2.5" aria-live="polite">
           {[0, 1, 2, 3].map((i) => (
             <span

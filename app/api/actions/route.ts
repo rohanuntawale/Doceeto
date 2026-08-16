@@ -179,7 +179,7 @@ export async function POST(req: Request) {
     const doc = await repo.getDoctorById(me);
     if (doc?.avatarUrl) return null;
     return NextResponse.json(
-      { error: "Add a profile photo first — patients need to see who's treating them. Add one from your profile page." },
+      { error: "Add a profile photo first, patients need to see who's treating them. Add one from your profile page." },
       { status: 409 },
     );
   };
@@ -301,7 +301,7 @@ export async function POST(req: Request) {
         return done(
           await repo.createOrder({
             items: payload.items as { name: string; qty: number }[],
-            total: 0, // ignored — priced server-side from the catalog
+            total: 0, // ignored, priced server-side from the catalog
             address: String(payload.address ?? "").slice(0, 200),
             darkStore: String(payload.darkStore ?? ""),
             patientId: me,
@@ -634,7 +634,7 @@ export async function POST(req: Request) {
         if (!address) return bad("Add a delivery address first.");
         const order = await repo.createOrder({
           items: basket.items,
-          total: 0, // ignored — the repo re-prices every line from the catalog
+          total: 0, // ignored, the repo re-prices every line from the catalog
           address,
           darkStore: darkStoreFor(rx.id),
           patientId: me,
@@ -689,7 +689,7 @@ export async function POST(req: Request) {
           if (!sos) return NextResponse.json({ error: "That emergency no longer exists." }, { status: 404 });
           if (sos.doctorId && sos.doctorId !== me)
             return NextResponse.json({ error: "Another doctor is already responding." }, { status: 409 });
-          await repo.assignDoctorToSos(String(payload.sosId), me); // force to caller — no spoofing
+          await repo.assignDoctorToSos(String(payload.sosId), me); // force to caller, no spoofing
           return done({ ok: true }, ["sos"]);
         }
         return needs("ops or the responding doctor");

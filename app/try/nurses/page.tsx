@@ -6,7 +6,7 @@ import { AvailabilityMap } from "@/components/try/availability-map";
 export const metadata = {
   title: "Home care nurses on Doceeto",
   description:
-    "Browse verified home care nurses on Doceeto — dressings, injections, vitals and elder care, with no account needed.",
+    "Browse verified home care nurses on Doceeto, dressings, injections, vitals and elder care, with no account needed.",
 };
 
 export default function TryNursesPage() {

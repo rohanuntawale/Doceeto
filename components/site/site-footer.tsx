@@ -18,7 +18,7 @@ export function SiteFooter() {
     <footer className="border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors">
       {/* Two columns even on a phone. Stacked single-file, five groups of
           links ran to several screens of scrolling before the brand or the
-          copyright ever appeared — a footer longer than the page it closes.
+          copyright ever appeared, a footer longer than the page it closes.
           Side by side, tighter, and slightly smaller type on mobile roughly
           halves its height without dropping a single link. */}
       <nav

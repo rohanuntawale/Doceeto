@@ -21,11 +21,11 @@ const WEEK_MS = 7 * 24 * 3600 * 1000;
 // Offline/demo suggestions — same tone as the server's fallback lines.
 const LOCAL_TIP: Record<string, string> = {
   underweight:
-    "Your BMI is a little below the healthy range. Try adding an extra wholesome snack daily — nuts, a banana, or milk — and mention it in your next consult.",
+    "Your BMI is a little below the healthy range. Try adding an extra wholesome snack daily, nuts, a banana, or milk, and mention it in your next consult.",
   overweight:
     "Your BMI is a little above the healthy range. A 20–30 minute daily walk and easing off fried snacks go a long way. A doctor here can help you plan.",
   obese:
-    "Your BMI is in a range that deserves extra care for your heart, joints and sugar levels. Start with daily walks and lighter dinners — and consider a consult to build a plan.",
+    "Your BMI is in a range that deserves extra care for your heart, joints and sugar levels. Start with daily walks and lighter dinners, and consider a consult to build a plan.",
   extremelyObese:
     "Your BMI is in a range where extra support can help protect your heart, joints and sugar levels. A doctor can help you make a safe, gradual plan that fits your routine.",
 };
@@ -62,7 +62,7 @@ export function BmiAdvisor() {
       }
     };
     const notify = (tip: string) => {
-      toast.push({ tone: "info", title: `Your BMI is ${bmi} — a note for you`, desc: tip });
+      toast.push({ tone: "info", title: `Your BMI is ${bmi}, a note for you`, desc: tip });
       remember();
     };
 

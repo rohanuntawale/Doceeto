@@ -168,7 +168,7 @@ export function PostCard({
                   />
                 ) : (
                   <>
-                    {/* Report and block sit beside each other deliberately —
+                    {/* Report and block sit beside each other deliberately
                         they are the two things a person needs when something
                         is wrong, and hunting for the second one is a bad
                         moment to have. */}
@@ -369,7 +369,7 @@ export function PostCard({
         <div className="border-t border-[var(--border)] px-4 py-3 sm:px-5">
           {post.comments.length === 0 && (
             <p className="pb-2 text-xs text-[var(--text-muted)]">
-              No comments yet — start the discussion.
+              No comments yet, start the discussion.
             </p>
           )}
           <ul className="space-y-3">

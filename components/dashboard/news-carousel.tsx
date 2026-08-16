@@ -19,7 +19,7 @@ const U = (id: string) =>
 
 const NEWS: Record<Role, NewsItem[]> = {
   patient: [
-    { category: "Health", headline: "Monsoon flu cases climb across Nagpur — how to stay safe", source: "Doceeto Health", time: "2h", color: "#8A4B24", image: U("1584982751601-97dcc096659c") },
+    { category: "Health", headline: "Monsoon flu cases climb across Nagpur, how to stay safe", source: "Doceeto Health", time: "2h", color: "#8A4B24", image: U("1584982751601-97dcc096659c") },
     { category: "Wellness", headline: "Five symptoms you should never ignore this season", source: "Wellness Desk", time: "5h", color: "#586647", image: U("1505751172876-fa1923c5c528") },
     { category: "Doceeto", headline: "Home visits now available until 11 PM across the city", source: "Doceeto", time: "1d", color: "#9A7433", image: U("1519494026892-80bbd2d6fd0d") },
     { category: "Update", headline: "New guidelines make video consults faster and safer", source: "Health Ministry", time: "2d", color: "#8A4B24", image: U("1576091160399-112ba8d25d1d") },
@@ -97,7 +97,7 @@ export function NewsCarousel({ role }: { role: Role }) {
                 {n.source} · {n.time}
               </span>
             </span>
-            {/* This row swaps the hero above — no external page opens, so no
+            {/* This row swaps the hero above, no external page opens, so no
                 external-link arrow. */}
           </button>
         ))}

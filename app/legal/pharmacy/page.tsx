@@ -41,7 +41,7 @@ export default function PharmacyPolicyPage() {
             fills your order, holding a retail sale licence in Form 20 and Form
             21 under the Drugs and Cosmetics Rules, 1945. Every prescription-only
             item is dispensed under the supervision of a{" "}
-            <strong>registered pharmacist</strong> — a legal requirement, not a
+            <strong>registered pharmacist</strong>, a legal requirement, not a
             courtesy step.
           </P>
         </Callout>
@@ -72,7 +72,7 @@ export default function PharmacyPolicyPage() {
                 </LI>
                 <LI>
                   The pharmacist <T>verifies</T> it before dispensing, and may
-                  telephone the prescriber. They may refuse — a pharmacist&rsquo;s
+                  telephone the prescriber. They may refuse, a pharmacist&rsquo;s
                   professional judgement is theirs, and it is a safeguard for you.
                 </LI>
                 <LI>
@@ -84,8 +84,8 @@ export default function PharmacyPolicyPage() {
                   expired, or the condition needs review, you need a fresh one.
                 </LI>
                 <LI>
-                  Prescriptions and dispensing records are retained as required —
-                  three years for Schedule H1 — see{" "}
+                  Prescriptions and dispensing records are retained as required
+                  three years for Schedule H1, see{" "}
                   <Xref href="/legal/privacy#retention">retention</Xref>.
                 </LI>
               </UL>
@@ -137,7 +137,7 @@ export default function PharmacyPolicyPage() {
                   ],
                   [
                     "Medical termination of pregnancy kits",
-                    "—",
+                    ", ",
                     "Not dispensed. These require supervision under the MTP Act, 1971",
                   ],
                 ]}
@@ -145,9 +145,9 @@ export default function PharmacyPolicyPage() {
               <Callout tone="critical" title="Do not try to obtain restricted drugs here">
                 <P>
                   Attempting to obtain a Schedule X, narcotic or psychotropic
-                  drug — including by uploading a forged or altered prescription,
+                  drug, including by uploading a forged or altered prescription,
                   or by collecting prescriptions from several doctors for the
-                  same complaint — will end your account immediately. Forging a
+                  same complaint, will end your account immediately. Forging a
                   prescription is an offence under the Bharatiya Nyaya Sanhita and
                   under the Drugs and Cosmetics Act, 1940, and we report it.
                 </P>
@@ -202,7 +202,7 @@ export default function PharmacyPolicyPage() {
                 <LI>
                   <T>Check the parcel at the door</T>: the correct medicine, the
                   correct strength, an intact seal, and an expiry date far enough
-                  ahead to finish the course. Refuse anything wrong — that is
+                  ahead to finish the course. Refuse anything wrong, that is
                   much simpler than a return.
                 </LI>
                 <LI>
@@ -291,9 +291,9 @@ export default function PharmacyPolicyPage() {
               </UL>
               <H3>Adverse reactions</H3>
               <P>
-                Stop and contact the prescribing doctor. In a severe reaction —
+                Stop and contact the prescribing doctor. In a severe reaction
                 swelling of the face, lips or tongue, difficulty breathing, or a
-                spreading rash — <T>call 112 immediately</T>. Report the reaction
+                spreading rash, <T>call 112 immediately</T>. Report the reaction
                 to the Pharmacovigilance Programme of India on 1800-180-3024, and
                 tell us at <MailLink address={CONTACTS.medical} /> so we can
                 inform the pharmacy and the prescriber.
@@ -314,7 +314,7 @@ export default function PharmacyPolicyPage() {
               <UL>
                 <LI>stop taking it;</LI>
                 <LI>
-                  keep the packaging, the strip and the invoice — the batch
+                  keep the packaging, the strip and the invoice, the batch
                   number is what makes an investigation possible;
                 </LI>
                 <LI>

@@ -111,7 +111,7 @@ export function LandingProductShowcase() {
                 </div>
 
                 {/* Real providers off the public roster, each linking to that
-                    person's profile — see live-provider-cards.tsx. */}
+                    person's profile, see live-provider-cards.tsx. */}
                 <LiveProviderCards />
               </motion.div>
             )}
@@ -158,7 +158,7 @@ export function LandingProductShowcase() {
                     <p className="text-xs text-[var(--text-muted)]">
                       Symptoms in the patient&apos;s own words, how urgent it
                       is, where they are, and whether they want a home visit or
-                      a tele-consult — before you accept.
+                      a tele-consult, before you accept.
                     </p>
                     <div className="pt-3 flex gap-2">
                       <span className="rounded-lg bg-[var(--accent)] text-on-accent px-3 py-1.5 text-xs font-bold">
@@ -227,7 +227,7 @@ export function LandingProductShowcase() {
                       Post-surgical dressing changes
                     </h4>
                     <p className="text-xs text-[var(--text-muted)]">
-                      Wound cleaning, sterile dressing and a BP check — with the
+                      Wound cleaning, sterile dressing and a BP check, with the
                       address and route shown once the visit is confirmed.
                     </p>
                     <div className="pt-2">

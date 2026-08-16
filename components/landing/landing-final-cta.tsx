@@ -34,7 +34,7 @@ export function LandingFinalCta() {
     /* The page closes on the same forest green it opened under, curving up
        out of the paper one last time. */
     <section id="start" className="relative bg-[var(--bg)]">
-      {/* Rounded on BOTH ends now — the band is a card floating on the page,
+      {/* Rounded on BOTH ends now, the band is a card floating on the page,
           and a card whose top is curved and whose bottom runs square reads as
           unfinished. The mb puts a sliver of canvas under the bottom curve so
           the corner is actually visible against the footer instead of merging
@@ -48,7 +48,7 @@ export function LandingFinalCta() {
             the middle read as lit rather than merely lighter. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           {/* Alphas kept low on purpose: the first pass washed the whole band
-              toward mid-green because the big bloom sat at 0.85 — the glow was
+              toward mid-green because the big bloom sat at 0.85, the glow was
               repainting the background instead of lighting it. Tighter and
               dimmer, the deep forest base does most of the talking and the
               bloom is just the lamp behind the button. */}
@@ -73,7 +73,7 @@ export function LandingFinalCta() {
             the right front door.
           </motion.h2>
 
-          {/* The one button. Outline pill with its own halo — on this dark
+          {/* The one button. Outline pill with its own halo, on this dark
               band a glowing edge reads louder than a filled block, exactly as
               in the reference. */}
           <motion.div
@@ -92,7 +92,7 @@ export function LandingFinalCta() {
             </Link>
           </motion.div>
 
-          {/* Provider routes, demoted to a whisper — the hero already shouts
+          {/* Provider routes, demoted to a whisper, the hero already shouts
               them. Kept so a clinician reaching the end still has a door. */}
           <motion.p
             initial={{ opacity: 0 }}
@@ -126,7 +126,7 @@ export function LandingFinalCta() {
               widths, and at wide viewports the guess ran past the band and
               cropped the d and the o unevenly at the edges. textLength makes
               the geometry a statement instead: the word is exactly this wide,
-              centred, at every viewport — the only crop left is the vertical
+              centred, at every viewport, the only crop left is the vertical
               one we do on purpose. */}
           <svg viewBox="0 0 760 190" className="w-full" preserveAspectRatio="xMidYMax meet">
             <text

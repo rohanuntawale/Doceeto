@@ -136,7 +136,7 @@ export async function POST(req: Request) {
   if (!gender) return bad("Select your gender.");
   if (!Number.isFinite(age) || age < 18 || age > 100) return bad("Enter your age (18–100).");
   if (languages.length === 0) return bad("List at least one language you consult in.");
-  if (!qualifications) return bad("Add your qualifications — patients see these first.");
+  if (!qualifications) return bad("Add your qualifications, patients see these first.");
   if (!registrationNo) return bad("Add your medical registration number.");
   if (!Number.isFinite(consultFee) || consultFee < 0 || consultFee > 100_000) {
     return bad("Set a valid consultation fee.");

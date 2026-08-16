@@ -181,7 +181,7 @@ export default function DoctorHome() {
       {/* A live gig outranks everything: completing it is what unpauses them. */}
       {liveGig && <OnGigBanner request={liveGig} className="lg:col-span-12" />}
 
-      {/* Your shift — go online. The card states the status, so the toggle
+      {/* Your shift, go online. The card states the status, so the toggle
           is just the switch: nesting its full panel here overflowed the
           card and said "you're online" twice. */}
       <GlassCard className="p-5 lg:col-span-5">
@@ -204,7 +204,7 @@ export default function DoctorHome() {
         </div>
       </GlassCard>
 
-      {/* The gig shelf — the other half of how a doctor earns. */}
+      {/* The gig shelf, the other half of how a doctor earns. */}
       <GlassCard className="p-5 lg:col-span-7">
         <div className="flex h-full flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
@@ -285,7 +285,7 @@ export default function DoctorHome() {
         />
         <StatCard
           dense
-          value={avgResponse === null ? "—" : `${avgResponse}m`}
+          value={avgResponse === null ? ", " : `${avgResponse}m`}
           label="Avg response"
           sub={
             responseMins.length > 0
@@ -304,7 +304,7 @@ export default function DoctorHome() {
         </div>
       )}
 
-      {/* Patients around you — live positions of incoming requests */}
+      {/* Patients around you, live positions of incoming requests */}
       <Card className="overflow-hidden lg:col-span-7">
         <CardHeader label="DOCEETO · AROUND YOU" title="Patients near you" action={<MapLegend />} />
         <div className="p-4">
@@ -319,7 +319,7 @@ export default function DoctorHome() {
         </div>
       </Card>
 
-      {/* Incoming requests — a preview, not the whole queue. The full list
+      {/* Incoming requests, a preview, not the whole queue. The full list
           lives on Gigs; letting it run long here pushed everything below it
           off the screen on a busy day. */}
       <Card className="flex flex-col lg:col-span-5">
@@ -399,7 +399,7 @@ export default function DoctorHome() {
       <div className="lg:col-span-4">
         <ActivityCard
           title="Earnings this week"
-          caption="Daily net (₹) — tap a day to read it"
+          caption="Daily net (₹), tap a day to read it"
           data={earnings.data}
           // null means "nothing to compare against" — the badge hides rather
           // than asserting a measured 0%.

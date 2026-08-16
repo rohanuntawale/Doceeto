@@ -278,7 +278,7 @@ export function analyzeSymptoms(input: string): TriageResult | null {
       specialtyScores,
       sosCategory: sosCategory ?? "other",
       advice:
-        "This looks like it could be a medical emergency. Get help immediately — call your local emergency number or go to the nearest hospital.",
+        "This looks like it could be a medical emergency. Get help immediately, call your local emergency number or go to the nearest hospital.",
     };
   }
 

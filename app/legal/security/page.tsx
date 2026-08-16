@@ -82,7 +82,7 @@ export default function SecurityPage() {
                 </LI>
                 <LI>
                   Accounts created through Google carry no password at all, and
-                  the sign-in route refuses a password attempt against them —
+                  the sign-in route refuses a password attempt against them
                   so a Google-only account cannot be entered with a guessed empty
                   password.
                 </LI>
@@ -93,7 +93,7 @@ export default function SecurityPage() {
                 <LI>
                   A session is a <T>row in the database</T>. Your browser holds
                   only an opaque random identifier in an httpOnly, Secure,
-                  SameSite cookie — no role, no user id, nothing signed that
+                  SameSite cookie, no role, no user id, nothing signed that
                   could be forged or replayed after a privilege change.
                 </LI>
                 <LI>
@@ -129,7 +129,7 @@ export default function SecurityPage() {
                 <LI>
                   <T>Prescription links.</T> Shared prescriptions sit behind a
                   long, unguessable token, uniquely indexed and revocable. Anyone
-                  holding the link can read the document — that limitation is
+                  holding the link can read the document, that limitation is
                   disclosed to patients in the{" "}
                   <Xref href="/legal/privacy#sharing">Privacy Policy</Xref>.
                 </LI>
@@ -165,11 +165,11 @@ export default function SecurityPage() {
               </P>
               <OL>
                 <OLI>
-                  <T>Contain</T> — cut off the access path, and revoke affected
+                  <T>Contain</T>, cut off the access path, and revoke affected
                   sessions and credentials.
                 </OLI>
                 <OLI>
-                  <T>Assess</T> — establish what data was reached, whose, and
+                  <T>Assess</T>, establish what data was reached, whose, and
                   what the realistic consequence is.
                 </OLI>
                 <OLI>
@@ -182,7 +182,7 @@ export default function SecurityPage() {
                   involved, what we have done, and what you should do.
                 </OLI>
                 <OLI>
-                  <T>Remediate and publish</T> — fix the cause, and write up what
+                  <T>Remediate and publish</T>, fix the cause, and write up what
                   went wrong.
                 </OLI>
               </OL>
@@ -290,7 +290,7 @@ export default function SecurityPage() {
                 </LI>
                 <LI>Self-XSS, clickjacking on pages with no sensitive action, or missing SPF/DMARC on non-mailing domains.</LI>
                 <LI>
-                  Vulnerabilities in third-party services we merely use — report
+                  Vulnerabilities in third-party services we merely use, report
                   those to them.
                 </LI>
                 <LI>Attacks requiring physical access to an unlocked device.</LI>
@@ -301,7 +301,7 @@ export default function SecurityPage() {
               </UL>
               <P>
                 We do not currently run a paid bounty. We do offer public credit
-                and a genuinely fast, respectful response — and if you tell us
+                and a genuinely fast, respectful response, and if you tell us
                 about something serious, you will deal with an engineer, not a
                 ticketing queue.
               </P>

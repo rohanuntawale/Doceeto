@@ -76,7 +76,7 @@ function Metric({
         <span className="truncate text-xs">{label}</span>
       </div>
       <p className="mt-2 font-serif text-2xl tabular-nums text-[var(--text)]">{metric.current}</p>
-      {/* Only shown when there is something to compare against — "+100% on 0"
+      {/* Only shown when there is something to compare against, "+100% on 0"
           is technically the rule and rhetorically a lie. */}
       {(metric.previous > 0 || metric.current > 0) && (
         <p

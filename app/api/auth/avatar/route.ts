@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  * that, not a courtesy: without it this route would accept a 10MB original.
  */
 const DATA_URL_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
-const MAX_LENGTH = 300_000; // ~220KB decoded — far above what the client sends
+const MAX_LENGTH = 300_000; // ~220KB decoded, far above what the client sends
 
 export async function POST(req: Request) {
   const session = await getRequestSession(req);

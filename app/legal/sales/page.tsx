@@ -28,8 +28,8 @@ export default function SalesPolicyPage() {
       slug="sales"
       lead={
         <>
-          What things cost on {COMPANY.brand}, how you pay, and — the part
-          people actually need — when you get your money back. This policy forms
+          What things cost on {COMPANY.brand}, how you pay, and, the part
+          people actually need, when you get your money back. This policy forms
           part of the <Xref href="/legal/terms">Terms of Use</Xref>.
         </>
       }
@@ -38,7 +38,7 @@ export default function SalesPolicyPage() {
           <P>
             You should not pay for care you did not receive. If a provider does
             not turn up, cancels on you, or the consultation fails for a reason
-            that is not yours, you get a <strong>full refund</strong> — you
+            that is not yours, you get a <strong>full refund</strong>, you
             should not have to argue for it.
           </P>
         </Callout>
@@ -105,7 +105,7 @@ export default function SalesPolicyPage() {
                   available in <T>Account &rsaquo; Payments</T>.
                 </LI>
                 <LI>
-                  Need a GSTIN on the invoice — for reimbursement or an employer
+                  Need a GSTIN on the invoice, for reimbursement or an employer
                   claim? Add it in Account <T>before</T> you pay. We cannot
                   retrospectively add a GSTIN to an issued invoice.
                 </LI>
@@ -210,11 +210,11 @@ export default function SalesPolicyPage() {
                   ],
                   [
                     "You are not there for a home visit (no-show)",
-                    "—",
+                    ", ",
                     "No refund; the provider is paid in full for the trip",
                   ],
                 ]}
-                caption="An emergency or an unavoidable hospital admission is treated on its facts — tell us and we will look at it properly."
+                caption="An emergency or an unavoidable hospital admission is treated on its facts, tell us and we will look at it properly."
               />
 
               <H3>If the provider cancels or does not turn up</H3>
@@ -240,7 +240,7 @@ export default function SalesPolicyPage() {
                 our end is rescheduled at no cost, or refunded in full. Where
                 the call drops but the clinician has already assessed you and
                 issued advice or a prescription, the consultation counts as
-                delivered — the guidance you were given is the thing you paid
+                delivered, the guidance you were given is the thing you paid
                 for.
               </P>
             </>
@@ -273,7 +273,7 @@ export default function SalesPolicyPage() {
                   ],
                   [
                     "Wrong, damaged, expired, or short-dated item delivered",
-                    "Full refund or free replacement. Report within 48 hours with a photograph — we do not make you send it back first.",
+                    "Full refund or free replacement. Report within 48 hours with a photograph, we do not make you send it back first.",
                   ],
                   [
                     "Correct item, you changed your mind",
@@ -290,8 +290,8 @@ export default function SalesPolicyPage() {
                 ]}
               />
               <P>
-                Full detail — including which schedules we will not dispense at
-                all — is in the{" "}
+                Full detail, including which schedules we will not dispense at
+                all, is in the{" "}
                 <Xref href="/legal/pharmacy">Medicine &amp; Pharmacy
                 Policy</Xref>.
               </P>
@@ -316,7 +316,7 @@ export default function SalesPolicyPage() {
                     "Up to 10 working days",
                   ],
                 ]}
-                caption="We initiate refunds within 24 hours of approval. The time above is your bank's, not ours — we will give you the reference number so you can chase them."
+                caption="We initiate refunds within 24 hours of approval. The time above is your bank's, not ours, we will give you the reference number so you can chase them."
               />
               <UL>
                 <LI>
@@ -409,7 +409,7 @@ export default function SalesPolicyPage() {
               withdrawn, and ultimately to the account being closed under the{" "}
               <Xref href="/legal/terms#termination">Terms of Use</Xref>. We would
               rather refund a hundred honest people quickly than make everyone
-              prove themselves — that only works if the policy is not gamed.
+              prove themselves, that only works if the policy is not gamed.
             </P>
           ),
         },

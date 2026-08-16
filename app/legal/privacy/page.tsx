@@ -45,7 +45,7 @@ export default function PrivacyPolicyPage() {
       intro={
         <Callout tone="info" title="The short version">
           <P>
-            We collect what is needed to get care to you — who you are, where
+            We collect what is needed to get care to you, who you are, where
             you are, and what is wrong. Your health profile is shared with the
             specific doctor or nurse treating you, and with an AI provider when
             you use the symptom checker. We do not sell your data, we do not run
@@ -71,7 +71,7 @@ export default function PrivacyPolicyPage() {
                 Under the{" "}
                 <T>Digital Personal Data Protection Act, 2023</T> (the{" "}
                 <T>DPDP Act</T>) we are the <T>Data Fiduciary</T> for the
-                personal data described here — meaning we decide why and how it
+                personal data described here, meaning we decide why and how it
                 is processed, and we are accountable for it. You are the{" "}
                 <T>Data Principal</T>. Where the{" "}
                 <T>
@@ -99,7 +99,7 @@ export default function PrivacyPolicyPage() {
               />
               <P>
                 Some parts of the product still carry our internal codename,{" "}
-                <T>{COMPANY.internalCodename}</T> — you will see it in cookie
+                <T>{COMPANY.internalCodename}</T>, you will see it in cookie
                 names such as <code className="rounded bg-espresso-700 px-1.5 py-0.5 font-mono text-[13px] text-cream">iyashi_sid_patient</code>.
                 Those are ours. See the <Xref href="/legal/cookies">Cookie
                 Policy</Xref>.
@@ -136,7 +136,7 @@ export default function PrivacyPolicyPage() {
             <>
               <P>
                 Grouped by why it exists. Nothing in the &ldquo;health&rdquo; or
-                &ldquo;location&rdquo; groups is required to browse the site —
+                &ldquo;location&rdquo; groups is required to browse the site
                 it is collected when you ask for care.
               </P>
               <Table
@@ -164,7 +164,7 @@ export default function PrivacyPolicyPage() {
                   ],
                   [
                     "Location",
-                    "Approximate device location (latitude and longitude), the short area label shown in your header, and — for home visits and deliveries — the full street address you enter.",
+                    "Approximate device location (latitude and longitude), the short area label shown in your header, and, for home visits and deliveries, the full street address you enter.",
                     "When you grant your browser or phone permission, or type an address.",
                   ],
                   [
@@ -189,7 +189,7 @@ export default function PrivacyPolicyPage() {
                   ],
                   [
                     "Ratings",
-                    "The rating and comment you leave for a provider — and the rating a provider leaves for you, which is visible to us and to providers considering a request, not published publicly.",
+                    "The rating and comment you leave for a provider, and the rating a provider leaves for you, which is visible to us and to providers considering a request, not published publicly.",
                     "After a completed consultation.",
                   ],
                   [
@@ -211,9 +211,9 @@ export default function PrivacyPolicyPage() {
                 education, years of experience, council registration number,
                 clinic address, languages, consultation and home-visit fees,
                 availability, a profile photograph, and their live location
-                while they are marked online. Their earnings ledger — the gross
+                while they are marked online. Their earnings ledger, the gross
                 fee, our commission and the net amount for each completed visit
-                — is also held. Much of this is <T>deliberately public</T>: a
+                is also held. Much of this is <T>deliberately public</T>: a
                 patient choosing a clinician is entitled to see their
                 credentials. See the <Xref href="/legal/providers">Provider
                 Terms</Xref>.
@@ -253,7 +253,7 @@ export default function PrivacyPolicyPage() {
                   [
                     "Run the AI symptom checker",
                     "Symptoms, health profile",
-                    "Consent, withdrawable — see below",
+                    "Consent, withdrawable, see below",
                   ],
                   [
                     "Dispatch emergency help",
@@ -271,7 +271,7 @@ export default function PrivacyPolicyPage() {
                     "Performance of contract; tax and accounting law",
                   ],
                   [
-                    "Keep the platform safe — fraud, abuse, impersonation, misuse of prescriptions",
+                    "Keep the platform safe, fraud, abuse, impersonation, misuse of prescriptions",
                     "Technical, account, audit logs",
                     "Legitimate use: preventing fraud and securing the service",
                   ],
@@ -325,9 +325,9 @@ export default function PrivacyPolicyPage() {
               <P>
                 When you use the symptom checker while signed in, we send the
                 symptoms you describe, your answers, and{" "}
-                <T>relevant fields from your health profile</T> — age band, BMI,
+                <T>relevant fields from your health profile</T>, age band, BMI,
                 diagnosed diabetes or hypertension, current medication,
-                allergies, family history and lifestyle — to{" "}
+                allergies, family history and lifestyle, to{" "}
                 <Ext href="https://openrouter.ai/privacy">OpenRouter</Ext>, which
                 routes the request to a large language model. That is what makes
                 the checker personalised: a hypertensive 55-year-old reporting
@@ -345,13 +345,13 @@ export default function PrivacyPolicyPage() {
                   location or account identifier to the model.
                 </LI>
                 <LI>
-                  The request is processed <T>outside India</T> — see{" "}
+                  The request is processed <T>outside India</T>, see{" "}
                   <Xref href="/legal/privacy#transfers">transfers</Xref>.
                 </LI>
                 <LI>
                   If you would rather not use it, simply do not run a check.
-                  Every part of {COMPANY.brand} — booking a doctor, a home
-                  visit, medicine, SOS — works without it. Clearing your saved
+                  Every part of {COMPANY.brand}, booking a doctor, a home
+                  visit, medicine, SOS, works without it. Clearing your saved
                   checks in Account removes the stored history.
                 </LI>
                 <LI>
@@ -381,7 +381,7 @@ export default function PrivacyPolicyPage() {
               <P>
                 When you raise a request, the provider who accepts it sees your
                 name, the symptoms you attached, your location and address, and
-                — for the duration of the episode of care — your health profile.
+                for the duration of the episode of care, your health profile.
                 Providers who <T>declined or were not assigned</T> the request
                 do not retain access. A broadcast request shows waiting
                 providers only enough to decide whether to accept: the type of
@@ -403,12 +403,12 @@ export default function PrivacyPolicyPage() {
                 rows={[
                   [
                     "Cloud hosting and database",
-                    "The application and the primary database — effectively all stored data.",
+                    "The application and the primary database, effectively all stored data.",
                     "Region-configurable; see transfers below",
                   ],
                   [
                     "Google (Sign in with Google)",
-                    "Authenticates you and returns your Google identifier, email, name and photo. Optional — email and password work equally well.",
+                    "Authenticates you and returns your Google identifier, email, name and photo. Optional, email and password work equally well.",
                     "Global",
                   ],
                   [
@@ -510,7 +510,7 @@ export default function PrivacyPolicyPage() {
               <P>
                 Under section 8(7) of the DPDP Act we must erase personal data
                 once the purpose is served, unless a law requires us to keep it.
-                Medical records are the main exception — and a genuine one:
+                Medical records are the main exception, and a genuine one:
                 deleting a prescription would erase a record of what a
                 registered doctor prescribed you.
               </P>
@@ -597,7 +597,7 @@ export default function PrivacyPolicyPage() {
                 <LI>
                   <T>Sessions</T> are rows in our database. Your browser holds
                   nothing but an opaque random identifier in an httpOnly,
-                  Secure, SameSite cookie — no role, no user id, nothing signed
+                  Secure, SameSite cookie, no role, no user id, nothing signed
                   that could be tampered with. Deleting the row ends the session
                   instantly, on every device if you ask.
                 </LI>
@@ -625,7 +625,7 @@ export default function PrivacyPolicyPage() {
               </UL>
               <P>
                 No system is perfectly secure, and we will not pretend
-                otherwise. If you find a weakness, please tell us — see{" "}
+                otherwise. If you find a weakness, please tell us, see{" "}
                 <Xref href="/legal/security">Security &amp; Vulnerability
                 Disclosure</Xref>, which includes safe-harbour terms for good-faith
                 researchers.
@@ -662,7 +662,7 @@ export default function PrivacyPolicyPage() {
                   <T>Correction and completion.</T> Fix anything inaccurate,
                   fill in anything incomplete, update anything stale. Most of
                   this you can do yourself in Account. A clinical record already
-                  issued — a prescription, say — cannot be silently rewritten,
+                  issued, a prescription, say, cannot be silently rewritten,
                   but we will annotate it with your correction.
                 </LI>
                 <LI>
@@ -674,7 +674,7 @@ export default function PrivacyPolicyPage() {
                   <T>Withdraw consent.</T> As easily as you gave it. Withdrawal
                   is forward-looking: it does not undo processing already
                   lawfully carried out, and withdrawing consent for something
-                  essential — location for a home visit, say — means we can no
+                  essential, location for a home visit, say, means we can no
                   longer provide that part of the service.
                 </LI>
                 <LI>
@@ -699,7 +699,7 @@ export default function PrivacyPolicyPage() {
                   impersonate someone else when giving personal data, do not
                   suppress material information where it is legally required,
                   and do not file a false or frivolous grievance. In a
-                  healthcare setting the first two matter more than usual —{" "}
+                  healthcare setting the first two matter more than usual, {" "}
                   <T>
                     a doctor prescribing on the strength of an allergy list you
                     filled in wrongly can do you real harm
@@ -728,7 +728,7 @@ export default function PrivacyPolicyPage() {
                 <LI>
                   A parent or legal guardian must hold the account and book care
                   on a child&rsquo;s behalf. Paediatric consultations are
-                  entirely normal — the <T>account holder</T> must simply be the
+                  entirely normal, the <T>account holder</T> must simply be the
                   adult.
                 </LI>
                 <LI>
@@ -820,7 +820,7 @@ export default function PrivacyPolicyPage() {
                   [
                     "Contacts",
                     "Not requested.",
-                    "—",
+                    ", ",
                   ],
                 ]}
               />
@@ -828,7 +828,7 @@ export default function PrivacyPolicyPage() {
                 We do not read your health platform data (Apple Health or Health
                 Connect) unless you explicitly link it, and we never use data
                 obtained from those platforms for advertising or share it with
-                data brokers — as both platforms&rsquo; terms require.
+                data brokers, as both platforms&rsquo; terms require.
               </P>
               <P>
                 You can delete your account from inside the app, without
@@ -866,7 +866,7 @@ export default function PrivacyPolicyPage() {
             <>
               <H3>Data Protection Officer</H3>
               <P>
-                For anything about your personal data — access, correction,
+                For anything about your personal data, access, correction,
                 erasure, consent, or a question about this policy.
               </P>
               <KeyValues

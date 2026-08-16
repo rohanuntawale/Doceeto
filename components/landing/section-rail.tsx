@@ -122,7 +122,7 @@ export function SectionRail({ sections }: { sections: RailSection[] }) {
                   transition={
                     reduceMotion
                       ? { duration: 0 }
-                      : // Spring, not a linear tween — the dot should settle
+                      : // Spring, not a linear tween, the dot should settle
                         // like a physical object rather than arrive on a clock.
                         { type: "spring", stiffness: 420, damping: 32, mass: 0.6 }
                   }

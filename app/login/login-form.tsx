@@ -120,8 +120,8 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
               browsing; the clinician consoles require a real account.
             </p>
             {/* Doctor and nurse shortcuts are deliberately gone. They pushed
-                straight to /doctor and /nurse with no credential, which — since
-                the guard used to wave demo mode through — was a working login
+                straight to /doctor and /nurse with no credential, which, since
+                the guard used to wave demo mode through, was a working login
                 to a console holding other patients' records. */}
             <div className="mt-5 flex flex-col gap-2.5">
               <Button
@@ -186,7 +186,7 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
               </Field>
             </div>
 
-            {/* A Google account is a routing problem, not a failure — so it
+            {/* A Google account is a routing problem, not a failure, so it
                 gets the accent treatment and a button, not a red box. The
                 address they already typed rides along as login_hint, so
                 Google opens on that account instead of a picker. */}

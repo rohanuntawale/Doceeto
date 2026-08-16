@@ -226,7 +226,7 @@ export default function CareNowPage() {
                 ))}
                 {inRange.length === 0 && (
                   <p className="text-xs text-tan">
-                    No doctors are online nearby right now — it stays open until one is.
+                    No doctors are online nearby right now, it stays open until one is.
                   </p>
                 )}
               </div>
@@ -255,7 +255,7 @@ export default function CareNowPage() {
           Get care now
         </h1>
         <p className="mt-1.5 text-sm text-[var(--text-muted)]">
-          We&apos;ll send this to every free doctor near you. The first to accept takes it —
+          We&apos;ll send this to every free doctor near you. The first to accept takes it
           you don&apos;t have to pick.
         </p>
       </header>
@@ -273,7 +273,7 @@ export default function CareNowPage() {
         />
 
         <div className="label mt-5">How should they see you?</div>
-        {/* Stacks on the narrowest phones — three-up leaves ~60px per tile
+        {/* Stacks on the narrowest phones, three-up leaves ~60px per tile
             at 320px, too little for the helper line. */}
         <div className="mt-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           {WHERE.map((w) => {

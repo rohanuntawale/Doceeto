@@ -128,7 +128,7 @@ export default function RequestsPage() {
             <Link href="/doctor/gigs" className="underline hover:text-cream">
               Mark it complete
             </Link>{" "}
-            to become available again — appointments you already confirmed still stand.
+            to become available again, appointments you already confirmed still stand.
           </span>
         </div>
       ) : ongoing ? (
@@ -137,7 +137,7 @@ export default function RequestsPage() {
           <span>
             You&rsquo;re with <span className="font-medium">{ongoing.patientName}</span> right
             now, so urgent requests are going to other doctors. Complete this
-            consult to start receiving them again — appointments still come
+            consult to start receiving them again, appointments still come
             through below.
           </span>
         </div>
@@ -271,7 +271,7 @@ export default function RequestsPage() {
                       <StartCodeForDoctor req={r} />
                     )}
                     {/* Accepting the consult is what unlocks the patient's
-                        health profile — the server enforces the same rule. */}
+                        health profile, the server enforces the same rule. */}
                     {!isDemoMode && r.patientId && (
                       <button
                         onClick={() => setBriefFor(r.id)}

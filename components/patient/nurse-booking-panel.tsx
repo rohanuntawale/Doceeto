@@ -193,7 +193,7 @@ export function NurseEngagePanel({
         </div>
         <p className="mb-3 mt-1 text-xs text-[var(--text-faint)]">
           {schedule.onGig
-            ? `${firstName} is finishing another visit — you can hire once they're free.`
+            ? `${firstName} is finishing another visit, you can hire once they're free.`
             : "Pick a care package and hire them directly."}
         </p>
         <GigList
@@ -210,7 +210,7 @@ export function NurseEngagePanel({
         />
       </div>
 
-      {/* Appointments, demoted but not hidden — same disclosure as doctors. */}
+      {/* Appointments, demoted but not hidden, same disclosure as doctors. */}
       <button
         type="button"
         onClick={() => setShowBooking((v) => !v)}

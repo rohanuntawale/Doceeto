@@ -22,7 +22,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Doceeto · Care that reaches you",
   description:
-    "Doceeto: emergency help, on-demand doctors, and medicine delivery — India's single front door to care.",
+    "Doceeto: emergency help, on-demand doctors, and medicine delivery, India's single front door to care.",
   icons: { icon: "/favicon.svg" },
 };
 

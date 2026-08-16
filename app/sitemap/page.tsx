@@ -13,7 +13,7 @@ import { LEGAL_DOCS, legalHref } from "@/lib/legal/documents";
 
 export const metadata: Metadata = {
   title: `Site Map · ${COMPANY.brand}`,
-  description: `Every page on ${COMPANY.brand}, in one list — patient, doctor, nurse and legal.`,
+  description: `Every page on ${COMPANY.brand}, in one list, patient, doctor, nurse and legal.`,
   alternates: { canonical: "/sitemap" },
 };
 
@@ -55,8 +55,8 @@ export default function SiteMapPage() {
             Every page, <span className="text-salmon">one list.</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-[var(--text-muted)]">
-            {COMPANY.brand} has four surfaces — patient, doctor, nurse and
-            operations — plus the public site. Pages marked with a lock need you
+            {COMPANY.brand} has four surfaces, patient, doctor, nurse and
+            operations, plus the public site. Pages marked with a lock need you
             to be signed in with that kind of account.
           </p>
           <p className="mt-4 text-xs text-[var(--text-faint)]">

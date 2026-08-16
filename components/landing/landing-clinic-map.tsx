@@ -179,7 +179,7 @@ export function LandingClinicMap() {
                         <MapPin className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        {/* Name and clinic. Nothing else — see the note above. */}
+                        {/* Name and clinic. Nothing else, see the note above. */}
                         <span className="flex items-center gap-1.5">
                           <span className="truncate text-[15px] font-semibold text-[var(--text)]">
                             {c.fullName}

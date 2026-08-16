@@ -10,7 +10,7 @@ export function LandingHero() {
     /* The first screen is a paper panel resting on the forest band that runs
        through the rest of the page. Its bottom corners curve away, so the
        green reads through at the edges and the manifesto below continues the
-       same colour — the panel lifts off the page rather than ending on it. */
+       same colour, the panel lifts off the page rather than ending on it. */
     // id: the section rail observes and scrolls to it, and it gives the
     // "back to top" dot somewhere real to land.
     <section id="hero" className="relative bg-forest">
@@ -45,10 +45,10 @@ export function LandingHero() {
 
         <div className="relative z-10 flex min-h-[68vh] items-center px-6 pt-24 pb-8 sm:min-h-[74vh] sm:pt-28 sm:pb-12 lg:min-h-[82vh] lg:pb-16">
           <div className="max-w-7xl mx-auto w-full">
-            {/* One column. The promise carries the screen on its own — the
+            {/* One column. The promise carries the screen on its own, the
                 headline takes the width the old side panel was using. */}
             <div className="flex max-w-5xl flex-col items-start text-left">
-              {/* Main Headline — the first thing on the page is the promise
+              {/* Main Headline, the first thing on the page is the promise
                   itself. The pill that used to sit above it ("Direct Patient &
                   Provider Healthcare") only restated the headline in smaller
                   type, and it cost the hero its opening beat. */}
@@ -129,7 +129,7 @@ export function LandingHero() {
           <LandingHeroStats />
         </div>
 
-        {/* Quiet care rail. Closes the panel — the "Scroll to explore Doceeto"
+        {/* Quiet care rail. Closes the panel, the "Scroll to explore Doceeto"
             cue that used to sit under it is gone: the section rail down the
             right edge already shows there is more page, and a panel that ends
             by instructing you to scroll is a panel that doesn't trust its own

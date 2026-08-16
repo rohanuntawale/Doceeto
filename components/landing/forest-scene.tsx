@@ -114,7 +114,7 @@ export function ForestScene({ className }: { className?: string }) {
           const model = gltf.scene;
 
           /* Frame whatever we were given. The model's own scale and origin are
-             unknown, so measure it and fit the camera to the result — hard-coded
+             unknown, so measure it and fit the camera to the result, hard-coded
              camera numbers break the moment the asset is re-exported. */
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
@@ -124,7 +124,7 @@ export function ForestScene({ className }: { className?: string }) {
           /* Pull the camera back only as far as the WIDER of the two
              constraints demands, so the landscape spans its container instead
              of floating as an object in the middle of it. Distance depends on
-             the aspect ratio, so it is re-derived on resize — framing once at
+             the aspect ratio, so it is re-derived on resize, framing once at
              load left the model undersized on a window that later widened. */
           const frame = () => {
             const halfFov = ((camera.fov * Math.PI) / 180) / 2;

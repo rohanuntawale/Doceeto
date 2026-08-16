@@ -103,7 +103,7 @@ export function DeleteDoctorDialog({
         <div className="mt-4 space-y-2 rounded-xl border border-[var(--border)] p-3 text-sm">
           <p className="text-[var(--text-muted)]">
             <span className="font-medium text-cream">Removed:</span> their profile,
-            gig listings, the reviews written about them, and their account — every
+            gig listings, the reviews written about them, and their account, every
             signed-in device is logged out immediately.
           </p>
           <p className="text-[var(--text-muted)]">

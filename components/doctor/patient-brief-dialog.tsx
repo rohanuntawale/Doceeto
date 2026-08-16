@@ -135,7 +135,7 @@ export function PatientBriefDialog({
 
             {p && (
               <>
-                {/* Allergies first — the line that changes what you prescribe. */}
+                {/* Allergies first, the line that changes what you prescribe. */}
                 {p.allergies && (
                   <div className="flex items-start gap-2 rounded-xl border border-status-critical/40 bg-status-critical/10 px-3.5 py-2.5 text-sm text-status-critical">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -146,34 +146,34 @@ export function PatientBriefDialog({
                 {/* Vitals grid */}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <Vital icon={<Ruler className="h-3.5 w-3.5" />} label="Height"
-                    value={p.heightCm ? `${p.heightCm} cm` : "—"} />
+                    value={p.heightCm ? `${p.heightCm} cm` : ", "} />
                   <Vital icon={<Weight className="h-3.5 w-3.5" />} label="Weight"
-                    value={p.weightKg ? `${p.weightKg} kg` : "—"} />
+                    value={p.weightKg ? `${p.weightKg} kg` : ", "} />
                   <Vital
                     icon={<HeartPulse className="h-3.5 w-3.5" />}
                     label="BMI"
-                    value={bmi !== undefined ? `${bmi}` : "—"}
+                    value={bmi !== undefined ? `${bmi}` : ", "}
                     sub={bmi !== undefined ? BMI_BAND_LABEL[bmiBand(bmi)] : undefined}
                     warn={bmi !== undefined && bmiBand(bmi) !== "healthy"}
                   />
-                  <Vital label="Age" value={age !== undefined ? `${age} yrs` : "—"} />
-                  <Vital label="Gender" value={p.gender ? p.gender[0].toUpperCase() + p.gender.slice(1) : "—"} />
+                  <Vital label="Age" value={age !== undefined ? `${age} yrs` : ", "} />
+                  <Vital label="Gender" value={p.gender ? p.gender[0].toUpperCase() + p.gender.slice(1) : ", "} />
                   <Vital icon={<Droplets className="h-3.5 w-3.5" />} label="Blood group"
-                    value={p.bloodGroup ?? "—"} />
-                  <Vital label="Waist" value={p.waistCm ? `${cmToInches(p.waistCm)} in` : "—"} />
+                    value={p.bloodGroup ?? ", "} />
+                  <Vital label="Waist" value={p.waistCm ? `${cmToInches(p.waistCm)} in` : ", "} />
                   <Vital
                     label="Diabetes"
-                    value={p.diabetes ? (p.diabetes === "yes" ? "Yes" : "No") : "—"}
+                    value={p.diabetes ? (p.diabetes === "yes" ? "Yes" : "No") : ", "}
                     warn={p.diabetes === "yes"}
                   />
                   <Vital
                     label="High BP"
-                    value={p.hypertension ? (p.hypertension === "yes" ? "Yes" : "No") : "—"}
+                    value={p.hypertension ? (p.hypertension === "yes" ? "Yes" : "No") : ", "}
                     warn={p.hypertension === "yes"}
                   />
                 </div>
 
-                {/* Weight trajectory — the log every profile edit feeds. */}
+                {/* Weight trajectory, the log every profile edit feeds. */}
                 {brief.weightHistory && brief.weightHistory.length >= 2 && (
                   <p className="rounded-xl bg-white/5 px-3.5 py-2.5 text-sm text-[var(--text-muted)]">
                     <span className="font-medium text-cream">Weight trend: </span>

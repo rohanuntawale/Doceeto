@@ -67,7 +67,7 @@ export default function DoctorsNetwork() {
       />
 
       {/* Cadre tabs. Nurses need a roster of their own because verification is
-          a precondition for them, not a badge — an unverified nurse reaches no
+          a precondition for them, not a badge, an unverified nurse reaches no
           patient, so this is where that decision gets made. */}
       <div className="mb-4 flex w-fit rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
         {(["doctor", "nurse"] as Cadre[]).map((c) => (
@@ -194,7 +194,7 @@ export default function DoctorsNetwork() {
                         <span className="text-xs text-[var(--text-muted)]">
                           {d.skills?.length
                             ? `${d.skills.length} service${d.skills.length === 1 ? "" : "s"}`
-                            : "—"}
+                            : ", "}
                         </span>
                       ) : d.gigCount ? (
                         <span className="flex items-center gap-1.5 text-cream">
@@ -207,7 +207,7 @@ export default function DoctorsNetwork() {
                           )}
                         </span>
                       ) : (
-                        <span className="text-xs text-[var(--text-faint)]">—</span>
+                        <span className="text-xs text-[var(--text-faint)]">, </span>
                       )}
                     </td>
                     <td className="px-5 py-3">
@@ -231,7 +231,7 @@ export default function DoctorsNetwork() {
                               year: "numeric",
                             })
                           : ""
-                        : "—"}
+                        : ", "}
                     </td>
                     <td className="px-5 py-3 font-mono text-xs text-[var(--text-faint)]">
                       {mounted ? timeAgo(d.lastSeen) : ""}
