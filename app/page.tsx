@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingAssurances } from "@/components/landing/landing-assurances";
 import { LandingStory } from "@/components/landing/landing-story";
 import { LandingFilm } from "@/components/landing/landing-film";
 import { LandingTwoSides } from "@/components/landing/landing-two-sides";
@@ -205,6 +206,9 @@ export default function Page() {
       {/* Main Content Sections */}
       <main>
         <LandingHero />
+        {/* The three promises, lifted out of the hero's micro-copy line into
+            glass panes of their own. */}
+        <LandingAssurances />
         <LandingStory />
         <LandingFilm />
         <LandingTwoSides />

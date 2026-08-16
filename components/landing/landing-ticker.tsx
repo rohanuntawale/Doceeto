@@ -47,10 +47,17 @@ export function LandingTicker({
         className="edge-fade-x overflow-hidden select-none"
         aria-hidden="true"
       >
-        <div className="flex animate-marquee-slow whitespace-nowrap text-[11px] sm:text-sm font-semibold uppercase tracking-[0.35em] text-[var(--text-faint)]">
+        {/* Set in the brand serif, sentence case, normal tracking. The old
+            treatment (uppercase at 0.35em letterspacing) is the stock
+            template-marquee look, and it read as generated rather than
+            written. A serif at readable size reads like a masthead. */}
+        <div className="flex animate-marquee-slow items-center whitespace-nowrap font-serif text-[15px] sm:text-lg tracking-normal text-[var(--text-faint)]">
           {repeat([...ITEMS_ROW_1, ...ITEMS_ROW_2], 2).map(({ item, key }) => (
-            <span key={key} className="px-8 sm:px-12">
-              {item}
+            <span key={key} className="flex items-center">
+              <span className="px-6 sm:px-9">{item}</span>
+              <span aria-hidden className="text-[0.5em] opacity-50">
+                ●
+              </span>
             </span>
           ))}
         </div>
@@ -62,7 +69,7 @@ export function LandingTicker({
     <div className="space-y-3 py-4 border-y-2 border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.9)] backdrop-blur-sm overflow-hidden select-none">
       {/* Row 1: Leftward Marquee */}
       <div className="flex overflow-hidden">
-        <div className="flex animate-marquee-left gap-8 whitespace-nowrap text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-[var(--text)] opacity-90">
+        <div className="flex animate-marquee-left gap-8 whitespace-nowrap font-serif text-base sm:text-lg tracking-normal text-[var(--text)] opacity-90">
           {repeat(ITEMS_ROW_1).map(({ item, key }) => (
             <span key={`r1-${key}`} className="flex items-center gap-6">
               <span>{item}</span>
@@ -74,7 +81,7 @@ export function LandingTicker({
 
       {/* Row 2: Rightward Marquee */}
       <div className="flex overflow-hidden">
-        <div className="flex animate-marquee-right gap-8 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.25em] text-[var(--text-muted)] opacity-75">
+        <div className="flex animate-marquee-right gap-8 whitespace-nowrap font-serif text-[15px] sm:text-base tracking-normal text-[var(--text-muted)] opacity-75">
           {repeat(ITEMS_ROW_2).map(({ item, key }) => (
             <span key={`r2-${key}`} className="flex items-center gap-6">
               <span>{item}</span>

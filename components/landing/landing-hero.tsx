@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FlowButton } from "@/components/ui/flow-button";
+import { HeartHandshake, Stethoscope, Syringe } from "lucide-react";
+import { RoleCta } from "@/components/ui/role-cta";
 import { LandingHeroStats } from "./landing-hero-stats";
 import { LandingTicker } from "./landing-ticker";
 
@@ -92,32 +93,36 @@ export function LandingHero() {
                 directly to patients. Doceeto bridges the front door to health.
               </motion.p>
 
-              {/* Triple CTAs (Patient, Doctor, Nurse) */}
+              {/* Triple CTAs (Patient, Doctor, Nurse).
+                  Stacked, not in a row: three side-by-side buttons squeezed
+                  each label into a column narrower than the words, which is
+                  what made them read as different widths and alignments. In a
+                  column they share one left edge and one icon gutter, so the
+                  labels line up exactly. */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full max-w-xl"
+                className="mt-10 flex w-full max-w-md flex-col gap-2.5"
               >
-                {/* Patient CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup"
-                  text="I need care"
-                  className="flex-1 border-transparent bg-[var(--accent)] text-on-accent hover:brightness-110"
+                  icon={HeartHandshake}
+                  label="I need care"
+                  caption="Book a doctor or nurse, at home or online"
+                  primary
                 />
-
-                {/* Doctor CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup?as=doctor"
-                  text="I'm a doctor"
-                  className="flex-1"
+                  icon={Stethoscope}
+                  label="I'm a doctor"
+                  caption="Take consults and home visits near you"
                 />
-
-                {/* Nurse CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup?as=nurse"
-                  text="I'm a nurse"
-                  className="flex-1"
+                  icon={Syringe}
+                  label="I'm a nurse"
+                  caption="Offer home nursing on your own schedule"
                 />
               </motion.div>
             </div>
