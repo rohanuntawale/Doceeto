@@ -53,8 +53,22 @@ function LoginFormPanel({ googleEnabled }: { googleEnabled: boolean }) {
    */
   const [googleOnly, setGoogleOnly] = useState(false);
   const [loading, setLoading] = useState(false);
-  /** Google needs to know which app is being entered; default to the patient. */
-  const googleRole = wantedSurface === "doctor" ? "doctor" : "patient";
+  /**
+   * Which surface is being entered, IF the page knows.
+   *
+   * Empty when it does not. It used to fall back to "patient", which the
+   * callback cannot tell apart from someone actually choosing patient, so a
+   * first-time visitor signing in with Google here was filed as a patient
+   * without being asked. Sending nothing lets the callback ask them (existing
+   * accounts are unaffected: they are matched on the Google id or the verified
+   * email, and signed in as whatever they already are).
+   */
+  const googleRole =
+    wantedSurface === "doctor"
+      ? "doctor"
+      : wantedSurface === "nurse"
+        ? "nurse"
+        : "";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
