@@ -50,7 +50,23 @@ export interface HealthProfile {
   familyHistory?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
-  /** ISO — stamped by the server on every save. */
+  /**
+   * ABHA, India's health account: 14 digits, stored unformatted.
+   *
+   * Lives here rather than in its own column because health_profile is jsonb,
+   * so the health identity travels with the health record and needs no
+   * migration. The Aadhaar number behind an ABHA is never stored anywhere.
+   */
+  abhaNumber?: string;
+  /** The readable handle, e.g. "rajesh@abdm". */
+  abhaAddress?: string;
+  /**
+   * True only when ABDM confirmed it through an Aadhaar OTP. A number the
+   * patient simply typed in is recorded but stays false, because a
+   * self-declared health id is a claim, not an identity.
+   */
+  abhaVerified?: boolean;
+  /** ISO, stamped by the server on every save. */
   updatedAt?: string;
 }
 
@@ -128,6 +144,21 @@ export function sanitizeHealthProfile(raw: unknown): HealthProfile {
     familyHistory: text(p.familyHistory, 500),
     emergencyContactName: text(p.emergencyContactName, 80),
     emergencyContactPhone: text(p.emergencyContactPhone, 20),
+    // 14 digits, hyphens stripped. Anything else is dropped rather than kept
+    // as a half-valid health id.
+    abhaNumber: /^\d{14}$/.test(String(p.abhaNumber ?? "").replace(/[\s-]/g, ""))
+      ? String(p.abhaNumber).replace(/[\s-]/g, "")
+      : undefined,
+    abhaAddress: text(p.abhaAddress, 80),
+    /*
+     * abhaVerified is deliberately NOT read from the input.
+     *
+     * This sanitizer is what the patient-writable /api/auth/health-profile
+     * endpoint runs, so honouring the flag here would let anyone mark their
+     * own health id as government-verified by posting one field. It is set
+     * only by /api/verify/abha, after ABDM confirms an Aadhaar OTP, which
+     * merges it in on top of this result.
+     */
   };
   // DOB: a real date, in the past, for a person under 120.
   const dob = text(p.dob, 10);
