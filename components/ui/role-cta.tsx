@@ -71,9 +71,12 @@ export function RoleCta({
         <span className="block text-[15px] font-semibold leading-tight tracking-[-0.01em]">
           {label}
         </span>
+        {/* Wraps rather than truncates. On a 390px phone the caption does not
+            fit on one line, and an ellipsis ("at home or…") tells the reader
+            less than a second line does. */}
         <span
           className={cn(
-            "mt-0.5 block truncate text-[12.5px] leading-snug",
+            "mt-0.5 block text-[12.5px] leading-snug",
             primary ? "text-on-accent/75" : "text-[var(--text-muted)]",
           )}
         >

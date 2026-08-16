@@ -1,10 +1,19 @@
-import { Suspense } from "react";
+"use client";
+
+/*
+ * A CLIENT component on purpose.
+ *
+ * RoleCta takes an `icon` prop, which is a Lucide component, and a function
+ * cannot cross the server/client boundary: as a server component this page
+ * threw "Functions cannot be passed directly to Client Components" and
+ * rendered the error screen instead of the chooser. Rendering the whole page
+ * on the client keeps the icons as ordinary imports.
+ */
+
 import Link from "next/link";
 import { HeartHandshake, Stethoscope, Syringe } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { RoleCta } from "@/components/ui/role-cta";
-
-export const dynamic = "force-dynamic";
 
 /**
  * "What are you here as?"
@@ -89,9 +98,5 @@ export default function ChooseRolePage({
 }: {
   searchParams: { next?: string };
 }) {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <Chooser next={searchParams.next} />
-    </Suspense>
-  );
+  return <Chooser next={searchParams?.next} />;
 }
