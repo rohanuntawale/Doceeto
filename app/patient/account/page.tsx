@@ -55,7 +55,7 @@ export default function PatientAccount() {
         {t("account.title")}
       </h1>
 
-      {/* Profile card — the avatar doubles as the photo upload control. */}
+      {/* Profile card, the avatar doubles as the photo upload control. */}
       <div className="flex items-center gap-4 rounded-3xl fh-card p-5 shadow-soft">
         <AvatarUploader onPhoto={setPhoto}>
           <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-terracotta to-salmon text-xl font-semibold text-on-accent">
@@ -76,7 +76,7 @@ export default function PatientAccount() {
         </div>
       </div>
 
-      {/* Health basics — what a doctor reads before treating them. */}
+      {/* Health basics, what a doctor reads before treating them. */}
       <HealthProfileForm />
 
 

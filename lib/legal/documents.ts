@@ -73,7 +73,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     slug: "telemedicine-consent",
     title: "Telemedicine & Informed Consent",
     summary:
-      "How remote consultations run under the Telemedicine Practice Guidelines, 2020 — what you consent to, prescribing limits, and when a doctor must refuse.",
+      "How remote consultations run under the Telemedicine Practice Guidelines, 2020, what you consent to, prescribing limits, and when a doctor must refuse.",
     category: "clinical",
     audience: "Patients",
   },
@@ -157,7 +157,7 @@ export const CATEGORY_META: Record<
   clinical: {
     label: "Care & clinical safety",
     blurb:
-      "The medical limits of the platform — read these before relying on it in an emergency.",
+      "The medical limits of the platform, read these before relying on it in an emergency.",
   },
   commercial: {
     label: "Money",

@@ -164,7 +164,7 @@ export function toHm(minutes: number): string {
 /** "9:30 am" for an instant, always read in the scheduling zone. */
 export function formatSlotTime(iso: string | Date): string {
   const d = iso instanceof Date ? iso : new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return ", ";
   timeFmt ??= new Intl.DateTimeFormat("en-IN", {
     timeZone: SCHEDULE_TIME_ZONE,
     hour: "numeric",
@@ -202,7 +202,7 @@ export function formatSlotRange(
   now: Date = new Date(),
 ): string {
   const start = new Date(startIso);
-  if (Number.isNaN(start.getTime())) return "—";
+  if (Number.isNaN(start.getTime())) return ", ";
   const day = formatDayLabel(dateKeyOf(start), dateKeyOf(now));
   const end = endIso ? new Date(endIso) : null;
   const tail = end && !Number.isNaN(end.getTime()) ? ` – ${formatSlotTime(end)}` : "";

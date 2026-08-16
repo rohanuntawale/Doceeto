@@ -27,7 +27,7 @@ export function DoctorFigure({ className }: { className?: string }) {
       role="img"
       aria-label="A Doceeto clinician"
     >
-      {/* Neck — drawn first so the jaw and the coat both crop it. */}
+      {/* Neck, drawn first so the jaw and the coat both crop it. */}
       <rect
         x="90"
         y="124"
@@ -39,7 +39,7 @@ export function DoctorFigure({ className }: { className?: string }) {
       />
 
       {/* Scrub top. The bust runs off the bottom edge rather than resolving
-          into a floating torso — the frame is a crop, not a cut-out.
+          into a floating torso, the frame is a crop, not a cut-out.
           Held to the same shoulder width the previous mascot used (x42–158):
           the cover plates sit this drawing beside their body copy with very
           little clearance, and a wider base eats into the paragraph. */}
@@ -51,7 +51,7 @@ export function DoctorFigure({ className }: { className?: string }) {
       {/* Open V-neck */}
       <path d="M81 150 L100 180 L119 150 Z" className="fill-paper" />
 
-      {/* Face, tapering to the jaw — a rounded rectangle here read as a
+      {/* Face, tapering to the jaw, a rounded rectangle here read as a
           screen, which is the exact thing this drawing replaced. */}
       <path
         d="M64 94 C64 68 79 55 100 55 C121 55 136 68 136 94 C136 118 120 138 100 138 C80 138 64 118 64 94 Z"
@@ -66,7 +66,7 @@ export function DoctorFigure({ className }: { className?: string }) {
       />
       <rect x="59" y="84" width="82" height="10" rx="5" className="fill-forest-600" />
 
-      {/* Eyes. Two soft arcs, no mouth — the warmth is in the curve, and a
+      {/* Eyes. Two soft arcs, no mouth, the warmth is in the curve, and a
           drawn smile at this size turns a clinician into a cartoon. */}
       <path
         d="M80 110 q7.5 8.5 15 0"
@@ -83,7 +83,7 @@ export function DoctorFigure({ className }: { className?: string }) {
         strokeLinecap="round"
       />
 
-      {/* Stethoscope — the one gold thing in the drawing, and the only part
+      {/* Stethoscope, the one gold thing in the drawing, and the only part
           that has to survive being read at 64px in a nav avatar. */}
       <path
         d="M82 149 C66 180 92 200 116 187"

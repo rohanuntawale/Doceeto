@@ -58,9 +58,9 @@ export default function MedicalDisclaimerPage() {
                 your request and assesses you.
               </P>
               <P>
-                Nothing on this platform — the symptom checker, the health score,
+                Nothing on this platform, the symptom checker, the health score,
                 BMI and risk indicators, health tips, articles, specialty
-                suggestions or search results — is a medical opinion about you.
+                suggestions or search results, is a medical opinion about you.
                 It is information and navigation, produced by software, and no
                 registered medical practitioner has reviewed your case before it
                 is shown to you.
@@ -167,7 +167,7 @@ export default function MedicalDisclaimerPage() {
                   <LI>Difficulty breathing, or fighting for breath</LI>
                   <LI>
                     Sudden weakness or numbness of the face, arm or leg;
-                    drooping face; slurred speech; sudden confusion —{" "}
+                    drooping face; slurred speech; sudden confusion, {" "}
                     <strong>this is a stroke until proved otherwise, and every minute counts</strong>
                   </LI>
                   <LI>Unconsciousness, a fit, or a person who cannot be roused</LI>
@@ -175,7 +175,7 @@ export default function MedicalDisclaimerPage() {
                   <LI>A serious burn, a major injury, or a suspected fracture with deformity</LI>
                   <LI>Sudden severe headache, described as the worst ever</LI>
                   <LI>Severe abdominal pain, or vomiting blood</LI>
-                  <LI>A severe allergic reaction — swelling of the lips, tongue or throat, or a widespread rash with breathlessness</LI>
+                  <LI>A severe allergic reaction, swelling of the lips, tongue or throat, or a widespread rash with breathlessness</LI>
                   <LI>Poisoning, overdose, or a snake bite</LI>
                   <LI>In pregnancy: bleeding, severe abdominal pain, fits, or reduced movements of the baby</LI>
                   <LI>
@@ -187,7 +187,7 @@ export default function MedicalDisclaimerPage() {
                 </UL>
               </Callout>
               <P>
-                This list is not exhaustive. Trust your instinct — if something
+                This list is not exhaustive. Trust your instinct, if something
                 feels seriously wrong, treat it as an emergency.
               </P>
               <Callout tone="info" title="If you are struggling">
@@ -222,9 +222,9 @@ export default function MedicalDisclaimerPage() {
               </P>
               <P>
                 <T>Nurses on {COMPANY.brand} do not diagnose and do not
-                prescribe.</T> They deliver defined nursing care at home —
+                prescribe.</T> They deliver defined nursing care at home
                 injections, dressings, monitoring, elder and post-operative care
-                — on the instruction of a doctor or within their own established
+                on the instruction of a doctor or within their own established
                 scope of practice.
               </P>
             </>
@@ -244,7 +244,7 @@ export default function MedicalDisclaimerPage() {
               <UL>
                 <LI>that we endorse their clinical judgement;</LI>
                 <LI>
-                  that we supervise, direct or review the care they give — we do
+                  that we supervise, direct or review the care they give, we do
                   not, and doing so would itself be practising medicine;
                 </LI>
                 <LI>
@@ -257,7 +257,7 @@ export default function MedicalDisclaimerPage() {
                 reviews are the opinions of other patients, not our assessment.
                 If you doubt a clinician&rsquo;s registration, ask for their
                 number and check it on the{" "}
-                <T>National Medical Commission</T> or state council register —
+                <T>National Medical Commission</T> or state council register
                 and please tell us at <MailLink address={CONTACTS.medical} />.
               </P>
             </>
@@ -315,7 +315,7 @@ export default function MedicalDisclaimerPage() {
               <P>
                 Read the leaflet. Check the expiry. Tell your doctor about{" "}
                 <T>every</T> medicine you take, including anything ayurvedic,
-                homoeopathic, herbal or over the counter — interactions are real
+                homoeopathic, herbal or over the counter, interactions are real
                 and are a common cause of avoidable harm.
               </P>
               <P>
@@ -333,8 +333,8 @@ export default function MedicalDisclaimerPage() {
           title: "Outcomes vary",
           content: (
             <P>
-              Any outcome described on {COMPANY.brand} — in a testimonial, a case
-              study, or a statistic — is not a promise of what will happen to
+              Any outcome described on {COMPANY.brand}, in a testimonial, a case
+              study, or a statistic, is not a promise of what will happen to
               you. Medicine deals in probabilities. Two people with the same
               diagnosis and the same treatment can have entirely different
               results, and no clinician can guarantee one.
@@ -348,7 +348,7 @@ export default function MedicalDisclaimerPage() {
             <>
               <P>
                 We want to know. Report clinical concerns to{" "}
-                <MailLink address={CONTACTS.medical} /> — the clinical governance
+                <MailLink address={CONTACTS.medical} />, the clinical governance
                 address, read by a person, not a queue.
               </P>
               <H3>Your options, which we will not stand in the way of</H3>

@@ -8,7 +8,7 @@ import { ProviderPreview } from "@/components/try/provider-preview";
 export const metadata = {
   title: "Urgent care on Doceeto",
   description:
-    "Doctors free to take a request right now on Doceeto — live availability, no account needed to look.",
+    "Doctors free to take a request right now on Doceeto, live availability, no account needed to look.",
 };
 
 export default function TryUrgentPage() {
@@ -45,7 +45,7 @@ export default function TryUrgentPage() {
 
         <PreviewBanner
           can="Only doctors who are online and not already with a patient. The list updates every few seconds."
-          needsAccount="Sending a request needs an account — it goes to every free doctor near you at once, and the first to accept takes it."
+          needsAccount="Sending a request needs an account, it goes to every free doctor near you at once, and the first to accept takes it."
         />
 
         {/* urgentOnly: online AND not on a gig AND not mid-consult. Anything
@@ -55,7 +55,7 @@ export default function TryUrgentPage() {
           cadre="doctor"
           urgentOnly
           emptyTitle="No doctors free this minute"
-          emptyDesc="Availability moves quickly — this page refreshes on its own. With an account you can send a request that waits for the next doctor to come free instead of watching for one."
+          emptyDesc="Availability moves quickly, this page refreshes on its own. With an account you can send a request that waits for the next doctor to come free instead of watching for one."
         />
       </div>
     </>

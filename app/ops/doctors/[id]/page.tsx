@@ -40,9 +40,9 @@ import { cn } from "@/lib/utils/cn";
 /** Full timestamp — day, date and time — which is what ops needs to answer
  *  "when exactly did this happen", not a fuzzy "3 days ago". */
 function fullStamp(iso?: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return ", ";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return ", ";
   return d.toLocaleString(undefined, {
     weekday: "long",
     day: "2-digit",
@@ -54,9 +54,9 @@ function fullStamp(iso?: string | null): string {
 }
 
 function shortStamp(iso?: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return ", ";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return ", ";
   return d.toLocaleString(undefined, {
     day: "2-digit",
     month: "short",
@@ -181,7 +181,7 @@ export default function DoctorProfile() {
               {mounted ? fullStamp(d.createdAt) : ""}
               {!d.createdAt && (
                 <span className="block text-xs text-[var(--text-faint)]">
-                  Seeded catalog doctor — no signup record.
+                  Seeded catalog doctor, no signup record.
                 </span>
               )}
             </Row>
@@ -189,7 +189,7 @@ export default function DoctorProfile() {
               {mounted ? fullStamp(account?.createdAt) : ""}
             </Row>
             <Row icon={<Mail className="h-4 w-4" />} label="Email">
-              {account?.email ?? "— (no login account)"}
+              {account?.email ?? ",  (no login account)"}
             </Row>
             <Row icon={<KeyRound className="h-4 w-4" />} label="Sign-in method">
               {account
@@ -199,7 +199,7 @@ export default function DoctorProfile() {
                   ]
                     .filter(Boolean)
                     .join(" + ") || "None set"
-                : "—"}
+                : ", "}
             </Row>
             <Row icon={<Monitor className="h-4 w-4" />} label="Active sessions">
               {activeSessions === 0 ? "Not signed in" : `${activeSessions} device(s)`}
@@ -215,16 +215,16 @@ export default function DoctorProfile() {
           <CardHeader label="PROFILE" title="Credentials & practice" />
           <dl className="space-y-3">
             <Row icon={<Stethoscope className="h-4 w-4" />} label="Qualifications">
-              {d.qualifications || "—"}
+              {d.qualifications || ", "}
             </Row>
             <Row icon={<ShieldCheck className="h-4 w-4" />} label="Registration no.">
-              {d.registrationNo || "—"}
+              {d.registrationNo || ", "}
             </Row>
             <Row icon={<Briefcase className="h-4 w-4" />} label="Education">
-              {d.education || "—"}
+              {d.education || ", "}
             </Row>
             <Row icon={<Phone className="h-4 w-4" />} label="Languages">
-              {d.languages.join(", ") || "—"}
+              {d.languages.join(", ") || ", "}
             </Row>
             <Row icon={<Star className="h-4 w-4" />} label="Age / gender">
               {[d.age ? `${d.age}` : null, d.gender].filter(Boolean).join(" · ")}
@@ -246,10 +246,10 @@ export default function DoctorProfile() {
         <CardHeader label="LOCATION" title="Where they are" />
         <dl className="space-y-3">
           <Row icon={<MapPin className="h-4 w-4" />} label="Clinic address">
-            {d.clinicAddress || "—"}
+            {d.clinicAddress || ", "}
           </Row>
           <Row icon={<MapPin className="h-4 w-4" />} label="Account address">
-            {account?.address || "—"}
+            {account?.address || ", "}
           </Row>
           <Row icon={<MapPin className="h-4 w-4" />} label="Live coordinates">
             <span className="font-mono text-xs">
@@ -409,7 +409,7 @@ export default function DoctorProfile() {
                       </StatusPill>
                     </td>
                     <td className="px-5 py-3 text-[var(--text-muted)]">
-                      {t.patientName ?? "—"}
+                      {t.patientName ?? ", "}
                     </td>
                     <td className="px-5 py-3 font-mono text-[var(--text-muted)]">
                       {formatINR(t.gross)}

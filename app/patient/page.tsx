@@ -122,7 +122,7 @@ export default function PatientHome() {
       display: bmi === undefined ? t("home.add") : `${bmi}`,
     },
     { label: t("home.records"), value: Math.min(100, completedChecks.length * 25), display: `${completedChecks.length}` },
-    { label: t("health.score"), value: score?.value ?? 0, display: score ? undefined : "—" },
+    { label: t("health.score"), value: score?.value ?? 0, display: score ? undefined : ", " },
   ];
   const goals = [
     { id: "profile", label: t("goal.profile"), sub: t("goal.profileSub"), done: located, href: "/patient/account" },
@@ -156,7 +156,7 @@ export default function PatientHome() {
       {/* Watches BMI and raises the AI suggestion notification. Renders nothing. */}
       <BmiAdvisor />
 
-      {/* Header — greeting + stat counters */}
+      {/* Header, greeting + stat counters */}
       <header className="flex flex-wrap items-end justify-between gap-4 lg:col-span-12">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">
@@ -174,7 +174,7 @@ export default function PatientHome() {
           {/* Live numbers, not decoration: checks are this patient's own
               symptom checks (trend = this week vs last, shown only once there
               is one to compare); doctors is the platform roster with how many
-              are online right now. "24/7" stays — a promise, not a metric. */}
+              are online right now. "24/7" stays, a promise, not a metric. */}
           <HeaderStat
             n={completedChecks.length}
             label={t("home.checks")}
@@ -193,7 +193,7 @@ export default function PatientHome() {
             }
           />
           <HeaderStat n="24/7" label={t("home.care247")} />
-          {/* The avatar IS the door to their profile — dressed like one:
+          {/* The avatar IS the door to their profile, dressed like one:
               brand-coloured, ringed, labelled. A photo replaces the initial
               once they add one on the account page. */}
           <Link
@@ -222,7 +222,7 @@ export default function PatientHome() {
         <ProgressRow items={progressItems} />
       </div>
 
-      {/* I need care — the hero action → guided checker */}
+      {/* I need care, the hero action → guided checker */}
       <GlassCard className="p-5 lg:col-span-8 lg:p-6">
         <h2 className="flex items-center gap-2.5 text-lg font-semibold text-cream">
           <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary">
@@ -258,8 +258,8 @@ export default function PatientHome() {
 
       {/* The ways to get care. "Care now" broadcasts to whoever is free;
           "Find a doctor" is where gigs and slots are picked; "Nurse at home"
-          is the home-care cadre, which is a different job from a consult —
-          dressings, injections, elderly care — so it gets its own door. */}
+          is the home-care cadre, which is a different job from a consult
+          dressings, injections, elderly care, so it gets its own door. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-12">
         <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
         <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
@@ -293,7 +293,7 @@ export default function PatientHome() {
             spark={score.spark}
             footer={
               <div className="space-y-2.5">
-                {/* BMI in the health card itself — the number patients look
+                {/* BMI in the health card itself, the number patients look
                     for, with the band that decides whether it's a concern. */}
                 <Link
                   href="/patient/account"
@@ -307,7 +307,7 @@ export default function PatientHome() {
                   )}
                 >
                   <span className="font-semibold">
-                    {t("health.bmi")} {bmi !== undefined ? bmi : "—"}
+                    {t("health.bmi")} {bmi !== undefined ? bmi : ", "}
                   </span>
                   <span>
                     {bmi !== undefined
@@ -368,7 +368,7 @@ export default function PatientHome() {
         <PatientConsultTracker patient={patient} />
       </div>
 
-      {/* The latest prescription. Only once there IS one — an empty card
+      {/* The latest prescription. Only once there IS one, an empty card
           promising future documents would be furniture. The newest is on the
           dashboard because "what am I meant to be taking?" is a question
           people come back to the app to answer, not one they browse a list
@@ -409,7 +409,7 @@ export default function PatientHome() {
             {t("home.seeAll")} <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
-        {/* Dashboard shows only the top few — full list lives behind "See all". */}
+        {/* Dashboard shows only the top few, full list lives behind "See all". */}
         <CareStatus patient={patient} limit={3} moreHref="/patient/doctors" />
       </section>
 

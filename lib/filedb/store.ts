@@ -202,7 +202,7 @@ function ensureTestAccounts(d: FileData): boolean {
       rating: 0,
       consultFee: 500,
       homeVisitFee: 1000,
-      clinicAddress: "MG Road, Pune — opposite Central Mall",
+      clinicAddress: "MG Road, Pune, opposite Central Mall",
       avatarColor: "#5D8A6E",
       lat: MAP_CENTER.lat + 0.01,
       lng: MAP_CENTER.lng + 0.01,

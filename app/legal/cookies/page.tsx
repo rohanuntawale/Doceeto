@@ -49,7 +49,7 @@ export default function CookiePolicyPage() {
             We run no advertising network, no third-party analytics tag, no
             social pixel and no cross-site profiling. Because every cookie we set
             is strictly necessary to deliver a service you asked for, none of
-            them require prior consent — and that is why you are not greeted by
+            them require prior consent, and that is why you are not greeted by
             a banner asking for it.
           </P>
         </Callout>
@@ -72,7 +72,7 @@ export default function CookiePolicyPage() {
                 listed further down.
               </P>
               <P>
-                Some cookie names begin with <Key>iyashi_</Key> — our internal
+                Some cookie names begin with <Key>iyashi_</Key>, our internal
                 codename. They are ours; see{" "}
                 <Xref href="/legal/privacy#who-we-are">who we are</Xref>.
               </P>
@@ -89,7 +89,7 @@ export default function CookiePolicyPage() {
                 rows={[
                   [
                     <Key key="p">iyashi_sid_patient</Key>,
-                    "Your patient session. Holds nothing but an opaque random identifier — no name, no role, no user id, nothing signed. The matching row in our database is what actually says who you are.",
+                    "Your patient session. Holds nothing but an opaque random identifier, no name, no role, no user id, nothing signed. The matching row in our database is what actually says who you are.",
                     "Until sign-out or expiry",
                     "Strictly necessary",
                   ],
@@ -113,13 +113,13 @@ export default function CookiePolicyPage() {
                   ],
                   [
                     <Key key="oa">iyashi_oauth</Key>,
-                    "Holds an in-flight Sign in with Google attempt — the state value to echo back and the PKCE verifier, which together stop someone hijacking the sign-in.",
+                    "Holds an in-flight Sign in with Google attempt, the state value to echo back and the PKCE verifier, which together stop someone hijacking the sign-in.",
                     "Minutes; deleted the moment sign-in completes",
                     "Strictly necessary",
                   ],
                   [
                     <Key key="ps">iyashi_pending_signup</Key>,
-                    "Points at a verified Google identity that has not become an account yet — a doctor part-way through filling in their practice profile.",
+                    "Points at a verified Google identity that has not become an account yet, a doctor part-way through filling in their practice profile.",
                     "Until the sign-up finishes or expires",
                     "Strictly necessary",
                   ],
@@ -128,22 +128,22 @@ export default function CookiePolicyPage() {
               <H3>How they are protected</H3>
               <UL>
                 <LI>
-                  <T>httpOnly</T> — JavaScript cannot read them, so a
+                  <T>httpOnly</T>, JavaScript cannot read them, so a
                   cross-site scripting flaw cannot steal your session.
                 </LI>
                 <LI>
-                  <T>Secure</T> — sent only over HTTPS.
+                  <T>Secure</T>, sent only over HTTPS.
                 </LI>
                 <LI>
-                  <T>SameSite</T> — not sent on cross-site requests, which blocks
+                  <T>SameSite</T>, not sent on cross-site requests, which blocks
                   cross-site request forgery.
                 </LI>
                 <LI>
-                  <T>Opaque</T> — the value is a random identifier and carries no
+                  <T>Opaque</T>, the value is a random identifier and carries no
                   information about you. Tampering with it grants nothing.
                 </LI>
                 <LI>
-                  <T>Revocable</T> — deleting the session row ends the session
+                  <T>Revocable</T>, deleting the session row ends the session
                   instantly. Signing out with &ldquo;all devices&rdquo; ends every
                   one.
                 </LI>
@@ -160,7 +160,7 @@ export default function CookiePolicyPage() {
                 <Key>iyashi_session_doctor</Key>,{" "}
                 <Key>iyashi_session_nurse</Key> and{" "}
                 <Key>iyashi_session_ops</Key>, which carried a signed token. They
-                are cleared on sight and never honoured — a self-describing token
+                are cleared on sight and never honoured, a self-describing token
                 must not be trusted now that the database is the authority on who
                 you are.
               </P>
@@ -181,7 +181,7 @@ export default function CookiePolicyPage() {
                 rows={[
                   [
                     <Key key="lang">iyashi:lang:v1</Key>,
-                    "Your chosen language — English, Hindi or Marathi.",
+                    "Your chosen language, English, Hindi or Marathi.",
                   ],
                   [
                     <Key key="mh">iyashi:medhistory:v1</Key>,
@@ -220,7 +220,7 @@ export default function CookiePolicyPage() {
                     "Demo mode only: that the demo catalogue has been seeded.",
                   ],
                 ]}
-                caption="Demo-mode keys appear only when the app runs without a backend — for local evaluation. They are absent in production."
+                caption="Demo-mode keys appear only when the app runs without a backend, for local evaluation. They are absent in production."
               />
               <Callout tone="warn" title="On a shared or public device">
                 <P>
@@ -268,7 +268,7 @@ export default function CookiePolicyPage() {
           content: (
             <>
               <P>
-                Every browser lets you view, block and delete cookies — usually
+                Every browser lets you view, block and delete cookies, usually
                 under Settings &rsaquo; Privacy. On {COMPANY.brand} the effect is
                 simple and total:
               </P>
@@ -278,14 +278,14 @@ export default function CookiePolicyPage() {
                   blocking or deleting them signs you out. You can still browse
                   the public site, but you cannot stay signed in, book care, or
                   reach your records. There is nothing to opt out of{" "}
-                  <em>selectively</em> — there is no advertising or analytics
+                  <em>selectively</em>, there is no advertising or analytics
                   cookie here to refuse.
                 </P>
               </Callout>
               <P>
                 To end a session properly, use <T>Sign out</T> in the app. That
                 deletes the session row on our side, which the cookie alone
-                cannot do — clearing the cookie in your browser leaves the server
+                cannot do, clearing the cookie in your browser leaves the server
                 session alive until it expires.
               </P>
               <P>
@@ -301,8 +301,8 @@ export default function CookiePolicyPage() {
           title: "Changes",
           content: (
             <P>
-              If we ever add a cookie that is not strictly necessary — analytics,
-              say — we will update this page, ask for your consent first, and
+              If we ever add a cookie that is not strictly necessary, analytics,
+              say, we will update this page, ask for your consent first, and
               give you a way to refuse without losing access to care. Questions
               to <MailLink address={CONTACTS.privacy} />.
             </P>

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FlowButton } from "@/components/ui/flow-button";
+import { HeartHandshake, Stethoscope, Syringe } from "lucide-react";
+import { RoleCta } from "@/components/ui/role-cta";
 import { LandingHeroStats } from "./landing-hero-stats";
 import { LandingTicker } from "./landing-ticker";
 
@@ -10,7 +11,7 @@ export function LandingHero() {
     /* The first screen is a paper panel resting on the forest band that runs
        through the rest of the page. Its bottom corners curve away, so the
        green reads through at the edges and the manifesto below continues the
-       same colour — the panel lifts off the page rather than ending on it. */
+       same colour, the panel lifts off the page rather than ending on it. */
     // id: the section rail observes and scrolls to it, and it gives the
     // "back to top" dot somewhere real to land.
     <section id="hero" className="relative bg-forest">
@@ -45,10 +46,10 @@ export function LandingHero() {
 
         <div className="relative z-10 flex min-h-[68vh] items-center px-6 pt-24 pb-8 sm:min-h-[74vh] sm:pt-28 sm:pb-12 lg:min-h-[82vh] lg:pb-16">
           <div className="max-w-7xl mx-auto w-full">
-            {/* One column. The promise carries the screen on its own — the
+            {/* One column. The promise carries the screen on its own, the
                 headline takes the width the old side panel was using. */}
             <div className="flex max-w-5xl flex-col items-start text-left">
-              {/* Main Headline — the first thing on the page is the promise
+              {/* Main Headline, the first thing on the page is the promise
                   itself. The pill that used to sit above it ("Direct Patient &
                   Provider Healthcare") only restated the headline in smaller
                   type, and it cost the hero its opening beat. */}
@@ -92,32 +93,36 @@ export function LandingHero() {
                 directly to patients. Doceeto bridges the front door to health.
               </motion.p>
 
-              {/* Triple CTAs (Patient, Doctor, Nurse) */}
+              {/* Triple CTAs (Patient, Doctor, Nurse).
+                  Stacked, not in a row: three side-by-side buttons squeezed
+                  each label into a column narrower than the words, which is
+                  what made them read as different widths and alignments. In a
+                  column they share one left edge and one icon gutter, so the
+                  labels line up exactly. */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full max-w-xl"
+                className="mt-10 flex w-full max-w-md flex-col gap-2.5"
               >
-                {/* Patient CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup"
-                  text="I need care"
-                  className="flex-1 border-transparent bg-[var(--accent)] text-on-accent hover:brightness-110"
+                  icon={HeartHandshake}
+                  label="I need care"
+                  caption="Book a doctor or nurse, at home or online"
+                  primary
                 />
-
-                {/* Doctor CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup?as=doctor"
-                  text="I'm a doctor"
-                  className="flex-1"
+                  icon={Stethoscope}
+                  label="I'm a doctor"
+                  caption="Take consults and home visits near you"
                 />
-
-                {/* Nurse CTA */}
-                <FlowButton
+                <RoleCta
                   href="/signup?as=nurse"
-                  text="I'm a nurse"
-                  className="flex-1"
+                  icon={Syringe}
+                  label="I'm a nurse"
+                  caption="Offer home nursing on your own schedule"
                 />
               </motion.div>
             </div>
@@ -129,7 +134,7 @@ export function LandingHero() {
           <LandingHeroStats />
         </div>
 
-        {/* Quiet care rail. Closes the panel — the "Scroll to explore Doceeto"
+        {/* Quiet care rail. Closes the panel, the "Scroll to explore Doceeto"
             cue that used to sit under it is gone: the section rail down the
             right edge already shows there is more page, and a panel that ends
             by instructing you to scroll is a panel that doesn't trust its own

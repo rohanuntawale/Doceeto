@@ -39,7 +39,7 @@ export default function DataDeletionPage() {
         <Callout tone="info" title="Two ways, and neither requires talking to us">
           <P>
             Delete your account from <strong>Account &rsaquo; Delete account</strong>{" "}
-            in the app or on the web — no email, no form, no retention call. Or,
+            in the app or on the web, no email, no form, no retention call. Or,
             if you have lost access to the account, write to{" "}
             <a
               href={`mailto:${CONTACTS.privacy}`}
@@ -64,7 +64,7 @@ export default function DataDeletionPage() {
                   Scroll to <T>Delete account</T>.
                 </OLI>
                 <OLI>
-                  Read what will be deleted and what must be kept — the same list
+                  Read what will be deleted and what must be kept, the same list
                   as{" "}
                   <Xref href="/legal/data-deletion#what-goes">below</Xref>.
                 </OLI>
@@ -79,7 +79,7 @@ export default function DataDeletionPage() {
                 Write to <MailLink address={CONTACTS.privacy} /> from your
                 registered email address with the subject{" "}
                 <T>&ldquo;Delete my account&rdquo;</T>. We verify your identity
-                before acting — an unverified deletion request is an obvious way
+                before acting, an unverified deletion request is an obvious way
                 to attack someone else&rsquo;s medical record. We complete it
                 within <T>{OFFICERS.dataProtection.respondWithin}</T> and confirm
                 in writing.
@@ -88,7 +88,7 @@ export default function DataDeletionPage() {
                 <P>
                   Deletion is blocked while a consultation is in progress, an
                   order is out for delivery, a payment is pending, or a refund or
-                  grievance is open. Finish or cancel those first — we will tell
+                  grievance is open. Finish or cancel those first, we will tell
                   you exactly which one is blocking it.
                 </P>
               </Callout>
@@ -113,7 +113,7 @@ export default function DataDeletionPage() {
                   ["Name, email address and password", "Immediately"],
                   ["Profile photograph", "Immediately"],
                   [
-                    "Health profile — blood group, allergies, conditions, medication, surgeries, family history, lifestyle, emergency contact",
+                    "Health profile, blood group, allergies, conditions, medication, surgeries, family history, lifestyle, emergency contact",
                     "Immediately",
                   ],
                   ["Vitals history", "Immediately"],
@@ -176,7 +176,7 @@ export default function DataDeletionPage() {
                   justifies it</strong>. It is not used to market to you, to
                   profile you, to train anything, or to rebuild your account. It
                   is separated from your identity as far as the record still
-                  makes sense — a prescription has to keep naming its patient to
+                  makes sense, a prescription has to keep naming its patient to
                   be a prescription at all.
                 </P>
               </Callout>
@@ -194,7 +194,7 @@ export default function DataDeletionPage() {
             <>
               <P>
                 Deletion is <T>irreversible</T>. Before you go, export your data
-                — you may want your prescriptions later, and after deletion we
+                you may want your prescriptions later, and after deletion we
                 cannot hand you a copy of a record we have locked for retention.
               </P>
               <UL>
@@ -234,7 +234,7 @@ export default function DataDeletionPage() {
                   ],
                   [
                     "Any health-profile field",
-                    "Account → Health profile — clear the field and save",
+                    "Account → Health profile, clear the field and save",
                   ],
                   ["A saved address", "Account → Addresses"],
                   ["Your profile photograph", "Account → tap the photo → Remove"],
@@ -257,8 +257,8 @@ export default function DataDeletionPage() {
                 ]}
               />
               <P>
-                You can also <T>withdraw consent</T> for a specific purpose — for
-                example, stop using the AI symptom checker — without affecting
+                You can also <T>withdraw consent</T> for a specific purpose, for
+                example, stop using the AI symptom checker, without affecting
                 anything else. See{" "}
                 <Xref href="/legal/privacy#your-rights">your rights</Xref>.
               </P>
@@ -285,7 +285,7 @@ export default function DataDeletionPage() {
                 <LI>
                   <T>Prescriptions you issued keep your name, qualifications and
                   registration number.</T> They are clinical and legal documents
-                  that must continue to say who wrote them — a prescription
+                  that must continue to say who wrote them, a prescription
                   stripped of its prescriber is worthless to the patient holding
                   it and to any court.
                 </LI>

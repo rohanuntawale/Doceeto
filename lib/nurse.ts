@@ -83,10 +83,10 @@ export const NURSE_TITLES = [
  * via `style={NURSE_ACCENT_VARS}` on a surface root.
  */
 export const NURSE_ACCENT_VARS = {
-  "--c-terracotta": "47 123 196" /* #2F7BC4 — calm clinical blue */,
-  "--c-terracotta-700": "37 95 153" /* #255F99 — pressed */,
-  "--c-terracotta-300": "191 217 242" /* #BFD9F2 — light tint */,
-  "--c-salmon": "127 179 227" /* #7FB3E3 — secondary */,
+  "--c-terracotta": "47 123 196" /* #2F7BC4, calm clinical blue */,
+  "--c-terracotta-700": "37 95 153" /* #255F99, pressed */,
+  "--c-terracotta-300": "191 217 242" /* #BFD9F2, light tint */,
+  "--c-salmon": "127 179 227" /* #7FB3E3, secondary */,
 } as CSSProperties;
 
 export const isProviderRole = (role: string | null | undefined) => role === "doctor" || role === "nurse";

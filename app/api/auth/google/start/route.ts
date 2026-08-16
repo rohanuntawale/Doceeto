@@ -29,6 +29,15 @@ export async function GET(req: Request) {
   const raw = url.searchParams.get("role");
   // Both provider cadres onboard through Google; anything else is a patient.
   const role = raw === "doctor" ? "doctor" : raw === "nurse" ? "nurse" : "patient";
+  /*
+   * Did anyone actually SAY patient, or is that just the fallback?
+   *
+   * The line above collapses "no role given" and "patient" into the same
+   * answer, which is how a first-time visitor pressing a bare "Continue with
+   * Google" was silently turned into a patient account without ever being
+   * asked. The callback needs to tell the two apart, so record it.
+   */
+  const roleExplicit = raw === "doctor" || raw === "nurse" || raw === "patient";
   const next = url.searchParams.get("next") ?? "";
 
   if (!googleConfigured()) {
@@ -44,7 +53,7 @@ export async function GET(req: Request) {
 
   cookies().set(
     OAUTH_STATE_COOKIE,
-    JSON.stringify({ state, codeVerifier, role, next }),
+    JSON.stringify({ state, codeVerifier, role, roleExplicit, next }),
     {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

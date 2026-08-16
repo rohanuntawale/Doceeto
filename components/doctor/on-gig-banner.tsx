@@ -62,7 +62,7 @@ export function OnGigBanner({
         </div>
       </div>
 
-      {/* The journey + its controls — advance a step, complete, or cancel. */}
+      {/* The journey + its controls, advance a step, complete, or cancel. */}
       <div className="mt-4 overflow-hidden rounded-lg border border-[var(--border)] bg-espresso-800">
         <TripRail req={request} />
         <TripControls req={request} />

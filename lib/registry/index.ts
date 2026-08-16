@@ -149,7 +149,7 @@ const vendorAdapter: RegistryAdapter = {
   async lookup(registrationNo, council) {
     const url = process.env.REGISTRY_API_URL;
     const key = process.env.REGISTRY_API_KEY;
-    if (!url || !key) return []; // Not configured — stay out of the way.
+    if (!url || !key) return []; // Not configured, stay out of the way.
 
     const header = process.env.REGISTRY_API_HEADER || "Authorization";
     const res = await fetch(url, {

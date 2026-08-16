@@ -29,11 +29,11 @@ Rules:
 
 const FALLBACK: Record<string, string> = {
   underweight:
-    "Your BMI is a little below the healthy range. Try adding an extra wholesome snack to your day — a banana, nuts, or a glass of milk — and if your weight has been dropping without trying, a quick chat with a doctor here can help find out why.",
+    "Your BMI is a little below the healthy range. Try adding an extra wholesome snack to your day, a banana, nuts, or a glass of milk, and if your weight has been dropping without trying, a quick chat with a doctor here can help find out why.",
   overweight:
     "Your BMI is a little above the healthy range. Small steps count: a 20–30 minute walk most days and going easy on fried snacks and sugary drinks can make a real difference. A doctor on Doceeto can help you build a simple plan.",
   obese:
-    "Your BMI is in a range where your heart, joints and sugar levels deserve extra care. Start small — daily walks and lighter dinners — and consider booking a consult here; a doctor can guide you with a plan that fits your routine.",
+    "Your BMI is in a range where your heart, joints and sugar levels deserve extra care. Start small, daily walks and lighter dinners, and consider booking a consult here; a doctor can guide you with a plan that fits your routine.",
   extremelyObese:
     "Your BMI is in a range where extra support can help protect your heart, joints and sugar levels. A doctor on Doceeto can help you make a safe, gradual plan that fits your routine.",
 };

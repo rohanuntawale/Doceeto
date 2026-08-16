@@ -145,7 +145,7 @@ export default function DoctorProfilePage() {
         <div className="space-y-3">
           <CredRow icon={<Award className="h-4 w-4 text-salmon" />} title="Qualifications" body={doctorQualification(doctor)} />
           <CredRow icon={<GraduationCap className="h-4 w-4 text-salmon" />} title="Academic background" body={doctorEducation(doctor)} />
-          <CredRow icon={<Briefcase className="h-4 w-4 text-salmon" />} title="Experience" body={`${doctor.experienceYears} years in ${doctor.specialty.toLowerCase()} — ${doctorKindOf(doctor.kind).label.toLowerCase()}.`} />
+          <CredRow icon={<Briefcase className="h-4 w-4 text-salmon" />} title="Experience" body={`${doctor.experienceYears} years in ${doctor.specialty.toLowerCase()}, ${doctorKindOf(doctor.kind).label.toLowerCase()}.`} />
         </div>
       </div>
 
@@ -164,7 +164,7 @@ export default function DoctorProfilePage() {
             </div>
             <p className="mb-3 mt-1 text-xs text-[var(--text-faint)]">
               {schedule.onGig
-                ? `${firstName} is finishing another gig — you can hire once they're free.`
+                ? `${firstName} is finishing another gig, you can hire once they're free.`
                 : "Pick a package and hire them directly."}
             </p>
             <GigList
@@ -224,7 +224,7 @@ export default function DoctorProfilePage() {
         <div className="label mb-3">Patient reviews ({reviews.length})</div>
         {reviews.length === 0 ? (
           <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 text-center text-sm text-[var(--text-muted)]">
-            No reviews yet — be the first after your consult.
+            No reviews yet, be the first after your consult.
           </div>
         ) : (
           <div className="space-y-3">

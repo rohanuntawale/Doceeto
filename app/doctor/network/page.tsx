@@ -304,7 +304,7 @@ function FeedSection({
               ? "Bookmark a post and it will wait for you here."
               : tab === "following"
                 ? "Follow a few colleagues, or switch to For you."
-                : "Be the first — share a case or a question above."
+                : "Be the first, share a case or a question above."
           }
           icon={<Newspaper className="h-6 w-6" />}
         />

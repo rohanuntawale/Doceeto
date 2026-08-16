@@ -24,7 +24,7 @@ export default async function NurseLayout({ children }: { children: React.ReactN
         <DoctorLocationPublisher />
         <PresenceHeartbeat />
         {children}
-        {/* Same pinned handshake as the doctor cockpit — a nurse standing at a
+        {/* Same pinned handshake as the doctor cockpit, a nurse standing at a
             door needs it in exactly the same place. */}
         <StartVisitPin />
       </NurseShell>

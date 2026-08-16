@@ -118,7 +118,7 @@ export default function ContactPage() {
               title="Response time"
               lines={["Within 24 hours,", "every day."]}
             />
-            {/* A faster channel than the form — the page had no mailto at all. */}
+            {/* A faster channel than the form, the page had no mailto at all. */}
             <a
               href="mailto:hello@doceeto.health"
               className="block rounded-card border border-[var(--border)] bg-espresso-800 p-5 shadow-card transition-colors hover:border-terracotta/40"

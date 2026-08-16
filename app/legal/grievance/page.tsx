@@ -40,7 +40,7 @@ export default function GrievancePage() {
         <>
           How to complain to {COMPANY.brand}, who is obliged to answer, and by
           when. If we cannot put it right, this page also tells you exactly how
-          to go over our heads — because you are entitled to know that.
+          to go over our heads, because you are entitled to know that.
         </>
       }
       intro={
@@ -151,8 +151,8 @@ export default function GrievancePage() {
                 ]}
               />
               <P>
-                If we need longer — usually because a clinical review or a
-                third-party pharmacy is involved — we tell you why and give a
+                If we need longer, usually because a clinical review or a
+                third-party pharmacy is involved, we tell you why and give a
                 date, before the deadline passes rather than after.
               </P>
             </>
@@ -179,7 +179,7 @@ export default function GrievancePage() {
                 <OLI>What happened, in plain sequence.</OLI>
                 <OLI>What you want done about it.</OLI>
                 <OLI>
-                  Anything supporting it — screenshots, the invoice, photographs
+                  Anything supporting it, screenshots, the invoice, photographs
                   of a delivered item, chat transcripts.
                 </OLI>
               </OL>
@@ -275,7 +275,7 @@ export default function GrievancePage() {
               <UL>
                 <LI>
                   overrule a clinical decision, or order a clinician to prescribe
-                  something — that would be us practising medicine;
+                  something, that would be us practising medicine;
                 </LI>
                 <LI>
                   strike a practitioner off a register. Only their council can;
@@ -298,7 +298,7 @@ export default function GrievancePage() {
               <H3>Consumer complaints</H3>
               <UL>
                 <LI>
-                  <T>National Consumer Helpline</T> — dial{" "}
+                  <T>National Consumer Helpline</T>, dial{" "}
                   <T>1915</T>, or file at{" "}
                   <Ext href="https://consumerhelpline.gov.in">
                     consumerhelpline.gov.in
@@ -318,10 +318,10 @@ export default function GrievancePage() {
               <UL>
                 <LI>
                   The <T>State Medical Council</T> the doctor is registered with
-                  — the first port of call for professional misconduct.
+                  the first port of call for professional misconduct.
                 </LI>
                 <LI>
-                  The <T>National Medical Commission</T> —{" "}
+                  The <T>National Medical Commission</T>, {" "}
                   <Ext href="https://www.nmc.org.in">nmc.org.in</Ext>.
                 </LI>
                 <LI>
@@ -334,7 +334,7 @@ export default function GrievancePage() {
               <UL>
                 <LI>
                   The <T>Data Protection Board of India</T>, under the DPDP Act,
-                  2023 — after you have first complained to our{" "}
+                  2023, after you have first complained to our{" "}
                   {OFFICERS.dataProtection.role}, which the Act requires you to do.
                 </LI>
               </UL>
@@ -343,12 +343,12 @@ export default function GrievancePage() {
               <UL>
                 <LI>
                   The <T>State Drugs Controller</T>, or the{" "}
-                  <T>Central Drugs Standard Control Organisation</T> —{" "}
+                  <T>Central Drugs Standard Control Organisation</T>, {" "}
                   <Ext href="https://cdsco.gov.in">cdsco.gov.in</Ext>.
                 </LI>
                 <LI>
-                  The <T>Pharmacovigilance Programme of India</T> —{" "}
-                  <T>1800-180-3024</T> — to report a suspected adverse drug
+                  The <T>Pharmacovigilance Programme of India</T>, {" "}
+                  <T>1800-180-3024</T>, to report a suspected adverse drug
                   reaction.
                 </LI>
               </UL>
@@ -358,12 +358,12 @@ export default function GrievancePage() {
                 <LI>
                   The <T>Grievance Appellate Committee</T> constituted under the
                   IT Rules, 2021, if you are dissatisfied with our decision on a
-                  content complaint —{" "}
+                  content complaint, {" "}
                   <Ext href="https://gac.gov.in">gac.gov.in</Ext>. Appeal within
                   30 days of our decision.
                 </LI>
                 <LI>
-                  <T>Cyber Crime Reporting Portal</T> —{" "}
+                  <T>Cyber Crime Reporting Portal</T>, {" "}
                   <Ext href="https://cybercrime.gov.in">cybercrime.gov.in</Ext>,
                   or the helpline <T>1930</T> for financial fraud.
                 </LI>

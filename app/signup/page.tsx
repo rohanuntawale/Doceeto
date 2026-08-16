@@ -187,7 +187,7 @@ function OnboardingPanel() {
         return setError("List at least one language you consult in.");
       }
       if (!qualifications.trim()) {
-        return setError("Add your qualifications — patients see these first.");
+        return setError("Add your qualifications, patients see these first.");
       }
       const profile = {
         fullName: name.trim() || "Doctor",
@@ -214,7 +214,7 @@ function OnboardingPanel() {
         toast.push({
           tone: "success",
           title: "Welcome to Doceeto",
-          desc: "Your profile is live — go online when ready.",
+          desc: "Your profile is live, go online when ready.",
         });
         router.push("/doctor");
         return;
@@ -240,7 +240,7 @@ function OnboardingPanel() {
         toast.push({
           tone: "success",
           title: "Welcome to Doceeto",
-          desc: "Your profile is live — go online when ready.",
+          desc: "Your profile is live, go online when ready.",
         });
         router.push("/doctor");
         router.refresh();
@@ -260,7 +260,7 @@ function OnboardingPanel() {
       toast.push({
         tone: "success",
         title: "Welcome to Doceeto",
-        desc: "Your profile is live — go online when ready.",
+        desc: "Your profile is live, go online when ready.",
       });
       router.push("/doctor");
       router.refresh();
@@ -356,7 +356,7 @@ function OnboardingPanel() {
       toast.push({
         tone: "success",
         title: "Welcome to Doceeto",
-        desc: "Your profile is in — verification comes next, then you can go online.",
+        desc: "Your profile is in, verification comes next, then you can go online.",
       });
       router.push("/nurse");
       router.refresh();
@@ -583,18 +583,18 @@ function OnboardingPanel() {
             </>
           ) : role === "nurse" ? (
             <div style={NURSE_ACCENT_VARS} className="space-y-4">
-              {/* Step 2 (nurse) — what patients read on the nurse's card.
+              {/* Step 2 (nurse), what patients read on the nurse's card.
                   Blue accent from the first screen: nurse surfaces are blue
                   everywhere in the app. */}
 
-              {/* A Google nurse never saw step 1 — same treatment as the
+              {/* A Google nurse never saw step 1, same treatment as the
                   Google doctor: identity is proved, the profile is theirs
                   to state, starting with the name they practise under. */}
               {googleNurse && (
                 <>
                   <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-left text-xs leading-relaxed text-[var(--text-muted)]">
                     Signed in with Google. Your account isn&rsquo;t created yet
-                    — patients choose a nurse on what&rsquo;s below, so it has
+                    patients choose a nurse on what&rsquo;s below, so it has
                     to come from you.
                   </div>
                   <Field label="Full name">
@@ -741,17 +741,17 @@ function OnboardingPanel() {
             </div>
           ) : (
             <>
-              {/* Step 2 — the profile patients will read. Everything here
+              {/* Step 2, the profile patients will read. Everything here
                   lands on the doctor's public card and detail page. */}
 
               {/* A Google doctor never saw step 1, so their name is asked for
-                  here. Prefilled from Google, and editable — the name on the
+                  here. Prefilled from Google, and editable, the name on the
                   card should be the one they practise under. */}
               {googleDoctor && (
                 <>
                   <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-xs leading-relaxed text-[var(--text-muted)]">
                     Signed in with Google. Your account isn&rsquo;t created yet
-                    — patients choose a doctor on what&rsquo;s below, so it has
+                    patients choose a doctor on what&rsquo;s below, so it has
                     to come from you.
                   </div>
                   <Field label="Full name">
@@ -924,7 +924,7 @@ function OnboardingPanel() {
                   className={inputCls}
                   value={clinicAddress}
                   onChange={(e) => setClinicAddress(e.target.value)}
-                  placeholder="Vaishali Nagar, Nagpur — near City Hospital"
+                  placeholder="Vaishali Nagar, Nagpur, near City Hospital"
                   autoComplete="off"
                   maxLength={160}
                 />
@@ -957,7 +957,7 @@ function OnboardingPanel() {
             />
           </div>
 
-          {/* A Google doctor has no step 1 to go back to — their email and
+          {/* A Google doctor has no step 1 to go back to, their email and
               identity came from Google, not from a form. */}
           {step === 2 && !googleProvider && (
             <button
@@ -975,12 +975,12 @@ function OnboardingPanel() {
 
           <p className="text-center text-xs text-[var(--text-faint)]">
             {step === 2
-              ? "Patients see this on your profile — you can edit it anytime"
+              ? "Patients see this on your profile, you can edit it anytime"
               : role === "doctor"
                 ? "Next: your specialty, credentials & fees"
                 : role === "nurse"
                   ? "Next: your services, credentials & fee"
-                  : "as a patient — no card, no wait"}
+                  : "as a patient, no card, no wait"}
           </p>
         </form>
 
@@ -997,7 +997,7 @@ function OnboardingPanel() {
             Log in
           </Link>
         </p>
-        {/* Footer links — /about and /contact were unreachable islands
+        {/* Footer links, /about and /contact were unreachable islands
             before this: nothing in the app linked to them. */}
         <div
           className="animate-rise mt-8 space-y-2 text-[11px] text-[var(--text-faint)]"
@@ -1158,7 +1158,7 @@ function CoverPlate() {
         </p>
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-cream/70">
           A real doctor, on demand, at your door. One tap for urgent help, and
-          medicine sent to you — all in one place.
+          medicine sent to you, all in one place.
         </p>
       </div>
     </section>

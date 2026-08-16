@@ -82,8 +82,22 @@ async function syncFromServer() {
       .filter(Boolean) as CheckSession[];
 
     const owner = window.localStorage.getItem(OWNER_KEY);
-    if (owner && owner !== data.patientId) {
-      // Different account on this device: the cache is someone else's record.
+    if (owner !== data.patientId) {
+      /*
+       * The cache does not demonstrably belong to this account, so it is not
+       * adopted. It is either someone else's record, or of unknown provenance.
+       *
+       * The unknown case is the one that used to bite: with no owner stamped
+       * yet, the old `owner && owner !== id` test fell through to the merge
+       * branch, so a freshly registered account inherited whatever checks were
+       * already sitting in this browser AND uploaded them to the server as its
+       * own. That is why a brand-new account opened on a used browser greeted
+       * its owner with someone else's symptom checks.
+       *
+       * Signed-out checks are therefore not carried into a new account. If we
+       * want that, it has to be an explicit "import these?" prompt, never a
+       * silent merge into a medical record.
+       */
       sessions = server;
     } else {
       sessions = mergeSessions(server, sessions);

@@ -6,7 +6,7 @@ import { AvailabilityMap } from "@/components/try/availability-map";
 export const metadata = {
   title: "Doctors on Doceeto",
   description:
-    "Browse verified doctors on Doceeto — specialty, experience, languages and home-visit fees, with no account needed.",
+    "Browse verified doctors on Doceeto, specialty, experience, languages and home-visit fees, with no account needed.",
 };
 
 export default function TryDoctorsPage() {
@@ -15,7 +15,7 @@ export default function TryDoctorsPage() {
       <PageHeader label="Preview" title="Doctors on Doceeto" />
       <div className="space-y-5">
         <PreviewBanner
-          can="This is the real roster — every doctor here is registered and ops-verified."
+          can="This is the real roster, every doctor here is registered and ops-verified."
           needsAccount="Booking, video consults and home visits need an account. It takes a minute."
         />
         <AvailabilityMap cadre="doctor" />

@@ -211,8 +211,8 @@ export function PrescriptionComposer({
               <Plus className="h-4 w-4" /> {t("rx.addMedicine")}
             </button>
 
-            {/* The stocked catalog, as one tap. Not a restriction — the name
-                field takes anything — but the eight drugs the network can
+            {/* The stocked catalog, as one tap. Not a restriction, the name
+                field takes anything, but the eight drugs the network can
                 actually deliver are worth being one tap away. */}
             <div className="mt-3">
               <p className="label mb-1.5">{t("rx.commonMedicines")}</p>

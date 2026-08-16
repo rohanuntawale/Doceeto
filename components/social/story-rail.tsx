@@ -36,7 +36,7 @@ export function StoryRail({ me }: { me: SocialAuthor | null }) {
     try {
       const media = await uploadMedia(file);
       await run("createStory", { mediaId: media.id, content: "" });
-      toast.push({ title: "Story added — it's live for 24 hours", tone: "success" });
+      toast.push({ title: "Story added, it's live for 24 hours", tone: "success" });
     } catch (err) {
       toast.push({ title: (err as Error).message, tone: "error" });
     } finally {
@@ -151,7 +151,7 @@ function StoryViewer({
 
   return (
     <Modal open onClose={onClose} className="bg-black/80">
-      {/* The backdrop closes on click, so the panel has to stop the bubble —
+      {/* The backdrop closes on click, so the panel has to stop the bubble
           otherwise tapping "next" would also dismiss the viewer. */}
       <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md">
         <div className="flex gap-1 px-1 pb-2">

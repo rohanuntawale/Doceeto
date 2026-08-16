@@ -537,7 +537,7 @@ async function ensureTestAccounts(): Promise<void> {
        VALUES ($1, 'Dr. Arjun Mehta', 'General Physician', 'practising', 'male', 38, 12,
          $2, 'online', false, 0, 500, 1000, '#5D8A6E',
          $3, $4, 'MBBS, MD (General Medicine)', 'Grant Medical College, Mumbai',
-         'MH-45210', 'MG Road, Pune — opposite Central Mall')
+         'MH-45210', 'MG Road, Pune, opposite Central Mall')
        ON CONFLICT (id) DO NOTHING`,
       [doc!.id, ["English", "Hindi", "Marathi"], MAP_CENTER.lat + 0.01, MAP_CENTER.lng + 0.01],
     );

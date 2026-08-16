@@ -87,7 +87,7 @@ export function LegalDocument({
         {intro ? <div className="mt-8 max-w-3xl">{intro}</div> : null}
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-14">
-          {/* Only id + title cross into the client component — see the note
+          {/* Only id + title cross into the client component, see the note
               on ContentsEntry for why the sections themselves must not. */}
           <ContentsRail
             sections={sections.map((s) => ({ id: s.id, title: s.title }))}
@@ -170,7 +170,7 @@ function DocumentFooter({
       <div className="rounded-card border border-[var(--border)] bg-espresso-800 p-6 shadow-card">
         <h2 className="font-serif text-xl text-cream">Questions about this page?</h2>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-          Write to us and a person will answer — these documents are meant to be
+          Write to us and a person will answer, these documents are meant to be
           readable, and if something here is unclear that is a fault worth
           fixing.
         </p>

@@ -24,7 +24,11 @@ export function GoogleButton({
   label,
   className,
 }: {
-  role: "patient" | "doctor";
+  /**
+   * The surface being entered. Pass "" when the page genuinely does not know,
+   * the callback then asks rather than assuming patient.
+   */
+  role: "patient" | "doctor" | "nurse" | "";
   /** Where to land afterwards; ignored unless it belongs to that role's app. */
   next?: string;
   /**
@@ -41,8 +45,10 @@ export function GoogleButton({
   className?: string;
 }) {
   const [leaving, setLeaving] = useState(false);
+  // No role in the query when the caller has none: an absent param is what
+  // tells the callback to ask, rather than quietly filing them as a patient.
   const href =
-    `/api/auth/google/start?role=${role}` +
+    `/api/auth/google/start${role ? `?role=${role}` : "?"}` +
     (next ? `&next=${encodeURIComponent(next)}` : "") +
     (email ? `&email=${encodeURIComponent(email)}` : "");
 

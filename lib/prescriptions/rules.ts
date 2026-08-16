@@ -231,13 +231,13 @@ export function rxShareText(rx: Prescription, url?: string): string {
       month: "short",
       year: "numeric",
     })}`,
-    `${rx.doctorName}${rx.doctorSpecialty ? ` — ${rx.doctorSpecialty}` : ""}`,
+    `${rx.doctorName}${rx.doctorSpecialty ? `, ${rx.doctorSpecialty}` : ""}`,
   ];
   if (rx.diagnosis) lines.push("", `Diagnosis: ${rx.diagnosis}`);
   if (rx.items.length > 0) {
     lines.push("", "Medicines:");
     rx.items.forEach((it, i) => {
-      lines.push(`${i + 1}. ${it.name} — ${it.dose}, ${formatSchedule(it.schedule)}, ${courseSummary(it)}`);
+      lines.push(`${i + 1}. ${it.name}, ${it.dose}, ${formatSchedule(it.schedule)}, ${courseSummary(it)}`);
       if (it.notes) lines.push(`   ${it.notes}`);
     });
   }

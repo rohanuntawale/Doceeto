@@ -59,7 +59,7 @@ export default async function SharedPrescriptionPage({
 
       <div className="no-print mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-xs leading-relaxed text-[var(--text-faint)]">
-          Shared by the patient. This is a copy of a prescription issued on Doceeto — check the code
+          Shared by the patient. This is a copy of a prescription issued on Doceeto, check the code
           and the doctor&apos;s registration number against the original if anything looks wrong.
         </p>
         <PrintButton />

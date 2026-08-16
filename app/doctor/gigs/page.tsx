@@ -205,7 +205,7 @@ export default function DoctorGigsPage() {
             <div className="p-4">
               <EmptyState
                 title="No gigs yet"
-                desc="A gig is a package patients hire outright — say what you do, how long it takes, and what it costs."
+                desc="A gig is a package patients hire outright, say what you do, how long it takes, and what it costs."
                 action={
                   <Button
                     size="sm"
@@ -341,7 +341,7 @@ export default function DoctorGigsPage() {
             <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--text-faint)]">
               <Briefcase className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               Pausing keeps a gig for later but hides it from patients. Archiving retires
-              it — requests already made against it still reach you. Deleting removes it
+              it, requests already made against it still reach you. Deleting removes it
               for good, and is refused while someone is still waiting on a hire.
             </p>
           </div>

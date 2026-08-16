@@ -95,10 +95,10 @@ export function LandingConnection() {
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               /* max-w-xs is 20rem, so a 10rem top radius is exactly half the
-                 width — a true semicircle, not a rounded rectangle. */
+                 width, a true semicircle, not a rounded rectangle. */
               className="relative w-full max-w-xs rounded-t-[10rem] rounded-b-xl border border-[var(--border)] bg-[var(--bg)] px-7 pb-7 pt-16 shadow-soft"
             >
-              {/* Keystone — the gold dot from the mark, at the apex */}
+              {/* Keystone, the gold dot from the mark, at the apex */}
               <span
                 aria-hidden
                 className="absolute left-1/2 top-6 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-tan"

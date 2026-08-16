@@ -188,8 +188,8 @@ export default function AccessibilityPage() {
                   passed to the clinician before every visit;
                 </LI>
                 <LI>
-                  pass a specific requirement — a wheelchair-accessible entrance,
-                  extra time, a female clinician, an interpreter — to the
+                  pass a specific requirement, a wheelchair-accessible entrance,
+                  extra time, a female clinician, an interpreter, to the
                   provider in advance.
                 </LI>
               </UL>
@@ -210,7 +210,7 @@ export default function AccessibilityPage() {
                 <LI>the page or screen, and what you were trying to do;</LI>
                 <LI>
                   your device, browser or app version, and any assistive
-                  technology you use — screen reader, magnifier, switch, voice
+                  technology you use, screen reader, magnifier, switch, voice
                   control;
                 </LI>
                 <LI>what happened, and what you expected.</LI>

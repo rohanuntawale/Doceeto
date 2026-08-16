@@ -180,7 +180,7 @@ function riskPillar(p: HealthProfile): ScorePillar | undefined {
   if (idrs) {
     if (idrs.band === "high") {
       earned -= 12;
-      notes.push("diabetes risk factors are high — worth a check-up");
+      notes.push("diabetes risk factors are high, worth a check-up");
     } else if (idrs.band === "moderate") {
       earned -= 6;
       notes.push("some diabetes risk factors are present");

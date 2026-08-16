@@ -79,10 +79,14 @@ export function LandingTwoSides() {
               </div>
 
               <div className="mt-10 pt-6 border-t border-white/20">
-                <Link href="/signup">
+                {/* `h-13` is not a Tailwind step, so this button had no height
+                    rule at all and collapsed to its text, which is why it read
+                    as a thin sliver. Fixed height, and sized to its label
+                    instead of stretching the full width of the card. */}
+                <Link href="/signup" className="inline-block">
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto h-13 px-8 text-base font-bold bg-white text-[var(--accent)] hover:bg-white/95 shadow-md border-0 group"
+                    className="group h-14 rounded-xl border-0 bg-white px-7 text-base font-bold text-[var(--accent)] shadow-md hover:bg-white/95"
                   >
                     I need care
                     <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
@@ -122,13 +126,14 @@ export function LandingTwoSides() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-[var(--border)]">
-                  <Link href="/signup?as=doctor">
+                  <Link href="/signup?as=doctor" className="inline-block">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full h-12 text-sm font-semibold border-2 border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[rgb(var(--accent-rgb)/0.1)]"
+                      className="group h-12 rounded-xl border-2 border-[var(--border)] px-6 text-sm font-semibold text-[var(--text)] hover:border-[var(--accent)] hover:bg-[rgb(var(--accent-rgb)/0.1)]"
                     >
-                      I&apos;m a doctor →
+                      I&apos;m a doctor
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </Link>
                 </div>
@@ -163,13 +168,14 @@ export function LandingTwoSides() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-[#2F7BC4]/30">
-                  <Link href="/signup?as=nurse">
+                  <Link href="/signup?as=nurse" className="inline-block">
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full h-12 text-sm font-semibold border-2 border-[#2F7BC4]/60 text-[#2F7BC4] hover:bg-[#2F7BC4] hover:text-white transition-colors"
+                      className="group h-12 rounded-xl border-2 border-[#2F7BC4]/60 px-6 text-sm font-semibold text-[#2F7BC4] transition-colors hover:bg-[#2F7BC4] hover:text-white"
                     >
-                      I&apos;m a nurse →
+                      I&apos;m a nurse
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </Link>
                 </div>

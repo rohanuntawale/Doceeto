@@ -15,7 +15,7 @@ export default function TryCheckerPage() {
           chat with no headline. The card carries its own "Symptom check"
           header, so nothing is lost when this collapses. */}
       {/* A client wrapper only so this heading can follow the language the
-          visitor picks inside the chat below — a Marathi conversation under an
+          visitor picks inside the chat below, a Marathi conversation under an
           English headline is the giveaway that the translation is skin-deep. */}
       <div className="hidden shrink-0 [@media(min-height:760px)]:block">
         <CheckerPageHeader />

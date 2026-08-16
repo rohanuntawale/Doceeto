@@ -229,11 +229,11 @@ function TrackerCard({
         <StatusPill tone={st.tone}>{st.label}</StatusPill>
       </div>
 
-      {/* The rail — where the visit has got to. */}
+      {/* The rail, where the visit has got to. */}
       <TripRail req={req} />
 
       {/* The arrival handshake. The patient's four digits, the doctor's
-          keypad — the step that turns "arrived" into "in consult". */}
+          keypad, the step that turns "arrived" into "in consult". */}
       {awaitingStartCode(req) && (
         <div className="px-3 pt-3">
           {side === "patient" ? (
@@ -265,9 +265,9 @@ function TrackerCard({
             <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                {/* Road distance once routing has answered — "2.1km apart" as
+                {/* Road distance once routing has answered, "2.1km apart" as
                     the crow flies is not the distance anyone has to travel. */}
-                {eta ? formatKm(eta.km) : km !== null ? formatKm(km) : "—"}
+                {eta ? formatKm(eta.km) : km !== null ? formatKm(km) : ", "}
                 {eta && !eta.estimated ? " to go" : " apart"}
               </span>
               {isHomeVisit && (eta || km !== null) && (

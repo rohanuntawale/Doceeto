@@ -141,7 +141,7 @@ function BookingRow({
           {L.consultType(req.type).label}
           {doctor?.specialty ? ` · ${doctor.specialty}` : ""}
         </p>
-        {/* When it is — the detail the patient actually came back for. */}
+        {/* When it is, the detail the patient actually came back for. */}
         <p
           className={`mt-0.5 flex items-center gap-1 text-xs ${booked ? "text-salmon" : "text-tan"}`}
         >
@@ -204,7 +204,7 @@ function BookingRow({
 
       {/* The prescription is the thing a patient comes back to a finished
           consult FOR, so it sits on the consult rather than only in a separate
-          list — one tap from where they remember the visit happening. */}
+          list, one tap from where they remember the visit happening. */}
       {rx && (
         <Link
           href={`/patient/prescriptions/${rx.id}`}

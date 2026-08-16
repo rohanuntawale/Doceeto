@@ -108,13 +108,13 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   return (
     // The app keeps the terracotta accent; green is the public brand.
     <div className="min-h-screen app-accent-warm">
-      {/* Top bar — brand + language. Solid glass at exactly --chrome-top tall,
+      {/* Top bar, brand + language. Solid glass at exactly --chrome-top tall,
           so scrolled content never collides with the controls floating on it. */}
       <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
         <Link href="/patient" aria-label="Doceeto home">
           <Wordmark compact />
         </Link>
-        {/* Sign out then language — the same order, icon and styling as the
+        {/* Sign out then language, the same order, icon and styling as the
             doctor cockpit's top bar. Someone who holds both a patient and a
             provider account should not have to re-learn where the exit is
             when they switch. */}
@@ -135,7 +135,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom scrim — pages fade out into the background under the floating
+      {/* Bottom scrim, pages fade out into the background under the floating
           dock instead of colliding with it at full strength. */}
       <div
         aria-hidden

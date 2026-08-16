@@ -126,12 +126,12 @@ function Home() {
         <p className="label">{t("nurse.space")}</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream lg:text-4xl">
           {t(greetKey)},{" "}
-          <span className="text-[rgb(var(--c-terracotta))]">{me?.fullName ?? "—"}</span>
+          <span className="text-[rgb(var(--c-terracotta))]">{me?.fullName ?? ", "}</span>
         </h1>
         <p className="mt-1.5 text-sm text-[var(--text-muted)]">{t("nurse.subtitle")}</p>
       </header>
 
-      {/* Presence — the nurse equivalent of the doctor's shift card. Going
+      {/* Presence, the nurse equivalent of the doctor's shift card. Going
           offline takes her off the patient map entirely.
 
           GlassCard carries no padding of its own and clips with
@@ -203,7 +203,7 @@ function Home() {
       </div>
 
       {/* The live visit, with its trip rail and the patient's start code. The
-          same tracker the cockpit uses — a nurse's visit advances through
+          same tracker the cockpit uses, a nurse's visit advances through
           exactly the same stages. */}
       {me && (
         <div className="lg:col-span-12">
@@ -212,7 +212,7 @@ function Home() {
       )}
 
       {/* Patients around her. `self` needs real coordinates, which is why the
-          layout mounts the location publisher — without it there is a map but
+          layout mounts the location publisher, without it there is a map but
           no "you", and the whole card reads as broken. */}
       <Card className="overflow-hidden lg:col-span-7">
         <CardHeader label={t("nurse.aroundYou")} title={t("nurse.patientsNearYou")} />
@@ -483,7 +483,7 @@ function Profile() {
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
           <div className="flex items-start gap-4">
-            {/* A photo is required before going online — the same rule the
+            {/* A photo is required before going online, the same rule the
                 cockpit enforces, so it belongs on the same screen. */}
             <AvatarUploader onPhoto={setPhoto}>
               <AvatarImage
@@ -544,7 +544,7 @@ function Profile() {
             <CredLine
               icon={<LanguagesIcon className="h-4 w-4 text-salmon" />}
               label={t("nurse.languages")}
-              value={me.languages.join(", ") || "—"}
+              value={me.languages.join(", ") || ", "}
             />
             <CredLine
               icon={<MapPin className="h-4 w-4 text-salmon" />}

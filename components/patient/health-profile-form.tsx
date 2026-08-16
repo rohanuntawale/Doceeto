@@ -225,7 +225,7 @@ export function HealthProfileForm() {
       </p>
 
       <div className="space-y-3">
-        {/* Measurements — the pair that unlocks BMI */}
+        {/* Measurements, the pair that unlocks BMI */}
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.height")}>
             <input type="number" min={50} max={250} className={inputCls} value={heightCm}
@@ -350,7 +350,7 @@ export function HealthProfileForm() {
 
         <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white/[0.025] px-3 py-2.5">
           <span className="text-[11px] text-[var(--text-muted)]">
-            {saving ? "Saving your changes…" : saveStatus === "error" ? "Couldn’t save — try again" : "Changes save automatically"}
+            {saving ? "Saving your changes…" : saveStatus === "error" ? "Couldn’t save, try again" : "Changes save automatically"}
           </span>
           <span
             className={cn(

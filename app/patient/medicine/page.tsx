@@ -124,7 +124,7 @@ function MedicineStore() {
       {/* Sticky checkout bar. Portalled to <body>: inside <main>'s z-10
           stacking context it was pinned below the shell's bottom scrim, and
           its old bottom-[57px] was a leftover from a nav bar that no longer
-          exists — it now rides just above the floating dock. */}
+          exists, it now rides just above the floating dock. */}
       {count > 0 &&
         createPortal(
           <div className="fixed inset-x-3 bottom-[calc(var(--chrome-dock)+0.5rem)] z-[80] mx-auto max-w-2xl rounded-2xl border border-[var(--border)] bg-espresso/95 shadow-[var(--elev-shadow-strong)] backdrop-blur">

@@ -48,7 +48,7 @@ export default function TryLayout({ children }: { children: React.ReactNode }) {
             scrolls its own transcript instead. */}
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto">{children}</div>
 
-        {/* No site footer on purpose. These are focused, single-task screens —
+        {/* No site footer on purpose. These are focused, single-task screens
             someone mid-way through describing a symptom does not need About /
             Careers / Legal underneath them. One way back out is enough. */}
         <div className="mt-3 flex shrink-0 justify-center border-t border-[var(--border)] pt-3">

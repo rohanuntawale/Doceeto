@@ -190,7 +190,7 @@ export interface Doctor {
   age?: number; // collected at onboarding; shown alongside gender on the profile
   about?: string; // short bio
   registrationNo?: string; // medical council registration
-  clinicAddress?: string; // where the doctor practises — shown to patients, used for clinic visits
+  clinicAddress?: string; // where the doctor practises, shown to patients, used for clinic visits
   /** The clinic's own coordinates. Distinct from `lat`/`lng` above, which is
    *  the doctor's LIVE position: that one is private and never published to
    *  anonymous visitors, this one is a business address and is what the public

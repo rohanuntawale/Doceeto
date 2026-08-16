@@ -315,7 +315,7 @@ export const CURATED_COMMUNITIES: {
   {
     id: "com-practice",
     name: "Practice & Earnings",
-    description: "Running a practice on the platform — scheduling, gigs, pricing, paperwork.",
+    description: "Running a practice on the platform, scheduling, gigs, pricing, paperwork.",
     sortOrder: 40,
   },
   {

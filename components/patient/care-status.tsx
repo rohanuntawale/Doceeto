@@ -105,7 +105,7 @@ export function CareStatus({
           sub={
             // A doctor who cancels owes an explanation, so it leads here.
             r.status === "cancelled" && r.cancelledBy === "doctor"
-              ? `Cancelled by ${docName(r.doctorId) ?? "the doctor"}${r.cancelReason ? ` — ${r.cancelReason}` : ""}`
+              ? `Cancelled by ${docName(r.doctorId) ?? "the doctor"}${r.cancelReason ? `, ${r.cancelReason}` : ""}`
               : r.status === "completed"
                 ? t("care.completed", { x: docName(r.doctorId) ?? "" })
                 : r.doctorId

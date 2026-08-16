@@ -33,7 +33,7 @@ const UPDATES: Record<Role, { icon: React.ReactNode; label: string; value: strin
 
 const NEWS: Record<Role, { tag: string; title: string; time: string; color: string }[]> = {
   patient: [
-    { tag: "Health", title: "Seasonal flu cases rising in Nagpur — stay hydrated", time: "2h", color: "#C0692F" },
+    { tag: "Health", title: "Seasonal flu cases rising in Nagpur, stay hydrated", time: "2h", color: "#C0692F" },
     { tag: "Wellness", title: "5 monsoon symptoms you shouldn't ignore", time: "5h", color: "#7C8B5E" },
     { tag: "Doceeto", title: "Home visits now available till 11 PM daily", time: "1d", color: "#C99A4B" },
   ],
@@ -87,7 +87,7 @@ export function NewsCard({ role }: { role: Role }) {
         </h3>
         <span className="text-xs text-[var(--text-faint)]">Today</span>
       </div>
-      {/* Static digest rows — no article pages exist yet, so these must not
+      {/* Static digest rows, no article pages exist yet, so these must not
           look clickable (they were <button>s with an external-link arrow that
           did nothing). */}
       <div className="mt-2 divide-y divide-[var(--border)]">

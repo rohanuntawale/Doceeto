@@ -163,7 +163,7 @@ export function EditProfileDialog({
               }
               className={inputCls}
               maxLength={160}
-              placeholder="Shivaji Nagar, Nagpur — near City Hospital"
+              placeholder="Shivaji Nagar, Nagpur, near City Hospital"
             />
           </Field>
 

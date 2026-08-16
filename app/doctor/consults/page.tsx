@@ -73,7 +73,7 @@ export default function ConsultsPage() {
                       {consultTypeOf(r.type).label} · {r.symptoms}
                     </p>
                   </div>
-                  {/* A booked visit is dated by its slot — "2h ago" would be
+                  {/* A booked visit is dated by its slot, "2h ago" would be
                       the moment it was requested, not when it happens. */}
                   <span className="text-xs text-[var(--text-faint)]">
                     {!mounted
@@ -93,7 +93,7 @@ export default function ConsultsPage() {
                   )}
                   {/* A prescription is part of the record of a consult, so it
                       belongs on the consult row. Issuing after the fact is
-                      allowed — a doctor who closed the visit and then
+                      allowed, a doctor who closed the visit and then
                       remembered the antibiotic should not have to reopen
                       anything to send it. */}
                   {r.status === "completed" && (

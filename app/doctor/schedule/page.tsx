@@ -121,7 +121,7 @@ export default function SchedulePage() {
                             <div className="min-w-0">
                               <p className="flex items-center gap-2 text-sm font-medium text-cream">
                                 <Clock className="h-3.5 w-3.5 text-salmon" />
-                                {iv ? formatSlotTime(new Date(iv.start)) : "—"}
+                                {iv ? formatSlotTime(new Date(iv.start)) : ", "}
                                 {iv && (
                                   <span className="text-[var(--text-faint)]">
                                     – {formatSlotTime(new Date(iv.end))}

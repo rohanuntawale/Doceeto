@@ -49,7 +49,7 @@ export default function TermsPage() {
             with independent, registered clinicians</strong>. We are not a
             hospital, a clinic, a diagnostic centre or an ambulance service, and
             we do not practise medicine. The doctor or nurse who treats you is
-            responsible for their clinical judgement — not us.{" "}
+            responsible for their clinical judgement, not us.{" "}
             <strong>In a life-threatening emergency, call 112 or 108 first.</strong>
           </P>
         </Callout>
@@ -70,7 +70,7 @@ export default function TermsPage() {
                 Disclaimer</Xref>, the <Xref href="/legal/sales">Sales
                 Policy</Xref>, the{" "}
                 <Xref href="/legal/emergency">Emergency Services Policy</Xref>{" "}
-                and — if you deliver care — the{" "}
+                and, if you deliver care, the{" "}
                 <Xref href="/legal/providers">Provider Terms</Xref>. Together
                 they form one agreement.
               </P>
@@ -185,7 +185,7 @@ export default function TermsPage() {
                   suspect it is.
                 </OLI>
                 <OLI>
-                  One account per person. Do not share it — a shared account
+                  One account per person. Do not share it, a shared account
                   merges two people&rsquo;s medical histories into one record,
                   which is genuinely dangerous.
                 </OLI>
@@ -257,7 +257,7 @@ export default function TermsPage() {
               </UL>
               <P>
                 We may remove content and suspend accounts that break these
-                rules — see <Xref href="/legal/terms#termination">suspension and
+                rules, see <Xref href="/legal/terms#termination">suspension and
                 termination</Xref>.
               </P>
             </>
@@ -281,7 +281,7 @@ export default function TermsPage() {
                 </LI>
                 <LI>
                   <T>Nurses do not diagnose and do not prescribe.</T> They
-                  deliver defined nursing services at home — injections, wound
+                  deliver defined nursing services at home, injections, wound
                   care, monitoring, elder and post-operative care. Anything
                   requiring a diagnosis needs a doctor.
                 </LI>
@@ -348,8 +348,8 @@ export default function TermsPage() {
                 <T>licensed pharmacies</T>, and prescription-only medicine is
                 dispensed only against a valid prescription that a registered
                 pharmacist has verified. Some drug schedules we will not deliver
-                at all. The full rules — including what we refuse and why an
-                order may be cancelled after you have paid — are in the{" "}
+                at all. The full rules, including what we refuse and why an
+                order may be cancelled after you have paid, are in the{" "}
                 <Xref href="/legal/pharmacy">Medicine &amp; Pharmacy
                 Policy</Xref>.
               </P>
@@ -392,7 +392,7 @@ export default function TermsPage() {
               <H3>Yours</H3>
               <P>
                 Your health data, reports and photographs remain yours. You give
-                us the licence needed to run the service — storing them,
+                us the licence needed to run the service, storing them,
                 displaying them to the clinician treating you, and processing
                 them as the Privacy Policy describes. Nothing more.
               </P>
@@ -464,7 +464,7 @@ export default function TermsPage() {
                 On termination: your licence to use the service ends; sums
                 already due remain payable; refunds owed are paid; and your data
                 is handled as described in{" "}
-                <Xref href="/legal/privacy#retention">retention</Xref> — clinical
+                <Xref href="/legal/privacy#retention">retention</Xref>, clinical
                 records are kept for the statutory period even after deletion.
               </P>
               <P>
@@ -504,7 +504,7 @@ export default function TermsPage() {
               </UL>
               <P>
                 Nothing here excludes liability that cannot lawfully be excluded
-                — including liability for death or personal injury caused by our
+                including liability for death or personal injury caused by our
                 own negligence, for fraud, or under the Consumer Protection Act,
                 2019.
               </P>
@@ -547,7 +547,7 @@ export default function TermsPage() {
                   lies against that provider and their indemnity insurer. We
                   will give you the provider&rsquo;s registration details, the
                   record of the encounter and any documents you need to pursue
-                  it — that is a commitment, not a courtesy.
+                  it, that is a commitment, not a courtesy.
                 </P>
               </Callout>
             </>
@@ -630,7 +630,7 @@ export default function TermsPage() {
                 </LI>
                 <LI>
                   <T>Force majeure.</T> Neither side is liable for failure caused
-                  by events beyond reasonable control — natural disaster,
+                  by events beyond reasonable control, natural disaster,
                   epidemic, war, strike, or failure of public infrastructure or
                   telecommunications.
                 </LI>
@@ -681,7 +681,7 @@ export default function TermsPage() {
                     value: (
                       <>
                         {OFFICERS.grievance.name
-                          ? `${OFFICERS.grievance.name} — `
+                          ? `${OFFICERS.grievance.name}, `
                           : null}
                         <MailLink address={OFFICERS.grievance.email} />
                       </>

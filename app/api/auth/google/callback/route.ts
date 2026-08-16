@@ -60,7 +60,13 @@ export async function GET(req: Request) {
 
   if (!raw) return fail(origin, "That sign-in expired. Please try again.");
 
-  let pending: { state: string; codeVerifier: string; role: SurfaceRole; next: string };
+  let pending: {
+    state: string;
+    codeVerifier: string;
+    role: SurfaceRole;
+    roleExplicit?: boolean;
+    next: string;
+  };
   try {
     pending = JSON.parse(raw);
   } catch {
@@ -91,12 +97,18 @@ export async function GET(req: Request) {
         if (!identity.emailVerified) {
           return fail(origin, "Google hasn't verified that email address, so it can't be used to sign in here.");
         }
-        if (byEmail.role !== role) {
-          return fail(
-            origin,
-            `That email is already registered as a ${byEmail.role}. Sign in as a ${byEmail.role} instead.`,
-          );
-        }
+        /*
+         * Same person, same verified address: link the Google id and let them
+         * in as whatever they already are.
+         *
+         * This used to refuse when the account's role differed from the role
+         * the button happened to carry, which meant a doctor who pressed
+         * "Continue with Google" on the ordinary sign-in page (that button
+         * sends role=patient) was told to "sign in as a doctor instead" on the
+         * page they were already using. The account's own role is the truth
+         * here; the requested surface is only a hint for people who do not
+         * have an account yet.
+         */
         await db.linkGoogleAccount(byEmail.id, identity.googleId, identity.picture);
         user = byEmail;
       }
@@ -139,6 +151,23 @@ export async function GET(req: Request) {
         const to = new URL(`/signup?google=${role}`, origin);
         to.searchParams.set("name", identity.name);
         return NextResponse.redirect(to);
+      } else if (!pending.roleExplicit) {
+        /*
+         * NOBODY EVER ASKED WHAT THEY ARE.
+         *
+         * "patient" is the fallback this route applies when no role rides in
+         * on the request, so a first-time visitor pressing a plain "Continue
+         * with Google" used to land in a patient account they never chose. A
+         * doctor who did that got a patient dashboard and no way back short of
+         * deleting the account.
+         *
+         * So: ask. The chooser restarts the exchange with an explicit role,
+         * which Google waves straight through (they are already signed in), so
+         * it costs a redirect rather than another consent screen.
+         */
+        const to = new URL("/signup/role", origin);
+        if (pending.next) to.searchParams.set("next", pending.next);
+        return NextResponse.redirect(to);
       } else {
         user = await db.createPatientUser({
           email: identity.email,
@@ -151,13 +180,14 @@ export async function GET(req: Request) {
       }
     }
 
-    if (user.role !== role) {
-      return fail(
-        origin,
-        `That account is a ${user.role}. Use the ${user.role} sign-in.`,
-      );
-    }
-
+    /*
+     * They have an account, so its role decides where they go, not the button
+     * they happened to press. Refusing here (the old behaviour) meant a real
+     * doctor pressing Google on the ordinary sign-in page was turned away from
+     * their own account. The one case worth a word is an explicit request for
+     * a surface they are not: sign them in regardless, but land them at home
+     * rather than pretending the request succeeded.
+     */
     await setSession({ id: user.id, role: user.role, name: user.name });
 
     // Honour where they were headed, but only inside their own surface —

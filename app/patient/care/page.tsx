@@ -251,7 +251,7 @@ function CareInner() {
     (async () => {
       /* When the AI drops out mid-session its questions leave no tags on the
          local state, so `nextStep` would hand back the funnel's very first
-         question — the patient would be asked to screen for emergencies again
+         question, the patient would be asked to screen for emergencies again
          after five AI turns, which reads as the bot forgetting the chat.
          With enough answers, wrap up; with a few, continue the local funnel
          from PAST the emergency screen (the keyword scan has already run over
@@ -463,7 +463,7 @@ function CareInner() {
         t={t}
       />
 
-      {/* ── Mobile / tablet — ChatGPT-style compose ── */}
+      {/* ── Mobile / tablet, ChatGPT-style compose ── */}
       {/* min-h stays LOW: when the soft keyboard opens, 100dvh shrinks, and a
           tall floor here used to push the composer down out of sight. The
           transcript is the only part that gives (min-h-0 + scroll). */}
@@ -503,7 +503,7 @@ function CareInner() {
           ref={scrollRef}
           className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-4"
         >
-          {/* Once concluded, the chat recedes — the assessment IS the page,
+          {/* Once concluded, the chat recedes, the assessment IS the page,
               and the Q&A lives inside its "Review your answers" disclosure. */}
           {activeConclusion ? null : fresh ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
@@ -603,10 +603,10 @@ function CareInner() {
           )}
         </div>
 
-        {/* Composer — pill input (ChatGPT-style). shrink-0 keeps it on screen
+        {/* Composer, pill input (ChatGPT-style). shrink-0 keeps it on screen
             no matter how long the transcript gets; 16px text stops iOS from
             zooming the whole page when the input is focused. The whole strip
-            disappears once the assessment is on screen — its actions live on
+            disappears once the assessment is on screen, its actions live on
             the sheet itself. */}
         {activeConclusion ? null : viewed ? (
           <button
@@ -643,7 +643,7 @@ function CareInner() {
         )}
       </div>
 
-      {/* ── Desktop — immersive symptom checker ── */}
+      {/* ── Desktop, immersive symptom checker ── */}
       {/* The floor is sized by the shell's chrome vars so a short laptop
           window can't push the composer down under the dock; the transcript
           absorbs the loss since it scrolls. */}
@@ -710,7 +710,7 @@ function CareInner() {
           </div>
         </div>
 
-        {/* left rail — body areas */}
+        {/* left rail, body areas */}
         <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
           {AREAS.map((a) => (
             <ImmersiveRail
@@ -724,7 +724,7 @@ function CareInner() {
           ))}
         </div>
 
-        {/* right rail — actions */}
+        {/* right rail, actions */}
         <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
           <ImmersiveRail icon={Plus} title="New check" onClick={newCheck} />
           <ImmersiveRail
@@ -746,7 +746,7 @@ function CareInner() {
 
         {/* Transcript + composer share one flex column. They used to be two
             absolutely-positioned blocks with a fixed gap between them, which
-            the option chips outgrew as soon as they wrapped onto extra rows —
+            the option chips outgrew as soon as they wrapped onto extra rows
             the overflow then painted straight over the last message. As flex
             siblings the transcript simply gives up the height instead. The
             column is click-through so the side rails behind it stay usable. */}
@@ -827,7 +827,7 @@ function CareInner() {
             </div>
           </div>
 
-          {/* option chips + pill input — gone once the assessment is up; its
+          {/* option chips + pill input, gone once the assessment is up; its
               actions live on the sheet itself. */}
           {activeConclusion ? null : (
           <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-0">
@@ -1052,7 +1052,7 @@ function ConclusionView({
         </div>
       )}
 
-      {/* ── Differential — a ruled ledger, not stacked boxes ── */}
+      {/* ── Differential, a ruled ledger, not stacked boxes ── */}
       {differential.length > 0 ? (
         <div className="mt-7">
           <p className="label">What this could be</p>
@@ -1112,7 +1112,7 @@ function ConclusionView({
         </p>
       )}
 
-      {/* Nurse path — blue, like every nurse surface. */}
+      {/* Nurse path, blue, like every nurse surface. */}
       {nurseService && (
         <div className="mt-5 rounded-2xl border border-[#2F7BC4]/35 bg-[#2F7BC4]/[0.08] p-4">
           <p className="flex items-start gap-2.5 text-sm leading-relaxed text-cream">
@@ -1192,7 +1192,7 @@ function ConclusionView({
 
       <div className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
         <p className="text-[11px] text-[var(--text-faint)]">
-          Possibilities to check with a doctor — not a diagnosis.
+          Possibilities to check with a doctor, not a diagnosis.
         </p>
         <button
           onClick={onRestart}

@@ -68,8 +68,8 @@ export default function EmergencyPolicyPage() {
                   one of them can accept;
                 </OLI>
                 <OLI>
-                  makes your health profile — blood group, allergies, conditions,
-                  medication — available to whoever accepts;
+                  makes your health profile, blood group, allergies, conditions,
+                  medication, available to whoever accepts;
                 </OLI>
                 <OLI>
                   shows you the status as it changes, and tracks the responder to
@@ -137,7 +137,7 @@ export default function EmergencyPolicyPage() {
             <>
               <UL>
                 <LI>
-                  <T>Fill in your health profile</T> — blood group, allergies,
+                  <T>Fill in your health profile</T>, blood group, allergies,
                   conditions and current medication. This is what a responder
                   reads on the way, and it is the highest-value thing you can do
                   in this app.
@@ -172,7 +172,7 @@ export default function EmergencyPolicyPage() {
                 </OLI>
                 <OLI>Raise the SOS and pick the closest category.</OLI>
                 <OLI>
-                  Confirm your location. Correct it if the map is wrong — a
+                  Confirm your location. Correct it if the map is wrong, a
                   building can throw GPS out by a street.
                 </OLI>
                 <OLI>
@@ -190,7 +190,7 @@ export default function EmergencyPolicyPage() {
               </OL>
               <H3>While you wait</H3>
               <P>
-                If you are trained, act — control severe bleeding with firm
+                If you are trained, act, control severe bleeding with firm
                 direct pressure, put an unconscious but breathing person in the
                 recovery position, and start CPR on someone who is not breathing
                 normally. If you are not trained, the 112 or 108 call taker will
@@ -236,7 +236,7 @@ export default function EmergencyPolicyPage() {
               </P>
               <P>
                 Emergency records are retained for three years for incident
-                review — see{" "}
+                review, see{" "}
                 <Xref href="/legal/privacy#retention">retention</Xref>.
               </P>
             </>
@@ -293,7 +293,7 @@ export default function EmergencyPolicyPage() {
                   ["Senior-citizen helpline", "14567"],
                   ["Disaster management", "1078"],
                 ]}
-                caption="Verify local numbers for your state — some vary. 112 works everywhere in India."
+                caption="Verify local numbers for your state, some vary. 112 works everywhere in India."
               />
               <P>
                 Concerns about how an SOS was handled? Write to{" "}

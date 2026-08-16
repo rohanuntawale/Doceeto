@@ -150,7 +150,7 @@ export function BookingPanel({
         desc:
           when === "emergency"
             ? "You'll see it under your care the moment they accept."
-            : "It's on their calendar — you'll be told once they confirm.",
+            : "It's on their calendar, you'll be told once they confirm.",
       });
       onBooked();
     } catch (e) {
@@ -211,7 +211,7 @@ export function BookingPanel({
         <div className="mt-4">
           <div className="label mb-2">Pick a time</div>
           {/* The grid is relative to "now", so it is only ever painted on the
-              client — an SSR pass would bake in a stale today. */}
+              client, an SSR pass would bake in a stale today. */}
           {!mounted || schedule.loading ? (
             <p className="rounded-lg border border-[var(--border)] bg-espresso px-3 py-6 text-center text-sm text-[var(--text-muted)]">
               Loading the calendar…
@@ -273,7 +273,7 @@ export function BookingPanel({
               </div>
               {day && day.openCount === 0 && (
                 <p className="mt-2 text-center text-xs text-tan">
-                  Every slot on {day.label.toLowerCase()} is taken — try another day.
+                  Every slot on {day.label.toLowerCase()} is taken, try another day.
                 </p>
               )}
             </>
@@ -292,7 +292,7 @@ export function BookingPanel({
       {/* ── Kind of visit ─────────────────────────────── */}
       <div className="mt-4">
         <div className="label mb-2">Visit type</div>
-        {/* Stacks on the narrowest phones — three-up leaves ~60px per tile
+        {/* Stacks on the narrowest phones, three-up leaves ~60px per tile
             at 320px, too little for the price + helper line. */}
         <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-3">
           {MODES.map((m) => {
@@ -381,7 +381,7 @@ export function BookingPanel({
 
       <p className="mt-2 text-center text-[11px] text-[var(--text-faint)]">
         {payMethod === "online"
-          ? "Paid online and held safely — released to the doctor after your visit."
+          ? "Paid online and held safely, released to the doctor after your visit."
           : "You'll pay the doctor directly at the visit."}
       </p>
     </div>

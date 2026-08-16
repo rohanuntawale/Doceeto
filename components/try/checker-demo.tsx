@@ -329,8 +329,8 @@ export function CheckerDemo() {
         </div>
         {/* The switcher lives IN the chat header, not in the page chrome.
             This is the one screen where the language choice changes what the
-            product does rather than how it looks — pick Marathi and the
-            questions, the options and the differential all arrive in Marathi —
+            product does rather than how it looks, pick Marathi and the
+            questions, the options and the differential all arrive in Marathi
             so it belongs beside the conversation it governs. */}
         <div className="flex shrink-0 items-center gap-2">
           <LanguageSelector />
@@ -368,7 +368,7 @@ export function CheckerDemo() {
           </div>
         )}
 
-        {/* Option chips for the live question. Free text still works — these
+        {/* Option chips for the live question. Free text still works, these
             are a shortcut, never the only way to answer. */}
         {question && !thinking && !done && (
           <div className="ml-9 flex flex-wrap gap-1.5 pt-1">
@@ -441,7 +441,7 @@ export function CheckerDemo() {
               // Suggestions are a nicety; on a short window the composer and
               // transcript matter more, so they drop out rather than compete.
               <div className="mt-2.5 hidden flex-wrap items-center gap-1.5 [@media(min-height:600px)]:flex">
-                {/* Says out loud that typing in Hindi or Marathi works — the
+                {/* Says out loud that typing in Hindi or Marathi works, the
                     switcher only changes the chrome until someone tries it. */}
                 <span className="mr-0.5 text-[11px] text-[var(--text-faint)]">
                   {t("checker.langHint")}
@@ -639,7 +639,7 @@ function Conclusion({
           {locked ? t("checker.secondFree") : t("checker.turnIntoAppt")}
         </p>
         {/* The specialty name is an English key (it routes a booking), so the
-            sentence is written NOT to inline it — a Hindi sentence with
+            sentence is written NOT to inline it, a Hindi sentence with
             "Cardiologist" dropped into the middle reads worse than one that
             simply says "the right doctor". The card above already names it. */}
         <p className="mt-1 text-sm text-[var(--text-muted)]">{t("checker.upsell")}</p>

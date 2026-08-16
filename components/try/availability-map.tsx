@@ -85,7 +85,7 @@ export function AvailabilityMap({ cadre }: { cadre: "doctor" | "nurse" }) {
       </header>
 
       {/* The radar is square on purpose. Percentage ring sizes inside a wide,
-          short box give ellipses that bleed off both edges — the rings have to
+          short box give ellipses that bleed off both edges, the rings have to
           sit in a box whose width and height are the same. */}
       <div className="mt-5 overflow-hidden rounded-2xl bg-[var(--bg)] p-4">
         <div className="relative mx-auto aspect-square w-full max-w-[30rem]">
@@ -136,7 +136,7 @@ export function AvailabilityMap({ cadre }: { cadre: "doctor" | "nurse" }) {
             </div>
           )}
 
-          {/* One pin per online provider — the name, and nothing else. */}
+          {/* One pin per online provider, the name, and nothing else. */}
           {shown.map((provider, i) => {
             const pos = pinPosition(i);
             return (
@@ -187,7 +187,7 @@ export function AvailabilityMap({ cadre }: { cadre: "doctor" | "nurse" }) {
       {/* Says plainly that the placement is not geography. Without this the
           ring reads as a street map and quietly makes a claim we refuse to. */}
       <p className="mt-3 text-xs text-[var(--text-faint)]">
-        Names and availability are live. Pin placement is illustrative — real
+        Names and availability are live. Pin placement is illustrative, real
         distance and location appear once you have an account.
       </p>
     </section>
