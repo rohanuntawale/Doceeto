@@ -60,14 +60,6 @@ export function SiteFooter() {
               front door to care.
             </p>
           </div>
-          {/* The one line worth repeating on every page of a healthcare site. */}
-          <p className="max-w-xs text-xs leading-relaxed text-[var(--text-faint)] sm:text-right">
-            Not for emergencies. Call{" "}
-            <span className="font-semibold text-[var(--text-muted)]">112</span>{" "}
-            or{" "}
-            <span className="font-semibold text-[var(--text-muted)]">108</span>{" "}
-            if life is at risk.
-          </p>
         </div>
       </div>
 

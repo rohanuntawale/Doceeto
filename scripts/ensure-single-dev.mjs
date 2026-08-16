@@ -70,7 +70,11 @@ function isProjectServer({ pid, cmd }) {
   const here = ROOT.replace(/\\/g, "\\").toLowerCase();
   const hay = cmd.toLowerCase();
   if (!hay.includes(path.basename(ROOT).toLowerCase()) && !hay.includes(here)) return false;
-  return /next(\.cmd|\.js)?["']?\s+(dev|start)\b/.test(hay) || /[\\/]next[\\/]dist[\\/]bin[\\/]next/.test(hay);
+  return (
+    /next(\.cmd|\.js)?["']?\s+(dev|start)\b/.test(hay) ||
+    /[\\/]next[\\/]dist[\\/]bin[\\/]next/.test(hay) ||
+    /[\\/]next[\\/]dist[\\/]server[\\/]lib[\\/]start-server\.js/.test(hay)
+  );
 }
 
 function kill(pid) {

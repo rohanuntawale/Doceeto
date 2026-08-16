@@ -128,7 +128,7 @@ export function LandingFilm() {
        of it. No new colour is introduced for a section that is mostly image. */
     <section
       id="film"
-      className="forest-band relative -mt-4 overflow-hidden pb-16 pt-8 sm:-mt-6 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16"
+      className="forest-band relative -mt-4 overflow-hidden pb-10 pt-6 sm:-mt-6 sm:pb-24 sm:pt-12 lg:pb-32 lg:pt-16"
     >
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute left-1/2 top-1/2 h-[700px] w-[1100px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgb(var(--c-forest-600)/0.5)] blur-[150px]" />
@@ -149,7 +149,7 @@ export function LandingFilm() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6 }}
-          className="mb-6 flex flex-col items-start gap-3 sm:mb-10 lg:mb-14 lg:flex-row lg:items-end lg:justify-between"
+          className="mb-4 flex flex-col items-start gap-3 sm:mb-10 lg:mb-14 lg:flex-row lg:items-end lg:justify-between"
         >
           <div className="max-w-2xl">
             <span className="label border-l-2 border-[var(--accent)] pl-3 text-[10px] tracking-[0.2em] sm:text-xs">
@@ -181,7 +181,7 @@ export function LandingFilm() {
         >
           <video
             ref={videoRef}
-            className="pointer-events-none aspect-[4/5] w-full object-cover sm:aspect-[16/10] lg:aspect-video"
+            className="pointer-events-none aspect-video w-full bg-[var(--forest)] object-cover sm:aspect-[16/10] lg:aspect-video"
             poster={poster}
             muted
             loop

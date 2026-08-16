@@ -1,16 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  HeartHandshake,
-  UserCheck,
-  Stethoscope,
-  ShieldCheck,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ForestScene } from "./forest-scene";
+import { FlowButton } from "@/components/ui/flow-button";
 import { LandingHeroStats } from "./landing-hero-stats";
 import { LandingTicker } from "./landing-ticker";
 
@@ -39,33 +30,9 @@ export function LandingHero() {
           <div className="absolute inset-0 pattern-dots opacity-25 [mask-image:radial-gradient(ellipse_70%_60%_at_50%_40%,#000_0%,transparent_80%)]" />
         </div>
 
-        {/* ── The forest, behind the whole screen ──
-            Full-bleed scenery, not an object parked in the right half: the
-            camera frames the landscape to the container's width (see
-            ForestScene), so it spans the section and reads as the horizon the
-            copy is standing in front of. It stays BEHIND the copy (z-0 under
-            the z-10 content), and the wash layer directly below this one is
-            what keeps the headline legible where the two overlap — the model
-            itself is only masked at its edges so the canvas has no visible
-            border.
-
-            lg and up only. Below that the hero is already a full screen of
-            headline and three buttons, and there is no room for scenery worth
-            12 MB — ForestScene declines to load at all under 1024px. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden opacity-60 [mask-image:radial-gradient(125%_105%_at_50%_58%,#000_35%,rgb(0_0_0/0.55)_72%,transparent_100%)] lg:block"
-        >
-          <ForestScene className="h-full w-full" />
-        </div>
-
         {/* ── Readability wash ──
-            The one layer that makes the forest survivable behind type. A flat
-            paper veil knocks the whole scene back, a left-to-right gradient
-            buries it entirely under the headline and buttons, and the top and
-            bottom fades hand the panel back to solid paper — at the top so the
-            glass header has something quiet to float on, at the bottom so the
-            stats row starts on clean ground. */}
+            A subtle paper veil keeps the ambient colour and grid texture quiet
+            behind the type, with a clean base for the stats row. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0"
@@ -76,7 +43,7 @@ export function LandingHero() {
           <div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(to_top,rgb(var(--bg-rgb))_0%,rgb(var(--bg-rgb))_28%,rgb(var(--bg-rgb)/0)_100%)]" />
         </div>
 
-        <div className="relative z-10 flex min-h-[82vh] items-center px-6 pt-28 pb-16">
+        <div className="relative z-10 flex min-h-[68vh] items-center px-6 pt-24 pb-8 sm:min-h-[74vh] sm:pt-28 sm:pb-12 lg:min-h-[82vh] lg:pb-16">
           <div className="max-w-7xl mx-auto w-full">
             {/* One column. The promise carries the screen on its own — the
                 headline takes the width the old side panel was using. */}
@@ -133,56 +100,25 @@ export function LandingHero() {
                 className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full max-w-xl"
               >
                 {/* Patient CTA */}
-                <Link href="/signup" className="flex-1">
-                  <Button
-                    size="lg"
-                    className="w-full h-14 px-6 text-base font-semibold shadow-soft group bg-[var(--accent)] text-on-accent hover:brightness-110 border-2 border-transparent transition-all duration-200 hover:-translate-y-0.5"
-                  >
-                    <HeartHandshake className="w-5 h-5 mr-2" />
-                    I need care
-                    <ArrowRight className="w-4 h-4 ml-auto sm:ml-2 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </Link>
+                <FlowButton
+                  href="/signup"
+                  text="I need care"
+                  className="flex-1 border-transparent bg-[var(--accent)] text-on-accent hover:brightness-110"
+                />
 
                 {/* Doctor CTA */}
-                <Link href="/signup?as=doctor" className="flex-1">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full h-14 px-6 text-base font-semibold border-2 border-[rgb(var(--accent-rgb)/0.3)] text-[var(--text)] hover:border-[var(--accent)] hover:bg-[rgb(var(--accent-rgb)/0.1)] transition-all duration-200 hover:-translate-y-0.5"
-                  >
-                    <UserCheck className="w-5 h-5 mr-2 text-[var(--accent)]" />
-                    I&apos;m a doctor
-                  </Button>
-                </Link>
+                <FlowButton
+                  href="/signup?as=doctor"
+                  text="I'm a doctor"
+                  className="flex-1"
+                />
 
                 {/* Nurse CTA */}
-                <Link href="/signup?as=nurse" className="flex-1">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full h-14 px-6 text-base font-semibold border-2 border-[#2F7BC4]/40 text-[#2F7BC4] hover:border-[#2F7BC4] hover:bg-[#2F7BC4]/10 transition-all duration-200 hover:-translate-y-0.5"
-                  >
-                    <Stethoscope className="w-5 h-5 mr-2 text-[#2F7BC4]" />
-                    I&apos;m a nurse
-                  </Button>
-                </Link>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.55, duration: 0.6 }}
-                className="mt-6 flex items-center gap-6 text-xs text-[var(--text-faint)]"
-              >
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-status-ok" /> Instant
-                  role access
-                </span>
-                <span>•</span>
-                <span>No upfront booking fees</span>
-                <span>•</span>
-                <span>Verified medical practitioners</span>
+                <FlowButton
+                  href="/signup?as=nurse"
+                  text="I'm a nurse"
+                  className="flex-1"
+                />
               </motion.div>
             </div>
           </div>
@@ -198,7 +134,7 @@ export function LandingHero() {
             right edge already shows there is more page, and a panel that ends
             by instructing you to scroll is a panel that doesn't trust its own
             content to pull you down. */}
-        <div className="relative z-10 mt-14 pb-14">
+        <div className="relative z-10 mt-8 pb-8 sm:mt-14 sm:pb-14">
           <LandingTicker variant="minimal" />
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -35,9 +35,10 @@ import { haversineKm, formatKm } from "@/lib/utils/geo";
 import { doctorAbout } from "@/lib/utils/doctor";
 import { cn } from "@/lib/utils/cn";
 import { DoctorAvatar } from "@/components/ui/doctor-avatar";
-import type { Doctor, DoctorKind, Gender } from "@/lib/types/domain";
+import type { Cadre, Doctor, DoctorKind, Gender } from "@/lib/types/domain";
 
 type Filters = {
+  cadre: Cadre;
   specialty: string;
   maxPrice: number | null;
   minRating: number;
@@ -50,6 +51,7 @@ type Filters = {
 };
 
 const EMPTY_FILTERS: Filters = {
+  cadre: "doctor",
   specialty: "any",
   maxPrice: null,
   minRating: 0,
@@ -114,14 +116,18 @@ export default function PatientDoctors() {
 }
 
 function DoctorsBrowser() {
-  const doctors = useDoctors();
   const { patient } = useCurrentPatient();
   const router = useRouter();
   const params = useSearchParams();
+  const doctors = useDoctors();
+  const nurses = useDoctors("nurse");
 
   const initialSpecialty = params.get("specialty");
+  const initialCadre: Cadre = params.get("cadre") === "nurse" ? "nurse" : "doctor";
   const [filters, setFilters] = useState<Filters>(
-    initialSpecialty ? { ...EMPTY_FILTERS, specialty: initialSpecialty } : EMPTY_FILTERS,
+    initialSpecialty
+      ? { ...EMPTY_FILTERS, cadre: initialCadre, specialty: initialSpecialty }
+      : { ...EMPTY_FILTERS, cadre: initialCadre },
   );
   const [showFilters, setShowFilters] = useState(false);
   const [query, setQuery] = useState("");
@@ -129,15 +135,27 @@ function DoctorsBrowser() {
   const [snap, setSnap] = useState<0 | 1 | 2>(1);
   /** Desktop only — collapse the side panel for a full-width map. */
   const [panelOpen, setPanelOpen] = useState(true);
+  const providers = filters.cadre === "nurse" ? nurses : doctors;
+
+  useEffect(() => {
+    const current = params.get("cadre");
+    const nextCadre = filters.cadre === "nurse" ? "nurse" : null;
+    if (current === nextCadre) return;
+    const next = new URLSearchParams(params.toString());
+    if (nextCadre) next.set("cadre", nextCadre);
+    else next.delete("cadre");
+    const query = next.toString();
+    router.replace(query ? `/patient/doctors?${query}` : "/patient/doctors", { scroll: false });
+  }, [filters.cadre, params, router]);
 
   const specialties = useMemo(
-    () => Array.from(new Set(doctors.map((d) => d.specialty))).sort(),
-    [doctors],
+    () => Array.from(new Set(providers.map((d) => d.specialty))).sort(),
+    [providers],
   );
 
   const matched = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const out = doctors.filter((d) => {
+    const out = providers.filter((d) => {
       // Offline doctors are off the platform entirely. The live API already
       // withholds them; this keeps demo mode (and any carve-out rows a
       // patient's own history brings along) out of discovery too.
@@ -165,20 +183,21 @@ function DoctorsBrowser() {
       return haversineKm(patient, a) - haversineKm(patient, b);
     });
     return out;
-  }, [doctors, filters, patient, query]);
+  }, [providers, filters, patient, query]);
 
   /** How many doctors sit behind each speciality chip (ignores the chip itself). */
   const specialtyCounts = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const d of doctors) m[d.specialty] = (m[d.specialty] ?? 0) + 1;
+    for (const d of providers) m[d.specialty] = (m[d.specialty] ?? 0) + 1;
     return m;
-  }, [doctors]);
+  }, [providers]);
 
   const onMap = useMemo(() => matched.filter((d) => d.status !== "offline"), [matched]);
   const selected = matched.find((d) => d.id === selectedId) ?? null;
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
+    if (filters.cadre !== "doctor") n++;
     if (filters.specialty !== "any") n++;
     if (filters.maxPrice !== null) n++;
     if (filters.minRating > 0) n++;
@@ -196,7 +215,8 @@ function DoctorsBrowser() {
     setPanelOpen(true); // picking a pin while collapsed should reveal the card
   }
 
-  const openProfile = (id: string) => router.push(`/patient/doctors/${id}`);
+  const openProfile = (id: string) =>
+    router.push(`/patient/doctors/${id}${filters.cadre === "nurse" ? "?cadre=nurse" : ""}`);
 
   // Search stays pinned at the top of the sheet; everything under it scrolls.
   const searchBar = (
@@ -209,8 +229,8 @@ function DoctorsBrowser() {
             setQuery(e.target.value);
             setSelectedId(null);
           }}
-          placeholder="Search doctors or specialities"
-          aria-label="Search doctors or specialities"
+          placeholder={filters.cadre === "nurse" ? "Search nurses or services" : "Search doctors or specialities"}
+          aria-label={filters.cadre === "nurse" ? "Search nurses or services" : "Search doctors or specialities"}
           className="min-w-0 flex-1 bg-transparent text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
         />
         {query && (
@@ -263,6 +283,7 @@ function DoctorsBrowser() {
           setFilters(EMPTY_FILTERS);
           setQuery("");
         }}
+        nurseOnly={filters.cadre === "nurse"}
       />
     </>
   );
@@ -320,9 +341,9 @@ function DoctorsBrowser() {
               the count can outgrow a 320px phone; the name gives way and the
               count stays whole. */}
           <div className="glass-control pointer-events-auto flex min-w-0 items-center gap-2 rounded-full px-3.5 py-2 text-sm">
-            <Stethoscope className="h-4 w-4 shrink-0 text-primary" />
+            <HeartPulse className="h-4 w-4 shrink-0 text-primary" />
             <span className="min-w-0 truncate font-medium text-cream">
-              {filters.specialty !== "any" ? filters.specialty : "All doctors"}
+              {filters.cadre === "nurse" ? "Nurses" : filters.specialty !== "any" ? filters.specialty : "All doctors"}
             </span>
             <span className="text-[var(--text-faint)]">·</span>
             <span className="whitespace-nowrap text-[var(--text-muted)]">{onMap.length} near you</span>
@@ -419,6 +440,7 @@ function DoctorsBrowser() {
           specialties={specialties}
           onClear={() => setFilters(EMPTY_FILTERS)}
           onClose={() => setShowFilters(false)}
+          nurseOnly={filters.cadre === "nurse"}
         />
       )}
     </div>
@@ -520,25 +542,27 @@ function DoctorList({
   onSelect,
   onOpen,
   onClearFilters,
+  nurseOnly,
 }: {
   doctors: Doctor[];
   patient: { lat: number; lng: number };
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onClearFilters: () => void;
+  nurseOnly: boolean;
 }) {
   return (
     <section>
       <div className="mb-2.5 flex items-center justify-between">
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
-          Doctors near you
+          {nurseOnly ? "Nurses near you" : "Doctors near you"}
         </h2>
         <span className="text-xs text-[var(--text-faint)]">{doctors.length} available</span>
       </div>
       {doctors.length === 0 ? (
         <div className="py-10 text-center">
           <p className="text-sm text-[var(--text-muted)]">
-            No doctors match this search. Try a different name or speciality.
+            No {nurseOnly ? "nurses" : "doctors"} match this search. Try a different name or speciality.
           </p>
           <button
             onClick={onClearFilters}
@@ -735,12 +759,14 @@ function FilterSheet({
   specialties,
   onClear,
   onClose,
+  nurseOnly,
 }: {
   filters: Filters;
   setFilters: (f: Filters) => void;
   specialties: string[];
   onClear: () => void;
   onClose: () => void;
+  nurseOnly: boolean;
 }) {
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
   // Portalled like every other dialog: rendered in place it sits inside
@@ -759,6 +785,15 @@ function FilterSheet({
         </div>
 
         <div className="space-y-4">
+          <Row label="Provider">
+            <Chip active={filters.cadre === "doctor"} onClick={() => set({ cadre: "doctor" })}>
+              Doctor
+            </Chip>
+            <Chip active={filters.cadre === "nurse"} onClick={() => set({ cadre: "nurse" })}>
+              Nurse
+            </Chip>
+          </Row>
+
           <Row label="Speciality">
             <Chip active={filters.specialty === "any"} onClick={() => set({ specialty: "any" })}>Any</Chip>
             {specialties.map((s) => (
@@ -768,7 +803,7 @@ function FilterSheet({
             ))}
           </Row>
 
-          <Row label="Doctor">
+          <Row label="Gender">
             <Chip active={filters.gender === "any"} onClick={() => set({ gender: "any" })}>Any</Chip>
             <Chip active={filters.gender === "female"} onClick={() => set({ gender: "female" })}>Female</Chip>
             <Chip active={filters.gender === "male"} onClick={() => set({ gender: "male" })}>Male</Chip>
@@ -829,7 +864,7 @@ function FilterSheet({
           onClick={onClose}
           className="mt-5 w-full rounded-2xl bg-primary py-3 text-sm font-semibold text-on-accent"
         >
-          Show doctors
+          Show {nurseOnly ? "nurses" : "doctors"}
         </button>
       </div>
     </div>,

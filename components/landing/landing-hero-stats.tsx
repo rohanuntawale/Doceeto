@@ -45,7 +45,7 @@ export function LandingHeroStats() {
         />
       </div>
 
-      <dl className="mt-10 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-8">
+      <dl className="mt-6 grid grid-cols-1 gap-8 sm:mt-10 sm:grid-cols-3 sm:gap-8">
         {STATS.map((stat, idx) => (
           <motion.div
             key={stat.value}

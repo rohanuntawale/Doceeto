@@ -60,7 +60,10 @@ export default function PatientHome() {
   // trend measured the same way as the activity card — this week vs last.
   const doctors = useDoctors();
   const doctorsOnline = doctors.filter((d) => d.status === "online").length;
-  const checksTrend = weeklyCareActivity(sessions.map((s) => s.startedAt)).trend;
+  // The checker saves drafts after every answer so a patient can resume. A
+  // dashboard count must represent completed checks only, not those drafts.
+  const completedChecks = sessions.filter((s) => Boolean(s.conclusion));
+  const checksTrend = weeklyCareActivity(completedChecks.map((s) => s.startedAt)).trend;
 
   const historyItems = sessions.slice(0, 4).map((s) => ({
     id: s.id,
@@ -75,7 +78,7 @@ export default function PatientHome() {
   // consults booked, medicine ordered — bucketed per day, with the trend
   // measured against last week.
   const activity = weeklyCareActivity([
-    ...sessions.map((s) => s.startedAt),
+    ...completedChecks.map((s) => s.startedAt),
     ...myRequests.map((r) => Date.parse(r.createdAt)),
     ...myOrders.map((o) => Date.parse(o.createdAt)),
   ]);
@@ -118,7 +121,7 @@ export default function PatientHome() {
       value: bmi === undefined ? 0 : bmiBand(bmi) === "healthy" ? 100 : 45,
       display: bmi === undefined ? t("home.add") : `${bmi}`,
     },
-    { label: t("home.records"), value: Math.min(100, sessions.length * 25), display: `${sessions.length}` },
+    { label: t("home.records"), value: Math.min(100, completedChecks.length * 25), display: `${completedChecks.length}` },
     { label: t("health.score"), value: score?.value ?? 0, display: score ? undefined : "—" },
   ];
   const goals = [
@@ -173,7 +176,7 @@ export default function PatientHome() {
               is one to compare); doctors is the platform roster with how many
               are online right now. "24/7" stays — a promise, not a metric. */}
           <HeaderStat
-            n={sessions.length}
+            n={completedChecks.length}
             label={t("home.checks")}
             trend={checksTrend ?? undefined}
           />
@@ -260,7 +263,7 @@ export default function PatientHome() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-12">
         <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
         <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
-        <CareChip href="/patient/nurses" icon={<HeartPulse className="h-5 w-5" />} label="Nurse at home" color="#3E826E" />
+        <CareChip href="/patient/doctors?cadre=nurse" icon={<HeartPulse className="h-5 w-5" />} label="Nurse at home" color="#3E826E" />
         <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#5E7C8B" />
         {MEDICINE_ENABLED && (
           <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
@@ -313,7 +316,7 @@ export default function PatientHome() {
                   </span>
                 </Link>
                 {score.pillars.map((pl) => (
-                  <div key={pl.key} className="grid grid-cols-[minmax(82px,0.8fr)_minmax(70px,1fr)_36px] items-center gap-2" title={pl.note}>
+                  <div key={pl.key} className="grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_32px] items-center gap-2 sm:grid-cols-[minmax(82px,0.8fr)_minmax(70px,1fr)_36px]" title={pl.note}>
                     <span className="min-w-0 truncate text-[11px] text-[var(--text-muted)]">
                       {pl.label}
                     </span>

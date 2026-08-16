@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Star,
@@ -35,7 +35,8 @@ export default function DoctorProfilePage() {
   const params = useParams<{ id: string }>();
   const id = String(params?.id ?? "");
   const router = useRouter();
-  const doctors = useDoctors();
+  const searchParams = useSearchParams();
+  const doctors = useDoctors(searchParams.get("cadre") === "nurse" ? "nurse" : undefined);
   const reviews = useReviews(id);
   const gigs = useGigs(id);
   const { patient } = useCurrentPatient();

@@ -132,12 +132,12 @@ function useOrdersDemo(): Order[] {
 }
 export const useOrders = isDemoMode ? useOrdersDemo : () => useApiEntity<Order>("orders");
 
-function useDoctorsDemo(): Doctor[] {
+function useDoctorsDemo(cadre?: Cadre): Doctor[] {
   const s = useDemoState();
   // /api/data attaches these derived fields on every doctor read, so the demo
   // path has to as well or the search list would silently lose the "on a gig"
   // badge and the gig teasers in demo mode.
-  return useMemo(
+  const all = useMemo(
     () =>
       s.doctors.map((d) => {
         const live = activeGigs(s.gigs.filter((g) => g.doctorId === d.id));
@@ -151,8 +151,11 @@ function useDoctorsDemo(): Doctor[] {
       }),
     [s.doctors, s.gigs, s.requests],
   );
+  return cadre ? all.filter((d) => cadreOf(d) === cadre) : all;
 }
-export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Doctor>("doctors");
+export const useDoctors = isDemoMode
+  ? (cadre?: Cadre) => useDoctorsDemo(cadre)
+  : (cadre?: Cadre) => useApiEntity<Doctor>("doctors", cadre ? { cadre } : undefined);
 
 /**
  * The nurse roster, for the patient-facing home-care search.
@@ -163,8 +166,7 @@ export const useDoctors = isDemoMode ? useDoctorsDemo : () => useApiEntity<Docto
  * so nurses can only ever arrive somewhere that asked for them.
  */
 function useNursesDemo(): Doctor[] {
-  const all = useDoctorsDemo();
-  return useMemo(() => all.filter((d) => cadreOf(d) === "nurse"), [all]);
+  return useDoctorsDemo("nurse");
 }
 
 export const useNurses = isDemoMode

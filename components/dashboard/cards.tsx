@@ -105,7 +105,7 @@ export function GaugeCard({
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - Math.max(0, Math.min(100, value)) / 100);
   return (
-    <section className="fh-card relative flex h-full min-h-[430px] flex-col overflow-hidden rounded-[28px] p-4 sm:p-5">
+    <section className="fh-card relative flex h-full min-h-[360px] flex-col overflow-hidden rounded-[28px] p-3 sm:min-h-[430px] sm:p-5">
       <div className="pattern-grid pointer-events-none absolute inset-0" aria-hidden />
       <div className="relative flex items-center justify-between gap-3">
         <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-cream">
@@ -116,8 +116,8 @@ export function GaugeCard({
         </h3>
         {trend !== undefined && <TrendBadge value={trend} />}
       </div>
-      <div className="relative flex h-[204px] shrink-0 items-center justify-center sm:h-[218px]">
-        <svg viewBox="0 0 120 120" className="h-[158px] w-[158px] -rotate-90 sm:h-[170px] sm:w-[170px]">
+      <div className="relative flex h-[170px] shrink-0 items-center justify-center sm:h-[218px]">
+        <svg viewBox="0 0 120 120" className="h-[136px] w-[136px] -rotate-90 sm:h-[170px] sm:w-[170px]">
           <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-[rgb(var(--c-espresso-700))]" />
           <circle
             cx="60"
@@ -131,8 +131,8 @@ export function GaugeCard({
             strokeDashoffset={offset}
           />
         </svg>
-        <div className="absolute inset-x-0 top-1/2 mx-auto w-[132px] -translate-y-1/2 text-center">
-          <p className="text-[2.15rem] font-bold leading-none tracking-[-0.04em] text-cream">{value}%</p>
+        <div className="absolute inset-x-0 top-1/2 mx-auto w-[116px] -translate-y-1/2 text-center sm:w-[132px]">
+          <p className="text-[1.9rem] font-bold leading-none tracking-[-0.04em] text-cream sm:text-[2.15rem]">{value}%</p>
           <p className="mt-2 text-[11px] leading-[1.35] text-[var(--text-muted)]">{caption}</p>
         </div>
       </div>

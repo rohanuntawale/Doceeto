@@ -178,11 +178,11 @@ export default function Page() {
 
           {/* The destinations live in the drawer (see NAV_ITEMS); the pill
               carries only the two account actions and the menu trigger. */}
-          <Link href="/login" className="hidden sm:inline-block">
+          <Link href="/login" className="inline-block shrink-0">
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-full text-xs font-semibold"
+              className="rounded-full px-2 text-[11px] font-semibold sm:px-3 sm:text-xs"
             >
               Log in
             </Button>
@@ -190,7 +190,7 @@ export default function Page() {
           <Link href="/signup" className="ml-1">
             <Button
               size="sm"
-              className="rounded-full border-0 bg-[var(--accent)] text-xs font-bold text-on-accent shadow-soft"
+              className="rounded-full border-0 bg-[var(--accent)] px-3 text-[11px] font-bold text-on-accent shadow-soft sm:px-4 sm:text-xs"
             >
               Get Started
             </Button>

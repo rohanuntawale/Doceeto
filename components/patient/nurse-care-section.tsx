@@ -22,7 +22,7 @@ export function NurseCareSection({ patient }: { patient: { id: string } }) {
             <p className="mt-1 max-w-xl text-sm text-[var(--text-muted)]">Book practical support for wound care, elder care, vitals, or injection assistance at a time that suits you.</p>
           </div>
         </div>
-        <Link href="/patient/nurses" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#2F7BC4] px-4 py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98]">Find a nurse <ArrowRight className="h-4 w-4" /></Link>
+        <Link href="/patient/doctors?cadre=nurse" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#2F7BC4] px-4 py-2.5 text-sm font-semibold text-white transition-transform active:scale-[0.98]">Find a nurse <ArrowRight className="h-4 w-4" /></Link>
       </div>
       <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
         <Info label="Verified providers" value={String(nurses.length)} />

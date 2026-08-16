@@ -130,7 +130,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 closed: { x: "100%" },
               }}
               transition={spring}
-              className="absolute right-0 top-0 flex h-full w-[min(88vw,340px)] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+              className="fixed inset-y-0 left-auto right-0 z-10 flex h-[100dvh] w-[min(88vw,340px)] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)] shadow-2xl"
             >
               <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
                 <Link href="/" onClick={() => setOpen(false)}>
@@ -206,11 +206,6 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                   <LogIn className="h-4 w-4" />
                   Log in
                 </Link>
-                <p className="pt-1 text-center text-[11px] leading-relaxed text-[var(--text-faint)]">
-                  Not for emergencies. Call{" "}
-                  <span className="font-semibold text-[var(--text-muted)]">112</span> or{" "}
-                  <span className="font-semibold text-[var(--text-muted)]">108</span>.
-                </p>
               </div>
             </motion.div>
           </motion.div>
