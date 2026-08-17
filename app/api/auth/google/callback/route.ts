@@ -66,6 +66,7 @@ export async function GET(req: Request) {
     role: SurfaceRole;
     roleExplicit?: boolean;
     next: string;
+    mobileReturn?: string;
   };
   try {
     pending = JSON.parse(raw);
@@ -189,6 +190,10 @@ export async function GET(req: Request) {
      * rather than pretending the request succeeded.
      */
     await setSession({ id: user.id, role: user.role, name: user.name });
+
+    if (pending.mobileReturn) {
+      return NextResponse.redirect(new URL(pending.mobileReturn));
+    }
 
     // Honour where they were headed, but only inside their own surface —
     // anything else would bounce off the guard right back to a sign-in page.

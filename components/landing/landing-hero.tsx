@@ -16,13 +16,23 @@ export function LandingHero() {
     // "back to top" dot somewhere real to land.
     <section id="hero" className="relative bg-forest">
       <div className="paper-panel relative overflow-hidden rounded-b-[2rem] sm:rounded-b-[3rem] lg:rounded-b-[4.5rem]">
-        {/* The house-call footage that was briefly staged here now has its own
-            section further down (LandingFilm), where it is watched rather than
-            washed out. The hero's background is the forest below. */}
+        {/* The hero footage sits behind the panel treatment, like the former
+            3D visual, so it adds movement without becoming another foreground
+            object competing with the promise and CTAs. */}
+        <video
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          aria-hidden="true"
+        >
+          <source src="/hero-background.mp4" type="video/mp4" />
+        </video>
 
         {/* Background ambient glow washes + brutalist grid lines */}
         <div
-          className="absolute inset-0 overflow-hidden pointer-events-none"
+          className="pointer-events-none absolute inset-0 overflow-hidden opacity-0"
           aria-hidden="true"
         >
           <div className="absolute top-10 right-[-10%] w-[500px] h-[500px] rounded-full bg-[rgb(var(--c-terracotta)/0.16)] blur-[120px]" />
@@ -36,11 +46,11 @@ export function LandingHero() {
             behind the type, with a clean base for the stats row. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-0"
+          className="pointer-events-none absolute inset-0 z-0 opacity-0"
         >
-          <div className="absolute inset-0 bg-[rgb(var(--bg-rgb)/0.38)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(var(--bg-rgb)/0.92)_0%,rgb(var(--bg-rgb)/0.72)_38%,rgb(var(--bg-rgb)/0.28)_66%,rgb(var(--bg-rgb)/0)_100%)]" />
-          <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,rgb(var(--bg-rgb)/0.85),rgb(var(--bg-rgb)/0))]" />
+          <div className="absolute inset-0 bg-[rgb(var(--bg-rgb)/0.06)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(var(--bg-rgb)/0.42)_0%,rgb(var(--bg-rgb)/0.24)_38%,rgb(var(--bg-rgb)/0.06)_66%,rgb(var(--bg-rgb)/0)_100%)]" />
+          <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,rgb(var(--bg-rgb)/0.36),rgb(var(--bg-rgb)/0))]" />
           <div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(to_top,rgb(var(--bg-rgb))_0%,rgb(var(--bg-rgb))_28%,rgb(var(--bg-rgb)/0)_100%)]" />
         </div>
 

@@ -22,6 +22,10 @@ const isLiveMode = Boolean(process.env.NEXT_PUBLIC_BACKEND);
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
+  // The mobile client is a separate Capacitor origin. Credentialed cookies
+  // need an exact allow-list rather than a wildcard origin.
+  if (path.startsWith("/api/")) return withApiCors(request);
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(PATH_HEADER, path + request.nextUrl.search);
   const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
@@ -45,6 +49,37 @@ export function middleware(request: NextRequest) {
   return sweep(request, pass());
 }
 
+function mobileCorsOrigins(): Set<string> {
+  const configured = (process.env.MOBILE_CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return new Set(
+    [
+      "https://localhost",
+      "capacitor://localhost",
+      "http://localhost:5173",
+      process.env.NEXT_PUBLIC_APP_URL,
+      ...configured,
+    ].filter((origin): origin is string => Boolean(origin)),
+  );
+}
+
+function withApiCors(request: NextRequest): NextResponse {
+  const origin = request.headers.get("origin");
+  const allowed = origin && mobileCorsOrigins().has(origin) ? origin : null;
+  const headers = new Headers();
+  if (allowed) {
+    headers.set("Access-Control-Allow-Origin", allowed);
+    headers.set("Access-Control-Allow-Credentials", "true");
+    headers.set("Access-Control-Allow-Headers", "Content-Type, X-Iyashi-Surface");
+    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    headers.set("Vary", "Origin");
+  }
+  if (request.method === "OPTIONS") return new NextResponse(null, { status: 204, headers });
+  return NextResponse.next({ headers });
+}
+
 /** Drop cookies from the pre-database schemes so nothing stale is presented. */
 function sweep(request: NextRequest, res: NextResponse) {
   for (const name of RETIRED_COOKIES) {
@@ -55,7 +90,8 @@ function sweep(request: NextRequest, res: NextResponse) {
 
 export const config = {
   matcher: [
-    // Everything except static assets, images and the API routes.
-    "/((?!_next/static|_next/image|favicon.svg|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Everything except static assets and images. API routes are included so
+    // the mobile client receives credentialed CORS headers.
+    "/((?!_next/static|_next/image|favicon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

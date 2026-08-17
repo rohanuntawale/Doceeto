@@ -8,6 +8,18 @@ export const dynamic = "force-dynamic";
 
 const b64url = (b: Buffer) => b.toString("base64url");
 
+function isAllowedMobileReturn(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      url.hostname === "localhost"
+    ) || (url.protocol === "capacitor:" && url.hostname === "localhost");
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Step one of Google sign-in: hand the browser to Google.
  *
@@ -39,6 +51,10 @@ export async function GET(req: Request) {
    */
   const roleExplicit = raw === "doctor" || raw === "nurse" || raw === "patient";
   const next = url.searchParams.get("next") ?? "";
+  const requestedMobileReturn = url.searchParams.get("mobile_return");
+  const mobileReturn = requestedMobileReturn && isAllowedMobileReturn(requestedMobileReturn)
+    ? requestedMobileReturn
+    : undefined;
 
   if (!googleConfigured()) {
     const back = new URL("/login", url.origin);
@@ -53,7 +69,7 @@ export async function GET(req: Request) {
 
   cookies().set(
     OAUTH_STATE_COOKIE,
-    JSON.stringify({ state, codeVerifier, role, roleExplicit, next }),
+    JSON.stringify({ state, codeVerifier, role, roleExplicit, next, mobileReturn }),
     {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

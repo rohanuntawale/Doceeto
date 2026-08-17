@@ -100,7 +100,7 @@ export async function setSession(user: {
   jar.set(SESSION_COOKIES[user.role], session.id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     expires: new Date(session.expiresAt),
   });
