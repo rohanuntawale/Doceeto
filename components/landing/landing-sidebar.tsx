@@ -125,14 +125,15 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
               role="dialog"
               aria-modal="true"
               aria-label="Site menu"
+              style={{ right: 0, left: "auto" }}
               variants={{
                 open: { x: 0 },
                 closed: { x: "100%" },
               }}
               transition={spring}
-              className="fixed inset-y-0 left-auto right-0 z-10 flex h-[100dvh] w-full max-w-[420px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)] shadow-[-18px_0_48px_rgba(18,37,31,0.18)]"
+              className="fixed right-0 top-4 bottom-auto z-10 flex max-h-[calc(100dvh-2rem)] w-[min(88vw,320px)] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[-18px_0_48px_rgba(18,37,31,0.18)] sm:top-5 sm:right-5"
             >
-              <div className="flex min-h-[76px] shrink-0 items-center justify-between border-b border-[var(--border)] px-6 py-5 sm:px-7">
+              <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
                 <Link href="/" onClick={() => setOpen(false)}>
                   <Wordmark compact />
                 </Link>
@@ -146,11 +147,8 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 </button>
               </div>
 
-              <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-5">
-                <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-label text-[var(--text-faint)]">
-                  What you can get
-                </p>
-                <ul className="space-y-0.5">
+              <nav aria-label="Main" className="min-h-0 overflow-y-auto px-3 py-3">
+                <ul className="space-y-1">
                   {links.map((l, i) => (
                     <motion.li
                       key={l.id}
@@ -168,17 +166,12 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                       <Link
                         href={l.href}
                         onClick={() => setOpen(false)}
-                        className="group flex items-start gap-3 rounded-2xl px-3 py-3.5 transition-colors hover:bg-[var(--bg)]"
+                        className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--bg)]"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-medium text-[var(--text)]">
                             {l.label}
                           </span>
-                          {l.hint && (
-                            <span className="mt-0.5 block text-xs leading-snug text-[var(--text-muted)]">
-                              {l.hint}
-                            </span>
-                          )}
                         </span>
                         <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-[var(--text-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
                       </Link>
