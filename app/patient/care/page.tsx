@@ -247,6 +247,19 @@ function CareInner() {
       setAiOn(false);
       return;
     }
+
+    // A fresh check has no symptom to personalise or triage yet. Show the
+    // local opening question immediately; sending an empty transcript to the
+    // model makes Start over feel broken and wastes a GPU request.
+    if (!state.seed && state.answers.length === 0) {
+      setStep(local);
+      setAiOn(false);
+      setAiModel(null);
+      setAiPersonalised(false);
+      setThinking(false);
+      return;
+    }
+
     setThinking(true);
     (async () => {
       /* When the AI drops out mid-session its questions leave no tags on the
@@ -387,6 +400,11 @@ function CareInner() {
     restoreTried.current = true; // an explicit new chat is never restored over
     window.sessionStorage.removeItem(ACTIVE_KEY);
     setState(initState("", priors()));
+    setStep(null);
+    setThinking(false);
+    setAiOn(false);
+    setAiModel(null);
+    setAiPersonalised(false);
     setViewed(null);
     setDraft("");
     setDrawerOpen(false);

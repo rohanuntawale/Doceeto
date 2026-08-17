@@ -130,9 +130,9 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 closed: { x: "100%" },
               }}
               transition={spring}
-              className="fixed inset-y-0 left-auto right-0 z-10 flex h-[100dvh] w-[min(88vw,340px)] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+              className="fixed inset-y-0 left-auto right-0 z-10 flex h-[100dvh] w-full max-w-[420px] flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)] shadow-[-18px_0_48px_rgba(18,37,31,0.18)]"
             >
-              <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
+              <div className="flex min-h-[76px] shrink-0 items-center justify-between border-b border-[var(--border)] px-6 py-5 sm:px-7">
                 <Link href="/" onClick={() => setOpen(false)}>
                   <Wordmark compact />
                 </Link>
@@ -146,8 +146,8 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 </button>
               </div>
 
-              <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-                <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-label text-[var(--text-faint)]">
+              <nav aria-label="Main" className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-5">
+                <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-label text-[var(--text-faint)]">
                   What you can get
                 </p>
                 <ul className="space-y-0.5">
@@ -168,7 +168,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                       <Link
                         href={l.href}
                         onClick={() => setOpen(false)}
-                        className="group flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-[var(--bg)]"
+                        className="group flex items-start gap-3 rounded-2xl px-3 py-3.5 transition-colors hover:bg-[var(--bg)]"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-medium text-[var(--text)]">
@@ -189,7 +189,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
 
               {/* Account actions, pinned. These are the two things someone
                   opening a menu most often wants, so they never scroll away. */}
-              <div className="shrink-0 space-y-2 border-t border-[var(--border)] p-4">
+              <div className="shrink-0 space-y-2.5 border-t border-[var(--border)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}

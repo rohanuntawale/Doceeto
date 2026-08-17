@@ -14,6 +14,7 @@ import {
 import { idrsOf } from "@/lib/health/score";
 import { NURSE_SERVICES } from "@/lib/nurse";
 import { analyzeSymptoms, mentionsSymptom, type Urgency } from "@/lib/triage";
+import { anyProviderConfigured, chat } from "@/lib/ai/llm";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,10 +32,11 @@ export const dynamic = "force-dynamic";
  * person — not as a generic patient. Loaded HERE, never sent by the browser,
  * so it can't be spoofed and never rides through client code.
  *
- * Uses OpenRouter (OPENROUTER_API_KEY, OPENROUTER_MODEL, OPENROUTER_FALLBACKS).
- * If no key is configured or the call fails, it responds { unavailable: true }
- * and the client falls back to the offline rule engine — so the checker always
- * works, and upgrades the moment a key is present.
+ * The model itself comes from lib/ai/llm.ts: a self-hosted Ollama GPU first
+ * (fast, see infra/lightning/), OpenRouter behind it. If neither is configured
+ * or both fail, it responds { unavailable: true } and the client falls back to
+ * the offline rule engine — so the checker always works, and upgrades the
+ * moment a provider is present.
  */
 
 /** Must stay in sync with `Specialty` in lib/diagnose/engine.ts — the
@@ -433,8 +435,8 @@ function normaliseCauses(raw: unknown): { name: string; likelihood: string; why?
 }
 
 export async function POST(req: Request) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return NextResponse.json({ unavailable: true, reason: "no-key" });
+  if (!anyProviderConfigured())
+    return NextResponse.json({ unavailable: true, reason: "no-key" });
 
   /**
    * The public preview (/try/checker) calls this without a session, so the
@@ -456,12 +458,6 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ unavailable: true, reason: "bad-request" });
   }
-
-  const model = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b";
-  const fallbacks = (process.env.OPENROUTER_FALLBACKS ?? "")
-    .split(",")
-    .map((m) => m.trim())
-    .filter(Boolean);
 
   // The health record comes from the SESSION, never the request body — the
   // browser cannot claim to be someone else or pad the profile. Absent (signed
@@ -540,71 +536,53 @@ export async function POST(req: Request) {
   ].join("\n");
 
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        // OpenRouter attribution — shows the app on the dashboard/leaderboards.
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-Title": "Doceeto Symptom Checker",
-      },
-      body: JSON.stringify({
-        model,
-        // OpenRouter falls through this list on rate-limit / provider error,
-        // so a busy primary degrades to the free tier instead of to no AI.
-        ...(fallbacks.length ? { models: [model, ...fallbacks] } : {}),
-        temperature: 0.3,
-        /**
-         * Sized to the turn, not to the worst case.
-         *
-         * A question is a prompt plus five short options — a few hundred
-         * tokens. Only the closing conclusion (a differential, reasons and
-         * advice) needs real room. Asking for 1200 on every turn made the
-         * model think for a conclusion's worth of time before answering
-         * "where does it hurt?", and the patient waited for all of it.
-         */
-        max_tokens: asked >= MAX_QUESTIONS ? (wideScript ? 2000 : 1200) : wideScript ? 900 : 500,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          // Appended as its own system turn rather than folded into SYSTEM so
-          // the English prompt stays one cacheable constant across languages.
-          ...(langDirective ? [{ role: "system", content: langDirective }] : []),
-          { role: "user", content: transcript },
-        ],
-      }),
+    const answer = await chat({
+      system: [
+        SYSTEM,
+        // Appended as its own system turn rather than folded into SYSTEM so
+        // the English prompt stays one cacheable constant across languages.
+        ...(langDirective ? [langDirective] : []),
+      ],
+      user: transcript,
+      temperature: 0.3,
       /**
-       * A question that takes 25 seconds has already failed — the patient has
-       * given up or typed again. The local rule engine answers instantly and
-       * is always there, so failing over to it fast is strictly better than
-       * waiting. The conclusion gets longer, because arriving late with the
-       * real answer still beats a generic one.
+       * Sized to the turn, not to the worst case.
        *
-       * MEASURED, not guessed. The question budget was 8s, which the model in
-       * OPENROUTER_MODEL (a 550B) never once met: every question timed out and
-       * silently fell through to the offline engine, so the AI checker was
+       * A question is a prompt plus five short options — a few hundred
+       * tokens. Only the closing conclusion (a differential, reasons and
+       * advice) needs real room. Asking for 1200 on every turn made the
+       * model think for a conclusion's worth of time before answering
+       * "where does it hurt?", and the patient waited for all of it.
+       */
+      // Follow-up turns only need one short question and 3 to 5 options. A
+      // large generation budget makes Qwen spend much longer decoding JSON,
+      // especially after the transcript grows. Keep the expensive budget for
+      // the conclusion, not for every narrowing turn.
+      maxTokens: asked >= MAX_QUESTIONS ? (wideScript ? 1400 : 800) : wideScript ? 420 : 240,
+      /**
+       * The OPENROUTER budget. The self-hosted path takes a far tighter one of
+       * its own (OLLAMA_TIMEOUT_MS, default 8s) inside lib/ai/llm.ts, so these
+       * numbers now describe only the slow fallback leg.
+       *
+       * MEASURED, not guessed. The question budget was once 8s, which the model
+       * in OPENROUTER_MODEL (a 550B) never once met: every question timed out
+       * and silently fell through to the offline engine, so the AI checker was
        * effectively switched off — and because that engine only speaks English,
        * a Hindi or Marathi patient got English options under translated chrome.
        * A fallback that fires 100% of the time is not a fallback, it is the
-       * product. Measured round-trips here sit around 9-13s, so the budget is
+       * product. Measured round-trips there sit around 9-13s, so the budget is
        * the far side of that with room for a slow day.
        *
-       * If you swap in a faster model, bring this back down — the number should
-       * track the model, not drift upward on its own.
+       * Devanagari is expensive on both axes, hence the wider script budgets:
+       * an English-first tokenizer splits Hindi and Marathi into several tokens
+       * per syllable, so the same question takes two to three times as long.
        */
-      signal: AbortSignal.timeout(
+      timeoutMs:
         asked >= MAX_QUESTIONS ? (wideScript ? 34_000 : 25_000) : wideScript ? 22_000 : 16_000,
-      ),
     });
 
-    if (!res.ok) {
-      console.error("diagnose upstream:", res.status, await res.text().catch(() => ""));
-      return NextResponse.json({ unavailable: true, reason: `http-${res.status}` });
-    }
-    const data = await res.json();
-    const content: string = data?.choices?.[0]?.message?.content ?? "";
-    const step = extractJson(content);
+    if (!answer) return NextResponse.json({ unavailable: true, reason: "upstream" });
+    const step = extractJson(answer.content);
     if (!valid(step)) return NextResponse.json({ unavailable: true, reason: "bad-json" });
 
     const s = step as Record<string, unknown>;
@@ -716,9 +694,16 @@ export async function POST(req: Request) {
     // asked for and the model may still have written. After the safety floor,
     // so its own wording is covered too.
     dedashStep(s);
-    // `data.model` is what actually served it (may be a fallback, not `model`).
+    // `model` is what actually served it (may be a fallback, not the primary).
+    // `via` names the provider, so a slow day is diagnosable from the response
+    // alone: an answer tagged "openrouter" means the GPU didn't take it.
     // `personalised` lets the UI say the answer used their health record.
-    return NextResponse.json({ step: s, model: data?.model ?? model, personalised: Boolean(profile) });
+    return NextResponse.json({
+      step: s,
+      model: answer.model,
+      via: answer.via,
+      personalised: Boolean(profile),
+    });
   } catch (err) {
     console.error("diagnose failed:", err);
     return NextResponse.json({ unavailable: true, reason: "exception" });
