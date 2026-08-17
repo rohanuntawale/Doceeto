@@ -147,8 +147,8 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 </button>
               </div>
 
-              <nav aria-label="Main" className="min-h-0 overflow-y-auto px-3 py-3">
-                <ul className="space-y-1">
+              <nav aria-label="Main" className="min-h-0 overflow-y-auto px-4 py-4">
+                <ul className="grid grid-cols-2 gap-1">
                   {links.map((l, i) => (
                     <motion.li
                       key={l.id}
@@ -166,14 +166,14 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                       <Link
                         href={l.href}
                         onClick={() => setOpen(false)}
-                        className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--bg)]"
+                        className="group flex min-h-16 items-center gap-2 rounded-lg border border-transparent px-3 py-3 transition-colors hover:border-[var(--border)] hover:bg-[var(--bg)]"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block text-[15px] font-medium text-[var(--text)]">
                             {l.label}
                           </span>
                         </span>
-                        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-[var(--text-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
                       </Link>
                     </motion.li>
                   ))}
@@ -182,11 +182,11 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
 
               {/* Account actions, pinned. These are the two things someone
                   opening a menu most often wants, so they never scroll away. */}
-              <div className="shrink-0 space-y-2.5 border-t border-[var(--border)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <div className="flex shrink-0 gap-2 border-t border-[var(--border)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 <Link
                   href="/signup"
                   onClick={() => setOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
+                  className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md bg-[var(--accent)] px-3 py-2.5 text-xs font-semibold text-on-accent transition-opacity hover:opacity-90"
                 >
                   <UserPlus className="h-4 w-4" />
                   Get started
@@ -194,7 +194,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg)]"
+                  className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border border-[var(--border)] px-3 py-2.5 text-xs font-semibold text-[var(--text)] transition-colors hover:bg-[var(--bg)]"
                 >
                   <LogIn className="h-4 w-4" />
                   Log in
