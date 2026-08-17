@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { Providers } from "@/components/providers";
 
 const playfair = Playfair_Display({

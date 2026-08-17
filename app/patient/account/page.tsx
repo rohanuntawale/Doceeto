@@ -15,6 +15,7 @@ import { apiFetch } from "@/lib/api/client";
 import { resetTestData } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
+import { AvatarImage } from "@/components/ui/avatar-image";
 
 export default function PatientAccount() {
   const { patient, update } = useCurrentPatient();
@@ -58,14 +59,12 @@ export default function PatientAccount() {
       {/* Profile card, the avatar doubles as the photo upload control. */}
       <div className="flex items-center gap-4 rounded-3xl fh-card p-5 shadow-soft">
         <AvatarUploader onPhoto={setPhoto}>
-          <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-terracotta to-salmon text-xl font-semibold text-on-accent">
-            {patient.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={patient.avatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              firstName.charAt(0).toUpperCase()
-            )}
-          </span>
+          <AvatarImage
+            src={patient.avatarUrl}
+            fallback={firstName.charAt(0).toUpperCase()}
+            background="linear-gradient(135deg, rgb(var(--c-terracotta)), rgb(var(--c-salmon)))"
+            className="h-14 w-14 rounded-full text-xl font-semibold text-on-accent"
+          />
         </AvatarUploader>
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold text-cream">{patient.name}</p>

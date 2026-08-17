@@ -18,7 +18,7 @@ export function LoadingSplash({
   mobileSrc,
 }: {
   src?: string;
-  /** Portrait re-cut for phones. Falls back to `src`, letterboxed, if absent. */
+  /** Portrait re-cut for phones. Falls back to the main source if absent. */
   mobileSrc?: string;
 }) {
   const [show, setShow] = useState(true);
@@ -61,7 +61,7 @@ export function LoadingSplash({
         playsInline
         onEnded={end}
         onError={end}
-        className="h-full w-full scale-[1.15] object-cover"
+        className="h-full w-full scale-100 object-cover sm:scale-[1.15]"
       />
       <span className="absolute bottom-8 text-[11px] tracking-wide text-[var(--text-faint)]">
         tap to skip

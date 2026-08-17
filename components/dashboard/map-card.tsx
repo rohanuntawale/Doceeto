@@ -1,23 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { MapPin, Stethoscope, Clock, Navigation, LoaderCircle } from "lucide-react";
-import { DoctorMap } from "@/components/map/doctor-map";
+import type { AdvancedMapProps } from "@/components/ui/interactive-map";
 import { useDoctors } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 import { requestDeviceLocation, useDeviceLocation } from "@/lib/geo/device-location";
 import { useState } from "react";
+
+const AdvancedMap = dynamic(
+  () => import("@/components/ui/interactive-map").then((module) => module.AdvancedMap),
+  { ssr: false, loading: () => <div className="h-full w-full animate-pulse bg-[#e8efeb]" /> },
+);
 
 /**
  * Dashboard map card — a real (MapLibre) map centred on the patient with
  * nearby doctors, plus frosted glass overlay chips showing live health metrics.
  */
 export function MapCard({ patient }: { patient: PatientIdentity }) {
-  const router = useRouter();
   const doctors = useDoctors();
   const geo = useDeviceLocation();
   const [requesting, setRequesting] = useState(false);
   const nearby = doctors.filter((d) => d.status !== "offline");
+  const markers: AdvancedMapProps["markers"] = nearby.flatMap((doctor) =>
+    doctor.lat != null && doctor.lng != null
+      ? [{
+          id: doctor.id,
+          position: [doctor.lat, doctor.lng] as [number, number],
+          color: doctor.status === "online" ? "green" : "blue",
+          size: "medium",
+          popup: { title: doctor.fullName, content: doctor.specialty },
+        }]
+      : [],
+  );
   const area = patient.located && patient.address
     ? patient.address
     : geo.status === "locating" || requesting
@@ -37,13 +52,15 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
 
   return (
     <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
-      <div className="h-[260px] w-full">
-        <DoctorMap
-          patient={patient}
-          doctors={nearby}
-          selectedId={null}
-          onSelect={() => router.push("/patient/doctors")}
-          height={260}
+      <div className="h-[330px] w-full sm:h-[350px]">
+        <AdvancedMap
+          center={[patient.lat, patient.lng]}
+          zoom={13}
+          markers={markers}
+          enableClustering={markers.length > 4}
+          enableSearch
+          enableControls
+          style={{ height: "100%", width: "100%" }}
         />
       </div>
 
@@ -84,7 +101,7 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
             ~24 min arrival
           </Chip>
           <button
-            onClick={() => router.push("/patient/doctors")}
+            onClick={() => { window.location.href = "/patient/doctors"; }}
             className="pointer-events-auto ml-auto flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-on-accent"
           >
             <Navigation className="h-3.5 w-3.5" /> Find care

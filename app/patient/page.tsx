@@ -12,11 +12,14 @@ import {
   Zap,
   Briefcase,
   HeartPulse,
+  MessageCircle,
+  ClipboardCheck,
+  CalendarClock,
+  BookOpenCheck,
 } from "lucide-react";
 import { CareStatus } from "@/components/patient/care-status";
 import { LocationChip } from "@/components/patient/location-chip";
 import { PatientConsultTracker } from "@/components/consult/consult-tracker";
-import { GlassCard } from "@/components/ui/glass-card";
 import { FaqCard, HistoryCard } from "@/components/dashboard/extras";
 import { NewsCarousel } from "@/components/dashboard/news-carousel";
 import { MapCard } from "@/components/dashboard/map-card";
@@ -36,6 +39,7 @@ import { realHealthScore } from "@/lib/health/score";
 import { bmiBand, bmiOf } from "@/lib/health/profile";
 import { BmiAdvisor } from "@/components/patient/bmi-advisor";
 import { NurseCareSection } from "@/components/patient/nurse-care-section";
+import { AvatarImage } from "@/components/ui/avatar-image";
 import { cn } from "@/lib/utils/cn";
 import { useT } from "@/lib/i18n";
 
@@ -54,6 +58,9 @@ export default function PatientHome() {
   const latestRx = usePrescriptions().filter(
     (rx) => !rx.patientId || rx.patientId === patient.id,
   )[0];
+  const nextVisit = myRequests
+    .filter((r) => r.scheduledAt && Date.parse(r.scheduledAt) >= Date.now() && r.status !== "cancelled")
+    .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!))[0];
 
   // Header stats, all live: the same doctors list the map renders (so the
   // count agrees with what the patient can actually reach), and the checks
@@ -157,12 +164,12 @@ export default function PatientHome() {
       <BmiAdvisor />
 
       {/* Header, greeting + stat counters */}
-      <header className="flex flex-wrap items-end justify-between gap-4 lg:col-span-12">
+      <header className="flex flex-wrap items-end justify-between gap-5 lg:col-span-12">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">
             {t("home.dashboard")}
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream lg:text-4xl">
+          <h1 className="mt-1 text-3xl font-bold tracking-[-0.05em] text-cream lg:text-[2.8rem]">
             {t(greetingKey)},{" "}
             <span className="text-[rgb(var(--c-terracotta))]">{firstName}</span>
           </h1>
@@ -202,14 +209,12 @@ export default function PatientHome() {
             aria-label={t("nav.account")}
             title="My profile"
           >
-            <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-terracotta to-salmon text-base font-semibold text-on-accent ring-2 ring-terracotta/40 ring-offset-2 ring-offset-transparent transition-transform group-hover:scale-105">
-              {patient.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={patient.avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                firstName.charAt(0).toUpperCase()
-              )}
-            </span>
+            <AvatarImage
+              src={patient.avatarUrl}
+              fallback={firstName.charAt(0).toUpperCase()}
+              background="linear-gradient(135deg, rgb(var(--c-terracotta)), rgb(var(--c-salmon)))"
+              className="h-11 w-11 rounded-full text-base font-semibold text-on-accent ring-2 ring-terracotta/40 ring-offset-2 ring-offset-transparent transition-transform group-hover:scale-105"
+            />
             <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)] transition-colors group-hover:text-cream">
               {t("home.profile")}
             </span>
@@ -218,38 +223,49 @@ export default function PatientHome() {
       </header>
 
       {/* Progress pills */}
-      <div className="lg:col-span-12">
+      <div className="lg:col-span-12 rounded-2xl bg-white/45 p-2 shadow-[0_10px_30px_rgb(16_45_35/0.04)]">
         <ProgressRow items={progressItems} />
       </div>
 
       {/* I need care, the hero action → guided checker */}
-      <GlassCard className="p-5 lg:col-span-8 lg:p-6">
-        <h2 className="flex items-center gap-2.5 text-lg font-semibold text-cream">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary">
-            <Sparkles className="h-[18px] w-[18px]" />
-          </span>
-          {t("home.needCare")}
-        </h2>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">{t("home.notWell")}</p>
+      <section className="relative min-h-[330px] overflow-hidden rounded-[2rem] border border-[rgb(var(--c-forest))/0.08] bg-[linear-gradient(135deg,rgb(255_255_255)_0%,rgb(var(--c-forest-mint))/0.18_58%,rgb(var(--c-terracotta-300))/0.48_100%)] p-6 text-[rgb(var(--c-forest))] shadow-[0_22px_50px_rgb(21_61_50/0.12)] lg:col-span-8 lg:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full border-[28px] border-[rgb(var(--c-forest))/0.08]" />
+        <div className="pointer-events-none absolute bottom-[-5rem] right-20 h-52 w-52 rounded-full bg-[rgb(var(--c-forest-mint))/0.22] blur-2xl" />
+        <div className="relative flex h-full flex-col justify-between gap-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--c-forest))/0.07] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[rgb(var(--c-terracotta))]">
+                <Sparkles className="h-3.5 w-3.5" /> Your care space
+              </p>
+              <h2 className="max-w-[24rem] text-3xl font-bold leading-[0.98] tracking-[-0.05em] sm:text-4xl">
+                {t("home.needCare")}<br /><span className="text-[rgb(var(--c-terracotta))]">starts here.</span>
+              </h2>
+              <p className="mt-3 max-w-[25rem] text-sm leading-relaxed text-[rgb(var(--c-forest))/0.68]">{t("home.notWell")} Tell us what you feel and we&apos;ll help you choose your next best step.</p>
+            </div>
+            <span className="hidden h-14 w-14 shrink-0 rotate-6 place-items-center rounded-2xl bg-white/70 text-[rgb(var(--c-terracotta))] shadow-sm sm:grid">
+              <MessageCircle className="h-7 w-7" />
+            </span>
+          </div>
 
-        <div className="fh-tile mt-4 rounded-2xl p-1">
-          <input
-            value={symptoms}
-            onChange={(e) => setSymptoms(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && startCheck()}
-            placeholder={t("home.symptomPlaceholder")}
-            className="w-full rounded-xl bg-transparent px-3 py-2.5 text-[15px] text-cream outline-none placeholder:text-[var(--text-faint)]"
-          />
+          <div className="grid gap-2.5 sm:grid-cols-[1fr_auto]">
+            <div className="rounded-2xl border border-white/70 bg-white/75 p-1.5 shadow-sm backdrop-blur-md">
+              <input
+                value={symptoms}
+                onChange={(e) => setSymptoms(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && startCheck()}
+                placeholder={t("home.symptomPlaceholder")}
+                className="w-full rounded-xl bg-transparent px-3 py-3 text-[15px] text-[rgb(var(--c-forest))] outline-none placeholder:text-[rgb(var(--c-forest))/0.48]"
+              />
+            </div>
+            <button
+              onClick={startCheck}
+              className="group flex items-center justify-center gap-2 rounded-2xl bg-[rgb(var(--c-terracotta))] px-5 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+            >
+              {t("home.findCare")} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
         </div>
-
-        <button
-          onClick={startCheck}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-[15px] font-semibold text-on-accent transition-transform active:scale-[0.98]"
-        >
-          {t("home.findCare")}
-          <ArrowRight className="h-4 w-4" />
-        </button>
-      </GlassCard>
+      </section>
 
       {/* Live map with health metrics */}
       <div className="lg:col-span-4">
@@ -261,16 +277,64 @@ export default function PatientHome() {
           is the home-care cadre, which is a different job from a consult
           dressings, injections, elderly care, so it gets its own door. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-12">
-        <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" color="#C0692F" />
-        <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" color="#7C8B5E" />
-        <CareChip href="/patient/doctors?cadre=nurse" icon={<HeartPulse className="h-5 w-5" />} label="Nurse at home" color="#3E826E" />
-        <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} color="#5E7C8B" />
+        <CareChip href="/patient/now" icon={<Zap className="h-5 w-5" />} label="Care now" sub="Fast help" color="#C96C32" />
+        <CareChip href="/patient/doctors" icon={<Briefcase className="h-5 w-5" />} label="Find a doctor" sub="Browse experts" color="#7C8B5E" />
+        <CareChip href="/patient/doctors?cadre=nurse" icon={<HeartPulse className="h-5 w-5" />} label="Nurse at home" sub="Care at your door" color="#3E826E" />
+        <CareChip href="/patient/doctors" icon={<Video className="h-5 w-5" />} label={t("home.videoCall")} sub="Talk face to face" color="#5E7C8B" />
         {MEDICINE_ENABLED && (
-          <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} color="#C99A4B" />
+          <CareChip href="/patient/medicine" icon={<Pill className="h-5 w-5" />} label={t("home.medicine")} sub="Keep on track" color="#C99A4B" />
         )}
       </div>
 
       <NurseCareSection patient={patient} />
+
+      {/* A lower-level snapshot that turns the patient's existing records into
+          clear next actions. Every card is either backed by a real record or
+          points to the place where the patient can create one. */}
+      <section className="lg:col-span-12">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <p className="label text-[rgb(var(--c-terracotta))]">Your care, in motion</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-cream sm:text-2xl">A little more care context</h2>
+          </div>
+          <span className="hidden text-xs text-[var(--text-muted)] sm:block">Small steps add up.</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <SnapshotCard
+            href="/patient/care?history=1"
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            eyebrow="Latest check"
+            title={completedChecks[0]?.title ?? "Your next check-in"}
+            detail={completedChecks[0]?.conclusion
+              ? `Suggested: ${completedChecks[0].conclusion.specialty}`
+              : "Share how you are feeling to get a guided care path."}
+            action={completedChecks[0] ? "Review result" : "Start a check"}
+            color="#C0692F"
+          />
+          <SnapshotCard
+            href={nextVisit ? "/patient/doctors" : "/patient/doctors"}
+            icon={<CalendarClock className="h-5 w-5" />}
+            eyebrow="Next on your calendar"
+            title={nextVisit?.scheduledAt ? formatVisitDate(nextVisit.scheduledAt) : "No visit booked"}
+            detail={nextVisit
+              ? `Your ${nextVisit.targetCadre === "nurse" ? "nurse visit" : "care visit"} is coming up.`
+              : "Find a doctor or book a nurse visit when you are ready."}
+            action={nextVisit ? "View care" : "Book a visit"}
+            color="#3E826E"
+          />
+          <SnapshotCard
+            href={latestRx ? `/patient/prescriptions/${latestRx.id}` : "/patient/doctors"}
+            icon={<BookOpenCheck className="h-5 w-5" />}
+            eyebrow="Treatment shelf"
+            title={latestRx?.items.length ? latestRx.items[0].name : "Nothing saved yet"}
+            detail={latestRx
+              ? latestRx.items.length > 1 ? `+${latestRx.items.length - 1} more from ${latestRx.doctorName}` : `From ${latestRx.doctorName}`
+              : "Your prescriptions and care notes will collect here."}
+            action={latestRx ? "Open prescription" : "Talk to a doctor"}
+            color="#7C6FB2"
+          />
+        </div>
+      </section>
 
       {/* Care activity + health score + goals */}
       <div className="lg:col-span-4">
@@ -463,28 +527,85 @@ function HeaderStat({
   );
 }
 
+function formatVisitDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function SnapshotCard({
+  href,
+  icon,
+  eyebrow,
+  title,
+  detail,
+  action,
+  color,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  eyebrow: string;
+  title: string;
+  detail: string;
+  action: string;
+  color: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group relative min-h-[158px] overflow-hidden rounded-3xl border border-[rgb(var(--c-cream))/0.05] bg-white/70 p-5 shadow-[0_10px_28px_rgb(16_45_35/0.05)] transition-all hover:-translate-y-1 hover:bg-white hover:shadow-[0_18px_35px_rgb(16_45_35/0.1)]"
+    >
+      <span
+        className="absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-30 transition-transform duration-500 group-hover:scale-125"
+        style={{ background: color }}
+      />
+      <span className="relative grid h-10 w-10 place-items-center rounded-2xl" style={{ background: `${color}1f`, color }}>
+        {icon}
+      </span>
+      <span className="relative mt-4 block">
+        <span className="label block text-[10px]">{eyebrow}</span>
+        <span className="mt-1 block truncate text-base font-bold text-cream">{title}</span>
+        <span className="mt-1 block min-h-8 text-xs leading-relaxed text-[var(--text-muted)]">{detail}</span>
+        <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold" style={{ color }}>
+          {action} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 function CareChip({
   icon,
   label,
+  sub,
   href,
   onClick,
   color = "#0A84FF",
 }: {
   icon: React.ReactNode;
   label: string;
+  sub?: string;
   href?: string;
   onClick?: () => void;
   color?: string;
 }) {
   const inner = (
-    <span className="flex h-full flex-col items-center gap-2 rounded-2xl fh-card p-3.5 text-center transition-transform active:scale-[0.97]">
+    <span className="group relative flex h-full min-h-[112px] flex-col items-start justify-between overflow-hidden rounded-2xl border border-[rgb(var(--c-cream))/0.05] bg-white/70 p-4 text-left shadow-[0_10px_24px_rgb(16_45_35/0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_16px_30px_rgb(16_45_35/0.1)] active:scale-[0.97]">
       <span
         className="grid h-11 w-11 place-items-center rounded-full"
         style={{ background: `${color}26`, color }}
       >
         {icon}
       </span>
-      <span className="text-[13px] font-medium text-cream">{label}</span>
+      <span>
+        <span className="block text-[13px] font-bold text-cream">{label}</span>
+        {sub && <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">{sub}</span>}
+      </span>
+      <ArrowRight className="absolute right-3 top-3 h-3.5 w-3.5 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
     </span>
   );
   return href ? (

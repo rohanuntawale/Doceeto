@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyPassword } from "@/lib/auth/password";
-import { setSession } from "@/lib/auth/session";
+import { clearSession, setSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 
@@ -46,6 +46,11 @@ export async function POST(req: Request) {
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return NextResponse.json({ error: "Wrong email or password." }, { status: 401 });
     }
+    // Never reuse a browser-held session as authentication. Invalidate any
+    // existing session for this account's role before issuing a fresh one, so
+    // every successful login creates a new authenticated session even when a
+    // stale cookie survived the previous logout or browser navigation.
+    await clearSession(user.role);
     await setSession({ id: user.id, role: user.role, name: user.name });
     return NextResponse.json({ ok: true, role: user.role });
   } catch (err) {
