@@ -521,7 +521,11 @@ export async function POST(req: Request) {
     body.history?.length
       ? `Past symptom checks (CLOSED episodes, context for ranking only, the patient has NOT raised these today): ${body.history.join("; ")}.`
       : "No past symptom checks.",
-    ...(body.answers ?? []).map((a) => `Q: ${a.prompt}\nA: ${a.label}`),
+    ...(body.answers ?? []).map((a) =>
+      a.prompt === "You told us"
+        ? `PATIENT'S OWN WORDS (highest-priority current context): "${a.label}"\nUse this detail in the next question or conclusion. Do not replace it with a generic opening question.`
+        : `SELECTED OPTION to the question "${a.prompt}": ${a.label}`,
+    ),
     asked >= MAX_QUESTIONS
       ? "You have asked enough. Give the CONCLUSION now as strict JSON, do not ask another question."
       : complained
@@ -532,7 +536,7 @@ export async function POST(req: Request) {
           // the one failure they always notice. The last line of a prompt is
           // the one that survives, so the rule is restated where it lands.
           "Give the next step now as strict JSON. The patient HAS already told you their problem, your question must NARROW IT DOWN. Do not open with \"what is troubling you\" or any variant of it."
-        : "Give the next step now (question or conclusion) as strict JSON.",
+        : "Give the next step now (question or conclusion) as strict JSON. Combine the patient's own words with the selected options; the own words are not optional context.",
   ].join("\n");
 
   try {
