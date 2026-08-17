@@ -9,21 +9,9 @@ import { cn } from "@/lib/utils/cn";
  * sits in the app shell layouts, so it plays once on open and not on internal
  * navigation.
  *
- * ── Why the phone gets different treatment ──
- *
- * app-load.mp4 is 1920 wide, a landscape frame. It used to be laid out with
- * `object-cover` on small screens, which fills a portrait phone by cropping
- * the sides away, roughly two thirds of the picture, so whatever the animation
- * was doing in the middle of a wide canvas arrived on a phone as a slice of it.
- *
- * So: contain, not cover. The whole frame is shown, centred on the brand
- * espresso field, which reads as a deliberate title card rather than a
- * mis-cropped video.
- *
- * If a properly re-framed portrait cut exists, pass it as `mobileSrc` (or drop
- * it at the default path below) and phones will play that instead. The
- * decision is made once on mount rather than with a CSS media rule, so only
- * one file is ever fetched.
+ * The video fills the viewport edge to edge. A purpose-made portrait cut can
+ * still be supplied through `mobileSrc`; otherwise the landscape source is
+ * intentionally cropped with `object-cover` to avoid letterboxing.
  */
 export function LoadingSplash({
   src = "/loading/app-load.mp4",
@@ -57,15 +45,11 @@ export function LoadingSplash({
   if (!show) return null;
 
   const source = isPhone && mobileSrc ? mobileSrc : src;
-  // A purpose-made portrait file can fill the screen; the landscape one must
-  // not, or we are back to cropping it.
-  const fit = isPhone && mobileSrc ? "object-cover" : "object-contain";
-
   return (
     <div
       onClick={end}
       className={cn(
-        "fixed inset-0 z-[100] grid cursor-pointer place-items-center bg-[rgb(var(--c-espresso))] transition-opacity duration-500",
+        "fixed inset-0 z-[100] grid cursor-pointer place-items-center overflow-hidden bg-[rgb(var(--c-espresso))] transition-opacity duration-500",
         fade && "pointer-events-none opacity-0",
       )}
     >
@@ -77,13 +61,7 @@ export function LoadingSplash({
         playsInline
         onEnded={end}
         onError={end}
-        className={cn(
-          "max-h-full max-w-full",
-          fit,
-          isPhone && mobileSrc
-            ? "h-full w-full"
-            : "h-auto w-full md:max-h-[72vh] md:w-auto",
-        )}
+        className="h-full w-full scale-[1.15] object-cover"
       />
       <span className="absolute bottom-8 text-[11px] tracking-wide text-[var(--text-faint)]">
         tap to skip
