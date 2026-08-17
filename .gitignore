@@ -39,6 +39,7 @@ nul
 
 # large context / doc files
 context1.txt
+context cloud.txt
 *.pdf
 .next-dev.log
 
