@@ -14,6 +14,7 @@ import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
 import { demoStore } from "@/lib/demo/store";
 import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
+import { SIGNUP_HANDOFF_KEY } from "@/lib/auth/constants";
 import {
   NURSE_ACCENT_VARS,
   NURSE_CADRES,
@@ -118,6 +119,48 @@ function OnboardingPanel() {
   // Doctor onboarding is two steps: account basics, then the full practice
   // profile — everything a patient reads on the doctor's card and detail page.
   const [step, setStep] = useState<1 | 2>(googleProvider ? 2 : 1);
+
+  /**
+   * Account basics handed over by the sign-in switch.
+   *
+   * A doctor or nurse who typed their name, email and password there has
+   * already answered step 1 — asking for the three of them again on arrival
+   * is a form that forgot what it was just told. Read once and cleared, so a
+   * password never outlives the navigation it was needed for.
+   *
+   * Deliberately skipped for the Google path: that identity is proved and
+   * parked server-side, and a stale handoff must not smuggle a password into
+   * a flow that has no use for one. Runs on mount only — a later click on the
+   * role toggle is the visitor's own choice and is left alone.
+   */
+  useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(SIGNUP_HANDOFF_KEY);
+      if (raw) sessionStorage.removeItem(SIGNUP_HANDOFF_KEY);
+    } catch {
+      return; // private mode — step 1 asks for the basics as it always has
+    }
+    if (!raw || googleProvider) return;
+    try {
+      const handoff = JSON.parse(raw) as {
+        role?: string;
+        name?: string;
+        email?: string;
+        password?: string;
+      };
+      if (handoff.role !== "doctor" && handoff.role !== "nurse") return;
+      if (!handoff.email || !handoff.password) return;
+      setRole(handoff.role);
+      setName(handoff.name ?? "");
+      setEmail(handoff.email);
+      setPassword(handoff.password);
+      setStep(2);
+    } catch {
+      // Malformed. Nothing lost: step 1 is still there to fill in.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
   const [kind, setKind] = useState<"practising" | "resident">("practising");
   const [gender, setGender] = useState<"" | "female" | "male">("");

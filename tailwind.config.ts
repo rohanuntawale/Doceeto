@@ -15,6 +15,20 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      /**
+       * Height breakpoints. Everything else here keys off viewport WIDTH,
+       * but a full-screen form that must not scroll is constrained by the
+       * short side of a laptop (768px, minus browser chrome) — so pages that
+       * promise "no scrolling" shed ornament as the window gets shorter.
+       */
+      screens: {
+        /** A 900px-tall window minus browser chrome. */
+        short: { raw: "(max-height: 860px)" },
+        /** A 768px laptop, or 720p, minus browser chrome. */
+        shorter: { raw: "(max-height: 770px)" },
+        /** Small phones in portrait (640-ish). */
+        tiny: { raw: "(max-height: 680px)" },
+      },
       colors: {
         // All brand hues resolve through CSS variables (RGB triplets set
         // per theme in app/globals.css), so switching data-theme reskins

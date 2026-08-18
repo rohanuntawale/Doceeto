@@ -99,3 +99,16 @@ export const signInFor = (role: SurfaceRole, next?: string): string => {
   if (role === "ops") return "/ops-signin";
   return next ? `/login?next=${encodeURIComponent(next)}` : "/login";
 };
+
+/**
+ * Where the sign-in switch parks a practitioner's account basics on its way
+ * to the profile form.
+ *
+ * A doctor or nurse types their name, email and password into the switch, but
+ * their account is not created until the profile step is submitted — so those
+ * three values have to survive one client-side navigation. sessionStorage,
+ * not the query string: a password in a URL ends up in history, in the
+ * referer header and in every access log along the way. The profile form
+ * reads this once and deletes it immediately.
+ */
+export const SIGNUP_HANDOFF_KEY = "doceeto:signup-handoff";

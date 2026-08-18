@@ -23,6 +23,7 @@ export function GoogleButton({
   email,
   label,
   className,
+  iconOnly = false,
 }: {
   /**
    * The surface being entered. Pass "" when the page genuinely does not know,
@@ -43,6 +44,8 @@ export function GoogleButton({
   email?: string;
   label?: string;
   className?: string;
+  /** Render as a bare circular mark; the label becomes the accessible name. */
+  iconOnly?: boolean;
 }) {
   const [leaving, setLeaving] = useState(false);
   // No role in the query when the caller has none: an absent param is what
@@ -62,15 +65,24 @@ export function GoogleButton({
         else setLeaving(true);
       }}
       className={cn(
-        "inline-flex h-10 w-full items-center justify-center gap-2.5 rounded-lg border border-[var(--border)]",
-        "bg-espresso/60 px-4 text-sm font-medium text-cream transition-colors hover:bg-espresso/80",
+        "inline-flex items-center justify-center border border-[var(--border)] transition-colors",
+        "bg-espresso/60 text-sm font-medium text-cream hover:bg-espresso/80",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60",
+        iconOnly
+          ? "h-12 w-12 shrink-0 rounded-full"
+          : "h-10 w-full gap-2.5 rounded-lg px-4",
         leaving && "cursor-wait opacity-70",
         className,
       )}
     >
       {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleMark />}
-      {leaving ? "Taking you to Google…" : (label ?? "Continue with Google")}
+      {iconOnly ? (
+        <span className="sr-only">{label ?? "Continue with Google"}</span>
+      ) : leaving ? (
+        "Taking you to Google…"
+      ) : (
+        (label ?? "Continue with Google")
+      )}
     </a>
   );
 }
@@ -100,9 +112,16 @@ function GoogleMark() {
 }
 
 /** The "or" rule between the Google button and the password form. */
-export function AuthDivider({ children = "or" }: { children?: React.ReactNode }) {
+export function AuthDivider({
+  children = "or",
+  className,
+}: {
+  children?: React.ReactNode;
+  /** Callers that are tight on vertical space can pass their own margins. */
+  className?: string;
+}) {
   return (
-    <div className="my-4 flex items-center gap-3">
+    <div className={cn("my-4 flex items-center gap-3", className)}>
       <span className="h-px flex-1 bg-[var(--border)]" />
       <span className="text-[11px] uppercase tracking-wide text-[var(--text-faint)]">
         {children}

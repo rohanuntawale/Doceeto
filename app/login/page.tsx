@@ -1,5 +1,5 @@
 import { googleConfigured } from "@/lib/auth/google";
-import { LoginForm } from "@/app/login/login-form";
+import { AuthSwitch } from "@/components/ui/auth-switch";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +10,5 @@ export const dynamic = "force-dynamic";
  * after logout, stale browser state must not be able to skip credentials.
  */
 export default async function LoginPage() {
-  return <LoginForm googleEnabled={googleConfigured()} />;
+  return <AuthSwitch googleEnabled={googleConfigured()} defaultMode="signin" />;
 }
