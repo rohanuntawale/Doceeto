@@ -45,27 +45,12 @@ export default function TermsPage() {
       intro={
         <Callout tone="critical" title="Read this first">
           <P>
-<<<<<<< HEAD
             {COMPANY.brand} is a <strong>technology platform that connects you
             with independent, registered clinicians</strong>. We are not a
             hospital, a clinic, a diagnostic centre or an ambulance service, and
             we do not practise medicine. The doctor or nurse who treats you is
             responsible for their clinical judgement, not us.{" "}
             <strong>In a life-threatening emergency, call 112 or 108 first.</strong>
-=======
-            {COMPANY.brand} is a{" "}
-            <strong>
-              technology platform that connects you with independent, registered
-              clinicians
-            </strong>
-            . We are not a hospital, a clinic, a diagnostic centre or an
-            ambulance service, and we do not practise medicine. The doctor or
-            nurse who treats you is responsible for their clinical judgement not
-            us.{" "}
-            <strong>
-              In a life-threatening emergency, call 112 or 108 first.
-            </strong>
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
           </P>
         </Callout>
       }
@@ -79,16 +64,13 @@ export default function TermsPage() {
                 By accessing {COMPANY.web.domain}, installing a {COMPANY.brand}{" "}
                 app, creating an account or using any part of the service, you
                 agree to these Terms of Use and to the documents they
-                incorporate: the{" "}
-                <Xref href="/legal/privacy">Privacy Policy</Xref>, the{" "}
-                <Xref href="/legal/medical-disclaimer">Medical Disclaimer</Xref>
-                , the <Xref href="/legal/sales">Sales Policy</Xref>, the{" "}
+                incorporate: the <Xref href="/legal/privacy">Privacy
+                Policy</Xref>, the{" "}
+                <Xref href="/legal/medical-disclaimer">Medical
+                Disclaimer</Xref>, the <Xref href="/legal/sales">Sales
+                Policy</Xref>, the{" "}
                 <Xref href="/legal/emergency">Emergency Services Policy</Xref>{" "}
-<<<<<<< HEAD
                 and, if you deliver care, the{" "}
-=======
-                and if you deliver care the{" "}
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                 <Xref href="/legal/providers">Provider Terms</Xref>. Together
                 they form one agreement.
               </P>
@@ -138,17 +120,12 @@ export default function TermsPage() {
                 {COMPANY.brand} is a marketplace and coordination layer. We
                 verify and list independent providers, help you find the right
                 one, carry the booking, handle payment, and give both sides the
-                tools to run the encounter. The{" "}
-                <T>
-                  clinical relationship is directly between you and the
-                  provider.
-                </T>
+                tools to run the encounter. The <T>clinical relationship is
+                directly between you and the provider.</T>
               </P>
               <H3>We are responsible for</H3>
               <UL>
-                <LI>
-                  Running the platform and keeping it reasonably available.
-                </LI>
+                <LI>Running the platform and keeping it reasonably available.</LI>
                 <LI>
                   Checking a provider&rsquo;s stated registration and
                   credentials before marking them verified, and removing them
@@ -164,9 +141,7 @@ export default function TermsPage() {
               <H3>We are not responsible for</H3>
               <UL>
                 <LI>
-                  <T>
-                    The medical advice, diagnosis, prescription or treatment
-                  </T>{" "}
+                  <T>The medical advice, diagnosis, prescription or treatment</T>{" "}
                   a provider gives. That is their professional judgement, made
                   under their own registration and their own indemnity.
                 </LI>
@@ -185,9 +160,9 @@ export default function TermsPage() {
               </UL>
               <P>
                 To the extent we transmit or host information provided by
-                others, we act as an <T>intermediary</T> under section 2(1)(w)
-                of the Information Technology Act, 2000 and claim the safe
-                harbour of section 79.
+                others, we act as an <T>intermediary</T> under section 2(1)(w) of
+                the Information Technology Act, 2000 and claim the safe harbour
+                of section 79.
               </P>
             </>
           ),
@@ -206,15 +181,11 @@ export default function TermsPage() {
                 <OLI>
                   Keep your password secret. You are responsible for everything
                   done through your account until you tell us it is compromised.
-                  Write to <MailLink address={CONTACTS.support} /> the moment
-                  you suspect it is.
+                  Write to <MailLink address={CONTACTS.support} /> the moment you
+                  suspect it is.
                 </OLI>
                 <OLI>
-<<<<<<< HEAD
                   One account per person. Do not share it, a shared account
-=======
-                  One account per person. Do not share it a shared account
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                   merges two people&rsquo;s medical histories into one record,
                   which is genuinely dangerous.
                 </OLI>
@@ -243,10 +214,9 @@ export default function TermsPage() {
                   you do not hold.
                 </LI>
                 <LI>
-                  Use the platform to obtain{" "}
-                  <T>narcotic, psychotropic or habit-forming</T> medicine, or to
-                  accumulate prescriptions from several doctors for the same
-                  complaint.
+                  Use the platform to obtain <T>narcotic, psychotropic or
+                  habit-forming</T> medicine, or to accumulate prescriptions from
+                  several doctors for the same complaint.
                 </LI>
                 <LI>
                   Seek anything unlawful in India, including{" "}
@@ -287,16 +257,8 @@ export default function TermsPage() {
               </UL>
               <P>
                 We may remove content and suspend accounts that break these
-<<<<<<< HEAD
                 rules, see <Xref href="/legal/terms#termination">suspension and
                 termination</Xref>.
-=======
-                rules see{" "}
-                <Xref href="/legal/terms#termination">
-                  suspension and termination
-                </Xref>
-                .
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
               </P>
             </>
           ),
@@ -319,27 +281,21 @@ export default function TermsPage() {
                 </LI>
                 <LI>
                   <T>Nurses do not diagnose and do not prescribe.</T> They
-<<<<<<< HEAD
                   deliver defined nursing services at home, injections, wound
-=======
-                  deliver defined nursing services at home injections, wound
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                   care, monitoring, elder and post-operative care. Anything
                   requiring a diagnosis needs a doctor.
                 </LI>
                 <LI>
                   For a home visit, you must be at the address you gave and must
                   provide safe, lawful access. The visit is confirmed by a{" "}
-                  <T>four-digit code shown only to you</T>, which you read out
-                  to the provider on arrival.
+                  <T>four-digit code shown only to you</T>, which you read out to
+                  the provider on arrival.
                 </LI>
                 <LI>
                   Remote consultations are governed by the{" "}
-                  <Xref href="/legal/telemedicine-consent">
-                    Telemedicine &amp; Informed Consent
-                  </Xref>{" "}
-                  page, which reflects the Telemedicine Practice Guidelines,
-                  2020.
+                  <Xref href="/legal/telemedicine-consent">Telemedicine &amp;
+                  Informed Consent</Xref> page, which reflects the Telemedicine
+                  Practice Guidelines, 2020.
                 </LI>
                 <LI>
                   You and the provider may rate each other after a completed
@@ -362,13 +318,12 @@ export default function TermsPage() {
                   responders on a best-effort basis over the public internet. It
                   depends on your battery, your signal, your location permission
                   and someone being available. It{" "}
-                  <strong>
-                    does not connect you to the government emergency services
-                  </strong>
-                  . For anything life-threatening call <strong>112</strong> or{" "}
-                  <strong>108</strong> first, then raise SOS. Full limits in the{" "}
-                  <Xref href="/legal/emergency">Emergency Services Policy</Xref>
-                  .
+                  <strong>does not connect you to the government emergency
+                  services</strong>. For anything life-threatening call{" "}
+                  <strong>112</strong> or <strong>108</strong> first, then raise
+                  SOS. Full limits in the{" "}
+                  <Xref href="/legal/emergency">Emergency Services
+                  Policy</Xref>.
                 </P>
               </Callout>
               <P>
@@ -376,8 +331,8 @@ export default function TermsPage() {
                 and how urgently. It is <T>triage, not diagnosis</T>, it has no
                 registration to practise medicine, and it can be wrong. Never
                 use it to rule out a serious condition. Read the{" "}
-                <Xref href="/legal/medical-disclaimer">Medical Disclaimer</Xref>
-                , and note the data disclosure in the{" "}
+                <Xref href="/legal/medical-disclaimer">Medical
+                Disclaimer</Xref>, and note the data disclosure in the{" "}
                 <Xref href="/legal/privacy#ai">Privacy Policy</Xref>.
               </P>
             </>
@@ -393,19 +348,10 @@ export default function TermsPage() {
                 <T>licensed pharmacies</T>, and prescription-only medicine is
                 dispensed only against a valid prescription that a registered
                 pharmacist has verified. Some drug schedules we will not deliver
-<<<<<<< HEAD
                 at all. The full rules, including what we refuse and why an
                 order may be cancelled after you have paid, are in the{" "}
                 <Xref href="/legal/pharmacy">Medicine &amp; Pharmacy
                 Policy</Xref>.
-=======
-                at all. The full rules including what we refuse and why an order
-                may be cancelled after you have paid are in the{" "}
-                <Xref href="/legal/pharmacy">
-                  Medicine &amp; Pharmacy Policy
-                </Xref>
-                .
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
               </P>
             </>
           ),
@@ -418,8 +364,8 @@ export default function TermsPage() {
               <P>
                 Prices are shown before you confirm and are in Indian Rupees,
                 inclusive of applicable taxes unless stated. Providers set their
-                own consultation and home-visit fees; we add a platform fee
-                where one applies, disclosed at checkout.
+                own consultation and home-visit fees; we add a platform fee where
+                one applies, disclosed at checkout.
               </P>
               <P>
                 Cancellation windows, no-show rules, refund timelines and the
@@ -446,11 +392,7 @@ export default function TermsPage() {
               <H3>Yours</H3>
               <P>
                 Your health data, reports and photographs remain yours. You give
-<<<<<<< HEAD
                 us the licence needed to run the service, storing them,
-=======
-                us the licence needed to run the service storing them,
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                 displaying them to the clinician treating you, and processing
                 them as the Privacy Policy describes. Nothing more.
               </P>
@@ -508,10 +450,8 @@ export default function TermsPage() {
               <P>
                 <T>You</T> may stop at any time and delete your account from
                 Account &rsaquo; Delete account. See{" "}
-                <Xref href="/legal/data-deletion">
-                  Account &amp; Data Deletion
-                </Xref>
-                .
+                <Xref href="/legal/data-deletion">Account &amp; Data
+                Deletion</Xref>.
               </P>
               <P>
                 <T>We</T> may suspend or terminate your account, with notice
@@ -524,14 +464,8 @@ export default function TermsPage() {
                 On termination: your licence to use the service ends; sums
                 already due remain payable; refunds owed are paid; and your data
                 is handled as described in{" "}
-<<<<<<< HEAD
                 <Xref href="/legal/privacy#retention">retention</Xref>, clinical
                 records are kept for the statutory period even after deletion.
-=======
-                <Xref href="/legal/privacy#retention">retention</Xref>
-                clinical records are kept for the statutory period even after
-                deletion.
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
               </P>
               <P>
                 If you believe a suspension was wrong, appeal to{" "}
@@ -566,9 +500,7 @@ export default function TermsPage() {
                   the symptom checker&rsquo;s suggestion is correct, complete or
                   safe to rely on;
                 </LI>
-                <LI>
-                  the service will be uninterrupted, timely or error-free.
-                </LI>
+                <LI>the service will be uninterrupted, timely or error-free.</LI>
               </UL>
               <P>
                 Nothing here excludes liability that cannot lawfully be excluded
@@ -615,11 +547,7 @@ export default function TermsPage() {
                   lies against that provider and their indemnity insurer. We
                   will give you the provider&rsquo;s registration details, the
                   record of the encounter and any documents you need to pursue
-<<<<<<< HEAD
                   it, that is a commitment, not a courtesy.
-=======
-                  it that is a commitment, not a courtesy.
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                 </P>
               </Callout>
             </>
@@ -645,12 +573,14 @@ export default function TermsPage() {
           title: "Governing law and disputes",
           content: (
             <>
-              <P>This agreement is governed by {COMPANY.jurisdiction.law}.</P>
+              <P>
+                This agreement is governed by {COMPANY.jurisdiction.law}.
+              </P>
               <OL>
                 <OLI>
                   <T>Talk to us first.</T> Almost everything is resolved through{" "}
-                  <Xref href="/legal/grievance">Grievance Redressal</Xref>.
-                  Please exhaust it before anything formal.
+                  <Xref href="/legal/grievance">Grievance Redressal</Xref>. Please
+                  exhaust it before anything formal.
                 </OLI>
                 <OLI>
                   <T>Arbitration.</T> A dispute not resolved within sixty days
@@ -684,8 +614,7 @@ export default function TermsPage() {
               <UL>
                 <LI>
                   <T>Entire agreement.</T> These terms and the documents they
-                  incorporate are the whole agreement between us on this
-                  subject.
+                  incorporate are the whole agreement between us on this subject.
                 </LI>
                 <LI>
                   <T>Severability.</T> If a clause is unenforceable, it is
@@ -700,13 +629,8 @@ export default function TermsPage() {
                   assign ours to a successor on notice to you.
                 </LI>
                 <LI>
-<<<<<<< HEAD
                   <T>Force majeure.</T> Neither side is liable for failure caused
                   by events beyond reasonable control, natural disaster,
-=======
-                  <T>Force majeure.</T> Neither side is liable for failure
-                  caused by events beyond reasonable control natural disaster,
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                   epidemic, war, strike, or failure of public infrastructure or
                   telecommunications.
                 </LI>
@@ -715,8 +639,8 @@ export default function TermsPage() {
                   notify you in-app. You write to the addresses below.
                 </LI>
                 <LI>
-                  <T>Language.</T> Translations are provided for convenience;
-                  the English version governs.
+                  <T>Language.</T> Translations are provided for convenience; the
+                  English version governs.
                 </LI>
                 <LI>
                   <T>Relationship.</T> Nothing here creates a partnership, joint
@@ -757,11 +681,7 @@ export default function TermsPage() {
                     value: (
                       <>
                         {OFFICERS.grievance.name
-<<<<<<< HEAD
                           ? `${OFFICERS.grievance.name}, `
-=======
-                          ? `${OFFICERS.grievance.name} `
->>>>>>> 94b3b6a (Removed '—' from legals and policies)
                           : null}
                         <MailLink address={OFFICERS.grievance.email} />
                       </>
