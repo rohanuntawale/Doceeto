@@ -36,7 +36,7 @@ import { useConsultRequests, useDoctors, useOrders, usePrescriptions } from "@/l
 import { MEDICINE_ENABLED } from "@/lib/config";
 import { weeklyCareActivity } from "@/lib/health/metrics";
 import { realHealthScore } from "@/lib/health/score";
-import { bmiBand, bmiOf } from "@/lib/health/profile";
+import { bmiBand, bmiOf, healthProfileCompletion } from "@/lib/health/profile";
 import { BmiAdvisor } from "@/components/patient/bmi-advisor";
 import { NurseCareSection } from "@/components/patient/nurse-care-section";
 import { AvatarImage } from "@/components/ui/avatar-image";
@@ -122,7 +122,10 @@ export default function PatientHome() {
   // BMI replaces the old decorative "Verified: Done" pill — a real number,
   // full when in the healthy range, visibly short when out of it or missing.
   const progressItems = [
-    { label: t("home.profile"), value: located ? 100 : 45 },
+    // Reads the same completion the account page shows, so the two agree.
+    // It was previously a flat 100 whenever a location existed, which claimed
+    // a finished profile for patients who had filled in almost nothing.
+    { label: t("home.profile"), value: healthProfileCompletion(patient.healthProfile) },
     {
       label: t("health.bmi"),
       value: bmi === undefined ? 0 : bmiBand(bmi) === "healthy" ? 100 : 45,
@@ -215,7 +218,7 @@ export default function PatientHome() {
               background="linear-gradient(135deg, rgb(var(--c-terracotta)), rgb(var(--c-salmon)))"
               className="h-11 w-11 rounded-full text-base font-semibold text-on-accent ring-2 ring-terracotta/40 ring-offset-2 ring-offset-transparent transition-transform group-hover:scale-105"
             />
-            <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-faint)] transition-colors group-hover:text-cream">
+            <span className="text-[11px] uppercase tracking-wide text-[var(--text-faint)] transition-colors group-hover:text-cream">
               {t("home.profile")}
             </span>
           </Link>
@@ -517,7 +520,10 @@ function HeaderStat({
 }) {
   return (
     <div className="text-right">
-      <div className="flex items-center justify-end gap-1.5">
+      {/* h-11 matches the avatar beside these, so the numbers and the avatar
+          share a top edge as well as a baseline, and the number centres on the
+          circle rather than floating above it. */}
+      <div className="flex h-11 items-center justify-end gap-1.5">
         <p className="text-2xl font-bold leading-none text-cream lg:text-3xl">{n}</p>
         {trend !== undefined && <TrendBadge value={trend} />}
         {badge}

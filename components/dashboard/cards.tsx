@@ -68,10 +68,14 @@ export function ProgressRow({ items }: { items: ProgressItem[] }) {
               className="absolute inset-y-0 left-0 rounded-full bg-[rgb(var(--c-terracotta))]"
               style={{ width: `${Math.max(6, Math.min(100, it.value))}%` }}
             />
+            {/* Always left-aligned: the text used to jump to the right edge
+                below 55, so a row of pills read ragged whenever one value was
+                low. Only the colour changes, once the fill is too short to sit
+                under the text. */}
             <span
               className={cn(
-                "absolute inset-0 flex items-center px-3 text-xs font-semibold",
-                it.value > 55 ? "justify-start text-[rgb(var(--c-on-accent))]" : "justify-end text-cream",
+                "absolute inset-0 flex items-center justify-start px-3 text-xs font-semibold",
+                it.value >= 22 ? "text-[rgb(var(--c-on-accent))]" : "text-cream",
               )}
             >
               {it.display ?? `${it.value}%`}
