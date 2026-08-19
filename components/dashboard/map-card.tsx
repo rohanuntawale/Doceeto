@@ -14,7 +14,7 @@ const AdvancedMap = dynamic(
 );
 
 /**
- * Dashboard map card — a real (MapLibre) map centred on the patient with
+ * Dashboard map card — a real (Leaflet) map centred on the patient with
  * nearby doctors, plus frosted glass overlay chips showing live health metrics.
  */
 export function MapCard({ patient }: { patient: PatientIdentity }) {

@@ -92,6 +92,30 @@ function MapClickEvents({ onMapClick }: { onMapClick?: (latlng: L.LatLng) => voi
   return null;
 }
 
+/**
+ * Leaflet forwards events from anywhere inside the map container to the map
+ * itself, so a click on a control also panned or zoomed it and a scroll over
+ * one zoomed the map underneath. Real L.Control instances opt out of that in
+ * their constructor; these are plain React nodes, so they opt out by hand.
+ */
+function useControlRef() {
+  return useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    L.DomEvent.disableClickPropagation(node);
+    L.DomEvent.disableScrollPropagation(node);
+  }, []);
+}
+
+/** Re-centres when the caller's center changes; MapContainer reads it once. */
+function Recenter({ center, zoom }: { center: Point; zoom: number }) {
+  const map = useMap();
+  const [lat, lng] = center;
+  useEffect(() => {
+    map.flyTo([lat, lng], zoom, { duration: 0.8 });
+  }, [map, lat, lng, zoom]);
+  return null;
+}
+
 function LocateHandler({ onLocated }: { onLocated: (point: Point) => void }) {
   const map = useMap();
   useMapEvents({
@@ -106,6 +130,7 @@ function LocateHandler({ onLocated }: { onLocated: (point: Point) => void }) {
 
 function SearchControl({ onResult }: { onResult: (point: Point, name: string) => void }) {
   const map = useMap();
+  const controlRef = useControlRef();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -132,7 +157,7 @@ function SearchControl({ onResult }: { onResult: (point: Point, name: string) =>
 
   return (
     <div className="leaflet-top leaflet-left !mt-3 !ml-3">
-      <div className="leaflet-control flex overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1 shadow-[0_8px_24px_rgb(16_45_35/0.14)] backdrop-blur-md">
+      <div ref={controlRef} className="leaflet-control flex overflow-hidden rounded-2xl border border-white/70 bg-white/90 p-1 shadow-[0_8px_24px_rgb(16_45_35/0.14)] backdrop-blur-md">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -149,15 +174,22 @@ function SearchControl({ onResult }: { onResult: (point: Point, name: string) =>
   );
 }
 
-function MapControls({ onLocate, satellite, onSatellite }: { onLocate: () => void; satellite: boolean; onSatellite: () => void }) {
+function MapControls({ satellite, onSatellite }: { satellite: boolean; onSatellite: () => void }) {
   const map = useMap();
+  const controlRef = useControlRef();
+
+  /* map.locate fires the locationfound event LocateHandler listens for, which
+     is what actually moves the map. The old handler called
+     navigator.geolocation directly, so it dropped a marker at the patient's
+     position without ever centring on it, and the button looked dead. */
+  const locate = () => map.locate({ setView: false, enableHighAccuracy: true });
 
   return (
     <div className="leaflet-top leaflet-right !mt-3 !mr-3">
-      <div className="leaflet-control flex gap-1 rounded-2xl border border-white/70 bg-white/90 p-1 shadow-[0_8px_24px_rgb(16_45_35/0.14)] backdrop-blur-md">
+      <div ref={controlRef} className="leaflet-control flex gap-1 rounded-2xl border border-white/70 bg-white/90 p-1 shadow-[0_8px_24px_rgb(16_45_35/0.14)] backdrop-blur-md">
         <button type="button" onClick={() => map.zoomIn()} title="Zoom in" aria-label="Zoom in" className="grid h-8 w-8 place-items-center rounded-xl text-lg font-medium text-[#1f6a50] transition-colors hover:bg-[#e9f4ee]">+</button>
         <button type="button" onClick={() => map.zoomOut()} title="Zoom out" aria-label="Zoom out" className="grid h-8 w-8 place-items-center rounded-xl text-lg font-medium text-[#1f6a50] transition-colors hover:bg-[#e9f4ee]">−</button>
-        <button type="button" onClick={onLocate} title="Use my location" aria-label="Use my location" className="grid h-8 w-8 place-items-center rounded-xl text-[#1f6a50] transition-colors hover:bg-[#e9f4ee]"><LocateFixed className="h-4 w-4" /></button>
+        <button type="button" onClick={locate} title="Use my location" aria-label="Use my location" className="grid h-8 w-8 place-items-center rounded-xl text-[#1f6a50] transition-colors hover:bg-[#e9f4ee]"><LocateFixed className="h-4 w-4" /></button>
         <button type="button" onClick={onSatellite} title="Toggle satellite" aria-label="Toggle satellite" className={cn("grid h-8 w-8 place-items-center rounded-xl transition-colors", satellite ? "bg-[#1f6a50] text-white" : "text-[#1f6a50] hover:bg-[#e9f4ee]")}><Satellite className="h-4 w-4" /></button>
       </div>
     </div>
@@ -196,12 +228,6 @@ export function AdvancedMap({
     return icon;
   }, [icons]);
 
-  function locate() {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => setUserLocation([position.coords.latitude, position.coords.longitude]));
-    }
-  }
-
   const markerNodes = markers.map((marker, index) => (
     <Marker key={marker.id ?? index} position={marker.position} icon={getIcon(marker)} eventHandlers={{ click: () => onMarkerClick?.(marker) }}>
       {marker.popup && <Popup><div className="min-w-32"><strong>{marker.popup.title}</strong>{marker.popup.content && <p className="mt-1 text-xs">{marker.popup.content}</p>}{marker.popup.image && <img src={marker.popup.image} alt={marker.popup.title} className="mt-2 max-w-[200px] rounded-lg" />}</div></Popup>}
@@ -214,9 +240,10 @@ export function AdvancedMap({
         {!satellite && <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />}
         {satellite && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />}
         <MapClickEvents onMapClick={(latlng) => { setClickedLocation(latlng); onMapClick?.(latlng); }} />
+        <Recenter center={center} zoom={zoom} />
         <LocateHandler onLocated={setUserLocation} />
         {enableSearch && <SearchControl onResult={(point, name) => setSearchResult({ point, name })} />}
-        {enableControls && <MapControls onLocate={locate} satellite={satellite} onSatellite={() => setSatellite((value) => !value)} />}
+        {enableControls && <MapControls satellite={satellite} onSatellite={() => setSatellite((value) => !value)} />}
         {enableClustering ? <MarkerClusterGroup>{markerNodes}</MarkerClusterGroup> : markerNodes}
         {userLocation && <Marker position={userLocation} icon={markerIcon("red")}><Popup>Your current location</Popup></Marker>}
         {searchResult && <Marker position={searchResult.point} icon={markerIcon("green", "large")}><Popup>{searchResult.name}</Popup></Marker>}
