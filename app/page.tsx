@@ -203,11 +203,8 @@ export default function Page() {
         </div>
       </header>
 
-      {/* Main Content Sections */}
       <main>
         <LandingHero />
-        {/* The three promises, lifted out of the hero's micro-copy line into
-            glass panes of their own. */}
         <LandingAssurances />
         <LandingStory />
         <LandingFilm />

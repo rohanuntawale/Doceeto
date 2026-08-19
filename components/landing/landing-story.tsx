@@ -53,12 +53,34 @@ export function LandingStory() {
     >
       {/* Background brutalist typography watermark */}
       <div
-        className="absolute inset-0 flex items-center justify-center overflow-hidden opacity-[0.05] pointer-events-none select-none"
+        className="absolute inset-0 flex items-center overflow-hidden opacity-[0.05] pointer-events-none select-none"
         aria-hidden="true"
       >
-        <span className="font-serif text-[28vw] font-extrabold leading-none text-[var(--text)] tracking-tighter">
-          DOCEETO
-        </span>
+        <motion.div
+          className="flex shrink-0 whitespace-nowrap"
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{
+            duration: 100,
+            ease: "linear",
+            repeat: Infinity,
+          }}
+        >
+          <span className="font-serif text-[55vw] sm:text-[42vw] md:text-[34vw] lg:text-[28vw] font-extrabold leading-none text-[var(--text)] tracking-tighter pr-[12vw]">
+            DOCEETO
+          </span>
+
+          <span className="font-serif text-[55vw] sm:text-[42vw] md:text-[34vw] lg:text-[28vw] font-extrabold leading-none text-[var(--text)] tracking-tighter pr-[12vw]">
+            DOCEETO
+          </span>
+
+          <span className="font-serif text-[55vw] sm:text-[42vw] md:text-[34vw] lg:text-[28vw] font-extrabold leading-none text-[var(--text)] tracking-tighter pr-[12vw]">
+            DOCEETO
+          </span>
+
+          <span className="font-serif text-[55vw] sm:text-[42vw] md:text-[34vw] lg:text-[28vw] font-extrabold leading-none text-[var(--text)] tracking-tighter pr-[12vw]">
+            DOCEETO
+          </span>
+        </motion.div>
       </div>
 
       {/* A single low glow so the flat green has depth behind the type */}
