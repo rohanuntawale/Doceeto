@@ -365,7 +365,9 @@ function AuthPanel({
               rather than a red box, with the address as login_hint. */}
           {error && googleOnly ? (
             <div className="space-y-2.5 rounded-2xl border border-[rgb(var(--accent-rgb)/0.3)] bg-[rgb(var(--accent-rgb)/0.07)] p-3">
-              <p className="text-[11px] font-medium text-[var(--text)]">{error}</p>
+              <p className="text-[11px] font-medium text-[var(--text)]">
+                {error}
+              </p>
               <GoogleButton
                 role={googleRole}
                 next={next || undefined}
@@ -392,7 +394,11 @@ function AuthPanel({
               </>
             ) : (
               <>
-                {mode === "signin" ? "Log in" : providerPicked ? "Continue" : "Start"}
+                {mode === "signin"
+                  ? "Log in"
+                  : providerPicked
+                    ? "Continue"
+                    : "Start"}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
@@ -406,24 +412,50 @@ function AuthPanel({
             onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
             className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
           >
-            {mode === "signin" ? "Create an account" : "Log in"}
+            {mode === "signin" ? (
+              <Link
+                href="/signup"
+                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
+              >
+                Create an account
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
+              >
+                Log in
+              </Link>
+            )}
           </button>
         </p>
 
         <div className="mt-5 flex items-center justify-center gap-2 text-[10.5px] text-[var(--text-faint)] shorter:hidden">
-          <Link href="/about" className="transition-colors hover:text-[var(--text)]">
+          <Link
+            href="/about"
+            className="transition-colors hover:text-[var(--text)]"
+          >
             About
           </Link>
           <span>·</span>
-          <Link href="/contact" className="transition-colors hover:text-[var(--text)]">
+          <Link
+            href="/contact"
+            className="transition-colors hover:text-[var(--text)]"
+          >
             Contact
           </Link>
           <span>·</span>
-          <Link href="/terms" className="transition-colors hover:text-[var(--text)]">
+          <Link
+            href="/terms"
+            className="transition-colors hover:text-[var(--text)]"
+          >
             Terms
           </Link>
           <span>·</span>
-          <Link href="/privacy" className="transition-colors hover:text-[var(--text)]">
+          <Link
+            href="/privacy"
+            className="transition-colors hover:text-[var(--text)]"
+          >
             Privacy
           </Link>
         </div>
