@@ -13,7 +13,8 @@ import {
   Syringe,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { BrandMark, Wordmark } from "@/components/brand/wordmark";
+import { Wordmark } from "@/components/brand/wordmark";
+import { CareNetwork } from "@/components/auth/care-network";
 import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
 import { SIGNUP_HANDOFF_KEY, surfaceFromPath } from "@/lib/auth/constants";
@@ -505,38 +506,26 @@ const inputCls =
   "h-12 w-full rounded-2xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-4 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)] short:h-11";
 
 /**
- * Right: a clear window onto the page's footage — no panel fill of its own,
- * just an inset frame and the tagline, so the video is the whole picture.
+ * Right: a clear window onto the page's footage with the interactive Care
+ * Network. The gold dot from the Doceeto logo is the draggable care signal.
  */
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);
   return (
     <section className="relative hidden overflow-hidden lg:block">
+      {/* Hairline separator between form and panel */}
       <div className="absolute inset-y-0 left-0 w-px bg-white/25" />
 
-      {/* Where the reference floats its 3D object: the app-icon mark, grabbable
-          and springing back on release. The drag transform lives on the wrapper
-          and the idle drift on the mark, so the two never fight over one
-          transform. */}
-      <div ref={bounds} className="absolute inset-10 grid place-items-center">
-        <motion.div
-          drag
-          dragConstraints={bounds}
-          dragElastic={0.18}
-          dragSnapToOrigin
-          dragTransition={{ bounceStiffness: 260, bounceDamping: 18 }}
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.95 }}
-          className="cursor-grab touch-none active:cursor-grabbing"
-        >
-          <BrandMark className="h-[min(11rem,26vh)] w-[min(11rem,26vh)] animate-float drop-shadow-[0_18px_35px_rgba(16,45,35,0.35)] motion-reduce:animate-none" />
-        </motion.div>
+      {/* Full panel bounds — used as drag constraint for the gold dot */}
+      <div ref={bounds} className="absolute inset-0">
+        <CareNetwork boundsRef={bounds} />
       </div>
 
-      <div className="absolute inset-x-0 bottom-7 flex justify-center">
-        <span className="rounded-full border border-white/20 bg-forest/85 px-4 py-2 text-[12px] font-medium text-paper backdrop-blur-md">
-          Care that reaches you — drag the mark around
-        </span>
+      {/* Tagline — clean typography, no pill or border */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-7 flex justify-center">
+        <p className="font-serif text-[13px] italic text-paper/55">
+          Care that reaches you.
+        </p>
       </div>
     </section>
   );

@@ -58,18 +58,37 @@ export function Name({ className }: { className?: string }) {
   );
 }
 
+/**
+ * The exact position and radius of the floating gold dot within the BrandMark
+ * SVG, in viewBox coordinate space. Used by CareNetwork to overlay its
+ * interactive CareDot at the same visual location.
+ */
+export const GOLD_DOT = { cx: 420, cy: 256, r: 28 } as const;
+
+/**
+ * The BrandMark SVG viewBox — the cropped viewport, not the original 512-square
+ * canvas. All dot positioning math is relative to these bounds.
+ */
+export const VIEWBOX = { x: 96, y: 121, w: 366, h: 270 } as const;
+
 /** The Doceeto mark — a D read as a doctor seen from directly above:
  *  shoulders form the stem, a stethoscope crosses the chest, and both arms
  *  curve in to close around the patient, shown as the gold dot in the break.
  *  Rendered as the on-dark app-icon tile so it holds up on every theme.
- *  `reduced` drops the stethoscope detail for sizes under 40px. */
+ *  `reduced` drops the stethoscope detail for sizes under 40px.
+ *  `hideDot` omits the floating gold dot so CareNetwork can render it
+ *  independently as a draggable interactive element. */
 export function BrandMark({
   className,
   reduced = false,
+  hideDot = false,
 }: {
   subtle?: boolean;
   className?: string;
   reduced?: boolean;
+  /** Omit the floating gold dot so it can be controlled externally.
+   *  All other usages of BrandMark should leave this at its default (false). */
+  hideDot?: boolean;
 }) {
   return (
     <svg
@@ -134,8 +153,11 @@ export function BrandMark({
       {/* Gold node on bottom arc */}
       <circle cx="285" cy="292" r="15" fill="#C9A13F" />
 
-      {/* Floating gold dot */}
-      <circle cx="420" cy="256" r="28" fill="#C9A13F" />
+      {/* Floating gold dot — omitted when hideDot=true so CareNetwork can
+          render it as an independent draggable element at the same position. */}
+      {!hideDot && (
+        <circle cx="420" cy="256" r="28" fill="#C9A13F" />
+      )}
     </svg>
   );
 }
