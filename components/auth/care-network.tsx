@@ -5,16 +5,14 @@
  *
  * Concept: Doceeto's gold dot represents care in motion. When a user grabs it,
  * a care network wakes up around them — connecting to Doctor, Nurse, Medicine,
- * and Urgent Care. The dot is not ripped from the logo; it emanates from it,
- * and snaps back to reunite with the logo on release.
+ * and Urgent Care. The dot is anchored to the logo in idle state, emanates from
+ * it when dragged, and snaps back smoothly to reunite on release.
  *
- * Component tree:
- *   CareNetwork
- *   ├── BrandMark (anchored logo, hideDot=true)
- *   ├── NetworkLines (SVG tether line + node connection lines)
- *   ├── CareNode × 4 (proximity-reactive nodes)
- *   ├── CareMessage (short message when a node is reached)
- *   └── CareDot (draggable interactive gold dot)
+ * Visual hierarchy:
+ * - Dark, calm, premium forest background with subtle radial depth.
+ * - Balanced logo (~135px wide), prominent 48px nodes, readable 14px labels.
+ * - High-contrast, clear 20px CareMessage text.
+ * - 100% mathematically exact gold dot placement in idle state.
  */
 
 import {
@@ -33,27 +31,27 @@ import {
   AnimatePresence,
   useReducedMotion,
 } from "framer-motion";
+import { Stethoscope, Syringe, Pill, HeartPulse } from "lucide-react";
 import { BrandMark, GOLD_DOT, VIEWBOX } from "@/components/brand/wordmark";
 
 // ─── Brand colour tokens ────────────────────────────────────────────────────
 
 const GOLD = "#C9A13F";
-const GOLD_FAINT = "rgba(201, 161, 63, 0.20)";
-const GOLD_MID = "rgba(201, 161, 63, 0.42)";
-const GOLD_STRONG = "rgba(201, 161, 63, 0.72)";
+const GOLD_FAINT = "rgba(201, 161, 63, 0.22)";
+const GOLD_MID = "rgba(201, 161, 63, 0.55)";
+const GOLD_STRONG = "rgba(201, 161, 63, 0.88)";
 
 // ─── Interaction constants ───────────────────────────────────────────────────
 
 /** Distance (px) at which a node begins reacting to the dot. */
-const PROXIMITY_THRESHOLD = 130;
+const PROXIMITY_THRESHOLD = 140;
 /** Distance (px) at which a node is "active" (message shown). */
-const ACTIVE_THRESHOLD = 48;
+const ACTIVE_THRESHOLD = 52;
 /** Keyboard step size per arrow-key press (px). */
 const KB_STEP = 14;
 
 // ─── Node definitions ────────────────────────────────────────────────────────
 
-/** Positions are percentages of the panel container — organic, not symmetrical. */
 const NODES = [
   {
     id: "doctor" as const,
@@ -61,6 +59,7 @@ const NODES = [
     message: "A doctor, when you need one.",
     x: 48,
     y: 18,
+    icon: Stethoscope,
   },
   {
     id: "nurse" as const,
@@ -68,6 +67,7 @@ const NODES = [
     message: "Care that stays close.",
     x: 80,
     y: 38,
+    icon: Syringe,
   },
   {
     id: "medicine" as const,
@@ -75,6 +75,7 @@ const NODES = [
     message: "Medicine, delivered to you.",
     x: 20,
     y: 48,
+    icon: Pill,
   },
   {
     id: "urgent-care" as const,
@@ -82,6 +83,7 @@ const NODES = [
     message: "Help when it can't wait.",
     x: 55,
     y: 78,
+    icon: HeartPulse,
   },
 ];
 
@@ -94,45 +96,48 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Compute the floating gold dot's position within the panel as percentages.
- * The logo SVG is centered inside the panel; the dot is at a known SVG
- * coordinate. We measure both DOMRects to get the exact panel-relative position.
+ * Compute the floating gold dot's position within the panel as percentages,
+ * and calculate its exact rendered diameter in pixels based on the SVG viewBox.
  */
-function getDotAnchorPercent(
+function getDotAnchor(
   panelRect: DOMRect,
-  logoEl: HTMLElement,
-): { x: number; y: number } {
-  const logoRect = logoEl.getBoundingClientRect();
+  logoRect: DOMRect,
+): { x: number; y: number; diameterPx: number } {
+  const vbX = VIEWBOX.x; // 96
+  const vbY = VIEWBOX.y; // 121
+  const vbW = VIEWBOX.w; // 366
+  const vbH = VIEWBOX.h; // 270
 
-  // Fractional position of the dot within the rendered SVG element.
-  const dotXRatio = (GOLD_DOT.cx - VIEWBOX.x) / VIEWBOX.w;
-  const dotYRatio = (GOLD_DOT.cy - VIEWBOX.y) / VIEWBOX.h;
+  // Fractional position of the dot center inside the SVG artwork (0.0 to 1.0)
+  const fx = (GOLD_DOT.cx - vbX) / vbW; // 324 / 366 = 0.885246
+  const fy = (GOLD_DOT.cy - vbY) / vbH; // 135 / 270 = 0.500000
 
-  // Dot center in panel-relative px.
-  const dotXpx =
-    logoRect.left - panelRect.left + dotXRatio * logoRect.width;
-  const dotYpx =
-    logoRect.top - panelRect.top + dotYRatio * logoRect.height;
+  // Absolute center of the dot relative to panel top-left
+  const dotCenterX = logoRect.left - panelRect.left + fx * logoRect.width;
+  const dotCenterY = logoRect.top - panelRect.top + fy * logoRect.height;
+
+  // Exact rendered diameter matching the SVG dot (2 * r = 56 in 270-unit height)
+  const diameterPx = ((2 * GOLD_DOT.r) / vbH) * logoRect.height;
 
   return {
-    x: (dotXpx / panelRect.width) * 100,
-    y: (dotYpx / panelRect.height) * 100,
+    x: (dotCenterX / panelRect.width) * 100,
+    y: (dotCenterY / panelRect.height) * 100,
+    diameterPx,
   };
 }
 
 // ─── CareNetwork (root) ──────────────────────────────────────────────────────
 
 export interface CareNetworkProps {
-  /** The panel's own ref — used for drag constraint bounds and measurements. */
   boundsRef: RefObject<HTMLDivElement>;
 }
 
 export function CareNetwork({ boundsRef }: CareNetworkProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const descId = useId();
-  const logoRef = useRef<HTMLDivElement>(null);
+  const logoWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Interaction state — only these trigger React re-renders.
+  // Interaction state
   const [isInteracting, setIsInteracting] = useState(false);
   const [activeNode, setActiveNode] = useState<NodeId | null>(null);
   const [proximities, setProximities] = useState<Record<NodeId, number>>({
@@ -142,31 +147,31 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
     "urgent-care": 0,
   });
 
-  // Dot position as a delta from its origin (motion values = no re-renders on move).
+  // Motion values for the draggable dot delta offset (from origin)
   const dotX = useMotionValue(0);
   const dotY = useMotionValue(0);
 
-  // Spring-smoothed values used by the SVG lines for an organic feel.
+  // Spring-smoothed values for SVG lines
   const smoothX = useSpring(dotX, { stiffness: 160, damping: 22 });
   const smoothY = useSpring(dotY, { stiffness: 160, damping: 22 });
 
-  // Dot anchor — the % position of the gold dot within the panel.
-  // Null until the logo is measured.
-  const [dotAnchorPct, setDotAnchorPct] = useState<{
+  // Measured dot anchor position & size
+  const [dotAnchor, setDotAnchor] = useState<{
     x: number;
     y: number;
+    diameterPx: number;
   } | null>(null);
 
   // ── Anchor measurement ────────────────────────────────────────────────────
 
   const measureAnchor = useCallback(() => {
-    if (!boundsRef.current || !logoRef.current) return;
+    if (!boundsRef.current || !logoWrapperRef.current) return;
     const panelRect = boundsRef.current.getBoundingClientRect();
-    setDotAnchorPct(getDotAnchorPercent(panelRect, logoRef.current));
+    const logoRect = logoWrapperRef.current.getBoundingClientRect();
+    setDotAnchor(getDotAnchor(panelRect, logoRect));
   }, [boundsRef]);
 
   useEffect(() => {
-    // Initial measurement after paint.
     const rafId = requestAnimationFrame(measureAnchor);
     const ro = new ResizeObserver(measureAnchor);
     if (boundsRef.current) ro.observe(boundsRef.current);
@@ -177,15 +182,14 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
   }, [measureAnchor, boundsRef]);
 
   // ── Proximity engine ──────────────────────────────────────────────────────
-  // Subscribes to motion value changes — no RAF loop, no re-renders per frame.
 
   const runProximity = useCallback(() => {
-    if (!boundsRef.current || !dotAnchorPct) return;
+    if (!boundsRef.current || !dotAnchor) return;
     const { width: W, height: H } =
       boundsRef.current.getBoundingClientRect();
 
-    const dotAbsX = (dotAnchorPct.x / 100) * W + dotX.get();
-    const dotAbsY = (dotAnchorPct.y / 100) * H + dotY.get();
+    const dotAbsX = (dotAnchor.x / 100) * W + dotX.get();
+    const dotAbsY = (dotAnchor.y / 100) * H + dotY.get();
 
     const next: Record<NodeId, number> = {
       doctor: 0,
@@ -206,7 +210,7 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
 
     setProximities(next);
     setActiveNode(nextActive);
-  }, [boundsRef, dotAnchorPct, dotX, dotY]);
+  }, [boundsRef, dotAnchor, dotX, dotY]);
 
   useEffect(() => {
     const unX = dotX.on("change", runProximity);
@@ -247,7 +251,6 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
         dotY.set(dotY.get() + dy);
         runProximity();
       } else if (e.key === "Escape") {
-        // Snap back to origin.
         dotX.set(0);
         dotY.set(0);
         setIsInteracting(false);
@@ -263,7 +266,6 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
       if (
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)
       ) {
-        // Snap back after arrow key released.
         dotX.set(0);
         dotY.set(0);
         setIsInteracting(false);
@@ -275,30 +277,24 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
   );
 
   // ── Idle tingle ───────────────────────────────────────────────────────────
-  // Fires occasionally to hint that the dot is interactive.
 
   const [tingle, setTingle] = useState(false);
 
   useEffect(() => {
     if (reducedMotion || isInteracting) return;
-
     let timeoutId: ReturnType<typeof setTimeout>;
 
     const fire = () => {
       setTingle(true);
       timeoutId = setTimeout(() => {
         setTingle(false);
-        // Schedule next tingle 5–9 seconds later.
         timeoutId = setTimeout(fire, 5000 + Math.random() * 4000);
       }, 700);
     };
 
-    // First tingle after 3 seconds.
     timeoutId = setTimeout(fire, 3000);
     return () => clearTimeout(timeoutId);
   }, [reducedMotion, isInteracting]);
-
-  // ── Active node lookup ────────────────────────────────────────────────────
 
   const activeNodeData = activeNode
     ? NODES.find((n) => n.id === activeNode) ?? null
@@ -307,32 +303,36 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="relative h-full w-full">
-      {/* SR description — keyboard users understand how to interact */}
+    <div className="relative h-full w-full select-none">
+      {/* SR description */}
       <p id={descId} className="sr-only">
         Interactive care network. Use arrow keys to explore the gold dot and
         discover Doceeto&rsquo;s care connections. Press Escape to return the
         dot to the logo.
       </p>
 
-      {/* Anchored logo — the gold dot is omitted; CareDot renders it */}
+      {/* Anchored logo — sized proportionally (~135px wide) with aspect ratio 366/270 */}
       <div
-        ref={logoRef}
-        className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center z-10"
         aria-hidden="true"
       >
-        <BrandMark
-          className="animate-float h-[min(11rem,26vh)] w-[min(11rem,26vh)] drop-shadow-[0_18px_35px_rgba(16,45,35,0.35)] motion-reduce:animate-none"
-          hideDot
-        />
+        <div
+          ref={logoWrapperRef}
+          className="relative w-[130px] sm:w-[140px] aspect-[366/270]"
+        >
+          <BrandMark
+            className="w-full h-full drop-shadow-[0_12px_28px_rgba(0,0,0,0.45)]"
+            hideDot
+          />
+        </div>
       </div>
 
       {/* SVG overlay: tether line + node connection lines */}
       <AnimatePresence>
-        {dotAnchorPct && isInteracting && (
+        {dotAnchor && isInteracting && (
           <NetworkLines
             key="network-lines"
-            dotAnchorPct={dotAnchorPct}
+            dotAnchorPct={dotAnchor}
             dotX={smoothX}
             dotY={smoothY}
             proximities={proximities}
@@ -350,6 +350,7 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
               label={node.label}
               x={node.x}
               y={node.y}
+              icon={node.icon}
               proximity={proximities[node.id]}
               active={activeNode === node.id}
               enterDelay={reducedMotion ? 0 : i * 0.07}
@@ -367,13 +368,14 @@ export function CareNetwork({ boundsRef }: CareNetworkProps) {
         )}
       </AnimatePresence>
 
-      {/* The interactive gold dot */}
-      {dotAnchorPct && (
+      {/* The interactive gold dot — sits 100% exact in idle state over logo */}
+      {dotAnchor && (
         <CareDot
           boundsRef={boundsRef}
           dotX={dotX}
           dotY={dotY}
-          anchorPct={dotAnchorPct}
+          anchorPct={dotAnchor}
+          diameterPx={dotAnchor.diameterPx}
           tingle={tingle}
           isInteracting={isInteracting}
           onDragStart={handleDragStart}
@@ -412,7 +414,6 @@ function NetworkLines({
   const ax = dotAnchorPct.x;
   const ay = dotAnchorPct.y;
 
-  // Drive all SVG DOM mutations via RAF — no React re-renders during drag.
   useEffect(() => {
     let rafId: number;
 
@@ -426,33 +427,33 @@ function NetworkLines({
       const dx = dotX.get();
       const dy = dotY.get();
 
-      // Current dot position as % of panel.
       const dotPx = ax + (dx / W) * 100;
       const dotPy = ay + (dy / H) * 100;
 
-      // Tether line (logo anchor → dot, fades with distance).
+      // Tether line
       if (tetherRef.current) {
         const dist = Math.hypot(dx, dy);
-        const maxDist = Math.hypot(W, H) * 0.38;
-        const opacity = Math.max(0, (1 - dist / maxDist) * 0.45);
+        const maxDist = Math.hypot(W, H) * 0.4;
+        const opacity = Math.max(0, (1 - dist / maxDist) * 0.5);
         const el = tetherRef.current;
         el.setAttribute("x2", `${dotPx}%`);
         el.setAttribute("y2", `${dotPy}%`);
         el.style.opacity = String(opacity);
       }
 
-      // Node connection lines.
+      // Node connection lines
       for (const node of NODES) {
         const el = lineRefs.current[node.id];
         if (!el) continue;
         const prox = proximities[node.id] ?? 0;
         el.setAttribute("x1", `${dotPx}%`);
         el.setAttribute("y1", `${dotPy}%`);
-        el.style.opacity = String(0.1 + prox * 0.58);
+        el.style.opacity = String(0.18 + prox * 0.75);
         el.setAttribute(
           "stroke",
-          prox > 0.6 ? GOLD_STRONG : prox > 0.28 ? GOLD_MID : GOLD_FAINT,
+          prox > 0.65 ? GOLD_STRONG : prox > 0.3 ? GOLD_MID : GOLD_FAINT,
         );
+        el.setAttribute("stroke-width", String(1.5 + prox * 0.75));
       }
 
       rafId = requestAnimationFrame(tick);
@@ -465,14 +466,14 @@ function NetworkLines({
   return (
     <motion.svg
       ref={svgRef}
-      className="pointer-events-none absolute inset-0 h-full w-full"
+      className="pointer-events-none absolute inset-0 h-full w-full z-15"
       aria-hidden="true"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: reducedMotion ? 0 : 0.3 }}
     >
-      {/* Tether: dashed, fades as dot travels farther from the logo */}
+      {/* Tether line */}
       <line
         ref={(el) => {
           tetherRef.current = el;
@@ -482,13 +483,13 @@ function NetworkLines({
         x2={`${ax}%`}
         y2={`${ay}%`}
         stroke={GOLD}
-        strokeWidth="1"
+        strokeWidth="1.5"
         strokeLinecap="round"
-        strokeDasharray="2 5"
+        strokeDasharray="3 4"
         style={{ opacity: 0 }}
       />
 
-      {/* Node lines — solid, colour/opacity driven by proximity */}
+      {/* Node lines */}
       {NODES.map((node) => (
         <line
           key={node.id}
@@ -500,7 +501,7 @@ function NetworkLines({
           x2={`${node.x}%`}
           y2={`${node.y}%`}
           stroke={GOLD_FAINT}
-          strokeWidth="0.7"
+          strokeWidth="1.5"
           strokeLinecap="round"
           style={{ opacity: 0 }}
         />
@@ -515,27 +516,40 @@ interface CareNodeProps {
   label: string;
   x: number;
   y: number;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   proximity: number;
   active: boolean;
   enterDelay: number;
 }
 
-function CareNode({ label, x, y, proximity, active, enterDelay }: CareNodeProps) {
-  const scale = 1 + proximity * 0.3 + (active ? 0.07 : 0);
-  const ringOpacity = 0.18 + proximity * 0.72;
-  const labelOpacity = 0.35 + proximity * 0.6;
+function CareNode({
+  label,
+  x,
+  y,
+  icon: Icon,
+  proximity,
+  active,
+  enterDelay,
+}: CareNodeProps) {
+  const scale = 1 + proximity * 0.22 + (active ? 0.08 : 0);
+  const ringOpacity = 0.35 + proximity * 0.65;
+  const labelOpacity = 0.6 + proximity * 0.4;
 
   return (
     <motion.div
-      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5"
+      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 z-20"
       style={{ left: `${x}%`, top: `${y}%` }}
-      initial={{ opacity: 0, scale: 0.55 }}
+      initial={{ opacity: 0, scale: 0.6 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.55 }}
-      transition={{ delay: enterDelay, duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, scale: 0.6 }}
+      transition={{
+        delay: enterDelay,
+        duration: 0.38,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       aria-hidden="true"
     >
-      {/* Node circle with proximity-driven scale */}
+      {/* Node circle (~48px diameter) */}
       <motion.div
         className="relative flex items-center justify-center"
         animate={{ scale }}
@@ -547,31 +561,45 @@ function CareNode({ label, x, y, proximity, active, enterDelay }: CareNodeProps)
             <motion.div
               key="pulse"
               className="absolute inset-0 rounded-full"
-              style={{ border: `1px solid ${GOLD}` }}
-              initial={{ scale: 1, opacity: 0.65 }}
-              animate={{ scale: 2.6, opacity: 0 }}
+              style={{ border: `1.5px solid ${GOLD}` }}
+              initial={{ scale: 1, opacity: 0.8 }}
+              animate={{ scale: 2.2, opacity: 0 }}
               transition={{ duration: 1.1, ease: "easeOut", repeat: Infinity }}
             />
           )}
         </AnimatePresence>
 
-        {/* Ring */}
+        {/* 48px circle node */}
         <div
-          className="h-3 w-3 rounded-full"
+          className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg backdrop-blur-md transition-colors duration-300"
           style={{
             border: `1.5px solid rgba(201, 161, 63, ${ringOpacity})`,
             background: active
-              ? "rgba(201, 161, 63, 0.16)"
-              : "rgba(201, 161, 63, 0.05)",
-            transition: "background 0.3s ease, border-color 0.3s ease",
+              ? "rgba(201, 161, 63, 0.25)"
+              : "rgba(15, 41, 34, 0.85)",
+            boxShadow: active
+              ? "0 0 20px rgba(201, 161, 63, 0.4)"
+              : "0 4px 14px rgba(0, 0, 0, 0.35)",
           }}
-        />
+        >
+          <Icon
+            className="h-5 w-5 transition-transform duration-200"
+            style={{
+              color: active ? "#FFFFFF" : GOLD,
+              transform: active ? "scale(1.1)" : "scale(1)",
+            }}
+          />
+        </div>
       </motion.div>
 
-      {/* Label */}
+      {/* Prominent, readable 14px label */}
       <span
-        className="pointer-events-none select-none text-center text-[8.5px] font-semibold uppercase tracking-[0.13em]"
-        style={{ color: `rgba(201, 161, 63, ${labelOpacity})`, transition: "color 0.2s ease" }}
+        className="pointer-events-none select-none text-center text-[14px] font-semibold tracking-wide text-paper drop-shadow-md"
+        style={{
+          opacity: labelOpacity,
+          color: active ? "#FFFFFF" : "#ECEAE0",
+          transition: "opacity 0.2s ease, color 0.2s ease",
+        }}
       >
         {label}
       </span>
@@ -588,20 +616,19 @@ interface CareMessageProps {
 function CareMessage({ message }: CareMessageProps) {
   return (
     <motion.div
-      className="pointer-events-none absolute inset-x-0 bottom-14 flex justify-center px-10"
-      initial={{ opacity: 0, y: 8 }}
+      className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-center px-6"
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 4 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, y: 5 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
       aria-live="polite"
       aria-atomic="true"
     >
-      <p
-        className="font-serif text-[14px] font-medium italic leading-snug"
-        style={{ color: "rgba(201, 161, 63, 0.85)" }}
-      >
-        {message}
-      </p>
+      <div className="rounded-full bg-forest-800/80 px-5 py-2.5 border border-gold/30 shadow-card backdrop-blur-md">
+        <p className="font-serif text-[18px] sm:text-[20px] font-medium italic text-paper text-center tracking-tight">
+          {message}
+        </p>
+      </div>
     </motion.div>
   );
 }
@@ -613,6 +640,7 @@ interface CareDotProps {
   dotX: ReturnType<typeof useMotionValue<number>>;
   dotY: ReturnType<typeof useMotionValue<number>>;
   anchorPct: { x: number; y: number };
+  diameterPx: number;
   tingle: boolean;
   isInteracting: boolean;
   onDragStart: () => void;
@@ -629,6 +657,7 @@ const CareDot = forwardRef<HTMLDivElement, CareDotProps>(function CareDot(
     dotX,
     dotY,
     anchorPct,
+    diameterPx,
     tingle,
     isInteracting,
     onDragStart,
@@ -640,25 +669,28 @@ const CareDot = forwardRef<HTMLDivElement, CareDotProps>(function CareDot(
   },
   ref,
 ) {
-  // Tingle: a brief scale pulse that fires occasionally at idle.
   const tingleVariants = {
     idle: { scale: 1 },
     tingle: {
-      scale: [1, 1.22, 0.94, 1.1, 1],
-      transition: { duration: 0.6, ease: "easeInOut" as const },
+      scale: [1, 1.25, 0.92, 1.12, 1],
+      transition: { duration: 0.65, ease: "easeInOut" as const },
     },
   };
+
+  // Safe fallback size (~20px) if diameterPx is not yet measured
+  const dPx = diameterPx > 0 ? diameterPx : 22;
 
   return (
     <motion.div
       ref={ref}
-      className="absolute -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none outline-none active:cursor-grabbing"
+      className="absolute -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none outline-none active:cursor-grabbing z-30"
       style={{
         left: `${anchorPct.x}%`,
         top: `${anchorPct.y}%`,
         x: dotX,
         y: dotY,
-        zIndex: 20,
+        width: `${dPx}px`,
+        height: `${dPx}px`,
       }}
       drag
       dragConstraints={boundsRef}
@@ -667,7 +699,7 @@ const CareDot = forwardRef<HTMLDivElement, CareDotProps>(function CareDot(
       dragTransition={{ bounceStiffness: 260, bounceDamping: 18 }}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      whileDrag={{ scale: 0.9 }}
+      whileDrag={{ scale: 1.1 }}
       tabIndex={0}
       role="button"
       aria-label="Explore Doceeto care network"
@@ -676,7 +708,6 @@ const CareDot = forwardRef<HTMLDivElement, CareDotProps>(function CareDot(
       onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
     >
-      {/* Tingle wrapper */}
       <motion.div
         variants={reducedMotion ? {} : tingleVariants}
         animate={
@@ -686,32 +717,32 @@ const CareDot = forwardRef<HTMLDivElement, CareDotProps>(function CareDot(
               ? "tingle"
               : "idle"
         }
-        className="relative"
+        className="relative h-full w-full"
       >
-        {/* Glow halo — appears when dragging */}
+        {/* Glow halo when dragging */}
         <motion.div
           className="absolute inset-0 rounded-full"
           style={{
             background:
-              "radial-gradient(circle, rgba(201,161,63,0.22) 0%, transparent 68%)",
+              "radial-gradient(circle, rgba(201,161,63,0.4) 0%, transparent 70%)",
           }}
           initial={{ scale: 1, opacity: 0 }}
           animate={
             isInteracting
-              ? { scale: 2.6, opacity: 1 }
+              ? { scale: 2.8, opacity: 1 }
               : { scale: 1, opacity: 0 }
           }
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
         />
 
-        {/* The gold dot */}
+        {/* The actual gold dot — exact size matching SVG dot */}
         <div
-          className="relative h-[22px] w-[22px] rounded-full"
+          className="h-full w-full rounded-full"
           style={{
             background: GOLD,
             boxShadow: isInteracting
-              ? `0 0 0 3px rgba(201,161,63,0.18), 0 4px 18px rgba(201,161,63,0.32)`
-              : `0 2px 8px rgba(201,161,63,0.28)`,
+              ? `0 0 0 3px rgba(201,161,63,0.3), 0 4px 20px rgba(201,161,63,0.5)`
+              : `0 2px 8px rgba(201,161,63,0.35)`,
             transition: "box-shadow 0.3s ease",
           }}
         />

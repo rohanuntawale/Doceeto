@@ -506,24 +506,33 @@ const inputCls =
   "h-12 w-full rounded-2xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-4 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)] short:h-11";
 
 /**
- * Right: a clear window onto the page's footage with the interactive Care
- * Network. The gold dot from the Doceeto logo is the draggable care signal.
+ * Right: a dedicated dark forest panel housing the interactive Care Network.
+ * High contrast for gold accents and text, self-contained and calm.
  */
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);
   return (
-    <section className="relative hidden overflow-hidden lg:block">
+    <section className="relative hidden overflow-hidden lg:block bg-[#0B211B] text-paper">
+      {/* Soft radial spotlight in center for atmospheric depth & contrast */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 45%, rgba(27, 76, 62, 0.7) 0%, rgba(11, 33, 27, 0.98) 75%)",
+        }}
+      />
+
       {/* Hairline separator between form and panel */}
-      <div className="absolute inset-y-0 left-0 w-px bg-white/25" />
+      <div className="absolute inset-y-0 left-0 z-10 w-px bg-white/15" />
 
       {/* Full panel bounds — used as drag constraint for the gold dot */}
-      <div ref={bounds} className="absolute inset-0">
+      <div ref={bounds} className="absolute inset-0 z-10">
         <CareNetwork boundsRef={bounds} />
       </div>
 
       {/* Tagline — clean typography, no pill or border */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-7 flex justify-center">
-        <p className="font-serif text-[13px] italic text-paper/55">
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center">
+        <p className="font-serif text-[14px] italic text-paper/65 tracking-wide drop-shadow">
           Care that reaches you.
         </p>
       </div>
