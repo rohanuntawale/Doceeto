@@ -4,6 +4,7 @@ import { Suspense, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -230,7 +231,16 @@ function AuthPanel({
        short windows, not the expected experience. */
     /* 85% surface over the footage: the paper texture still moves behind the
        form, without the type losing its ground. */
-    <section className="flex h-full min-h-0 flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface-rgb)/0.85)] px-6 py-8 backdrop-blur-2xl short:py-6 sm:px-10">
+    <section className="relative flex h-full min-h-0 flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface-rgb)/0.85)] px-6 py-8 backdrop-blur-2xl short:py-6 sm:px-10">
+      {/* Pinned to the panel corner rather than placed in the column, so it
+          cannot push the centred form off its axis. */}
+      <Link
+        href="/"
+        className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.7)] px-3 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] transition-colors hover:text-[var(--text)] sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+      </Link>
+
       <div className="w-full max-w-[22rem]">
         <div className="flex justify-center">
           <Link href="/" aria-label="Doceeto home">
