@@ -13,12 +13,16 @@ const nextConfig = {
   experimental: {
     // Ship less client JS for these heavy libs.
     optimizePackageImports: ["lucide-react", "@tanstack/react-query"],
-    // The setup route reads lib/postgres/schema.sql at RUNTIME, so nothing
-    // imports it and Next's dependency tracing cannot see it. Without this the
-    // file is missing from the serverless bundle and POST /api/admin/seed fails
-    // on Vercel with ENOENT — while working perfectly in local dev.
+    // These routes read their .sql at RUNTIME, so nothing imports it and Next's
+    // dependency tracing cannot see it. Without this the file is missing from
+    // the serverless bundle and the route fails on Vercel with ENOENT — while
+    // working perfectly in local dev.
     outputFileTracingIncludes: {
       "/api/admin/seed": ["./lib/postgres/schema.sql"],
+      // Every social route installs the social schema through its guard, and
+      // the bare /api/social path needs its own key — "/**" does not match it.
+      "/api/social": ["./lib/social/schema.sql"],
+      "/api/social/**": ["./lib/social/schema.sql"],
     },
   },
   /**
