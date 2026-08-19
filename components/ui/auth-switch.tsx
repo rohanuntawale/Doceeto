@@ -483,34 +483,26 @@ function Field({
 const inputCls =
   "h-12 w-full rounded-2xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-4 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)] short:h-11";
 
-/**
- * Right: a dedicated dark forest panel housing the interactive Care Network.
- * High contrast for gold accents and text, self-contained and calm.
- */
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);
   return (
-    <section className="relative hidden overflow-hidden lg:block bg-[#0B211B] text-paper">
-      {/* Soft radial spotlight in center for atmospheric depth & contrast */}
+    <section className="relative hidden overflow-hidden lg:block bg-[rgb(236,234,224)/0.10] backdrop-blur-[14px] border-l border-white/40 shadow-soft">
       <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-80"
+        className="pointer-events-none absolute inset-0 z-0 opacity-50"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 45%, rgba(27, 76, 62, 0.7) 0%, rgba(11, 33, 27, 0.98) 75%)",
+            "radial-gradient(ellipse at 50% 45%, rgba(201, 161, 63, 0.12) 0%, rgba(21, 61, 50, 0.06) 80%)",
         }}
       />
 
-      {/* Hairline separator between form and panel */}
-      <div className="absolute inset-y-0 left-0 z-10 w-px bg-white/15" />
+      <div className="absolute inset-y-0 left-0 z-10 w-px bg-white/40" />
 
-      {/* Full panel bounds — used as drag constraint for the gold dot */}
       <div ref={bounds} className="absolute inset-0 z-10">
         <CareNetwork boundsRef={bounds} />
       </div>
 
-      {/* Tagline — clean typography, no pill or border */}
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center">
-        <p className="font-serif text-[14px] italic text-paper/65 tracking-wide drop-shadow">
+        <p className="font-serif text-[14px] italic text-[rgb(21,61,50)]/75 tracking-wide drop-shadow-sm">
           Care that reaches you.
         </p>
       </div>
