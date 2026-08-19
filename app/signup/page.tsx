@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Name, BrandMark } from "@/components/brand/wordmark";
-import { DoctorFigure } from "@/components/brand/doctor-figure";
 import { RegistryAutofill } from "@/components/auth/registry-autofill";
+import { AuthShell, authPanelCls } from "@/components/auth/auth-shell";
 import { useToast } from "@/components/ui/toast";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
@@ -57,12 +57,9 @@ export default function Landing() {
 
 function LandingShell() {
   return (
-    <main className="relative grid min-h-screen place-items-center px-4 pb-6 pt-16 sm:px-6 lg:pt-6">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-[26px] border border-[var(--border)] shadow-card lg:min-h-[86vh] lg:grid-cols-[0.95fr_1.05fr]">
-        <OnboardingPanel />
-        <CoverPlate />
-      </div>
-    </main>
+    <AuthShell>
+      <OnboardingPanel />
+    </AuthShell>
   );
 }
 
@@ -444,17 +441,8 @@ function OnboardingPanel() {
   }
 
   return (
-    <section className="relative flex flex-col justify-center overflow-hidden bg-espresso-800 px-5 py-12 sm:px-10 sm:py-14 md:px-14">
+    <section className={authPanelCls}>
       {/* soft ambient glow, like the rest of the app */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full opacity-40 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(circle, rgb(var(--c-tan) / 0.28), transparent 65%)",
-        }}
-      />
-
       <div className="relative mx-auto w-full max-w-[22rem] text-center">
         {/* wordmark */}
         <div className="flex items-center justify-center gap-2.5">
@@ -469,7 +457,7 @@ function OnboardingPanel() {
 
         <Link
           href="/"
-          className="mt-6 inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-cream"
+          className="mt-6 inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home
@@ -477,16 +465,16 @@ function OnboardingPanel() {
 
         {/* headline */}
         <h1
-          className="animate-rise mt-8 font-serif text-4xl leading-[1.03] tracking-tight text-cream min-[380px]:text-[2.6rem] sm:text-[3rem]"
+          className="animate-rise mt-8 font-serif text-4xl leading-[1.03] tracking-tight text-[var(--text)] min-[380px]:text-[2.6rem] sm:text-[3rem]"
           style={{ animationDelay: "40ms" }}
         >
           {step === 2 ? (
             <>
-              Your <span className="text-salmon">practice profile</span>
+              Your <span className="text-[var(--accent)]">practice profile</span>
             </>
           ) : (
             <>
-              Start your <span className="text-salmon">care journey</span>
+              Start your <span className="text-[var(--accent)]">care journey</span>
             </>
           )}
         </h1>
@@ -499,7 +487,7 @@ function OnboardingPanel() {
                 className="animate-rise mt-7 flex justify-center"
                 style={{ animationDelay: "90ms" }}
               >
-                <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-espresso/60 p-1.5">
+                <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] p-1.5">
                   <SocialButton
                     label={
                       role === "doctor"
@@ -533,7 +521,7 @@ function OnboardingPanel() {
               className="animate-rise mt-6"
               style={{ animationDelay: "150ms" }}
             >
-              <div className="flex rounded-full border border-[var(--border)] bg-espresso/60 p-1 text-sm">
+              <div className="flex rounded-full border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] p-1 text-sm">
                 {(["patient", "doctor", "nurse"] as Role[]).map((r) => {
                   const active = role === r;
                   return (
@@ -552,8 +540,8 @@ function OnboardingPanel() {
                       className={cn(
                         "flex-1 rounded-full px-3 py-2 font-medium transition-colors",
                         active
-                          ? "bg-terracotta text-on-accent"
-                          : "text-[var(--text-muted)] hover:text-cream",
+                          ? "bg-[var(--accent)] text-on-accent"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]",
                       )}
                     >
                       {r === "patient"
@@ -614,7 +602,7 @@ function OnboardingPanel() {
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
                   aria-label={showPw ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] transition-colors hover:text-cream"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] transition-colors hover:text-[var(--text)]"
                 >
                   {showPw ? (
                     <EyeOff className="h-[18px] w-[18px]" />
@@ -635,7 +623,7 @@ function OnboardingPanel() {
                   to state, starting with the name they practise under. */}
               {googleNurse && (
                 <>
-                  <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-left text-xs leading-relaxed text-[var(--text-muted)]">
+                  <div className="rounded-lg border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-3.5 py-3 text-left text-xs leading-relaxed text-[var(--text-muted)]">
                     Signed in with Google. Your account isn&rsquo;t created yet
                     patients choose a nurse on what&rsquo;s below, so it has
                     to come from you.
@@ -694,8 +682,8 @@ function OnboardingPanel() {
                         className={cn(
                           "rounded-full border px-3 py-2 text-xs font-medium transition-colors",
                           on
-                            ? "border-terracotta bg-terracotta/15 text-cream"
-                            : "border-[var(--border)] text-[var(--text-muted)] hover:text-cream",
+                            ? "border-[var(--accent)] bg-[rgb(var(--accent-rgb)/0.09)] text-[var(--text)]"
+                            : "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]",
                         )}
                       >
                         {s.label}
@@ -792,7 +780,7 @@ function OnboardingPanel() {
                   card should be the one they practise under. */}
               {googleDoctor && (
                 <>
-                  <div className="rounded-lg border border-[var(--border)] bg-espresso/60 px-3.5 py-3 text-xs leading-relaxed text-[var(--text-muted)]">
+                  <div className="rounded-lg border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-3.5 py-3 text-xs leading-relaxed text-[var(--text-muted)]">
                     Signed in with Google. Your account isn&rsquo;t created yet
                     patients choose a doctor on what&rsquo;s below, so it has
                     to come from you.
@@ -827,7 +815,7 @@ function OnboardingPanel() {
 
               <div>
                 <span className="label">Practice status</span>
-                <div className="mt-1.5 flex rounded-xl border border-[var(--border)] bg-espresso/60 p-1 text-sm">
+                <div className="mt-1.5 flex rounded-xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] p-1 text-sm">
                   {(["practising", "resident"] as const).map((k) => (
                     <button
                       key={k}
@@ -836,8 +824,8 @@ function OnboardingPanel() {
                       className={cn(
                         "flex-1 rounded-lg px-3 py-2 font-medium capitalize transition-colors",
                         kind === k
-                          ? "bg-terracotta text-on-accent"
-                          : "text-[var(--text-muted)] hover:text-cream",
+                          ? "bg-[var(--accent)] text-on-accent"
+                          : "text-[var(--text-muted)] hover:text-[var(--text)]",
                       )}
                     >
                       {k}
@@ -975,7 +963,7 @@ function OnboardingPanel() {
             </>
           )}
 
-          {error && <p className="text-sm text-terracotta-300">{error}</p>}
+          {error && <p className="text-sm text-[var(--accent)]-300">{error}</p>}
 
           {/* primary CTA with a subtle sheen sweep on hover */}
           <div className="group relative overflow-hidden rounded-lg">
@@ -1009,7 +997,7 @@ function OnboardingPanel() {
                 setStep(1);
                 setError(null);
               }}
-              className="mx-auto flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-cream"
+              className="mx-auto flex items-center gap-1.5 text-sm text-[var(--text-muted)] transition-colors hover:text-[var(--text)]"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to account details
@@ -1035,7 +1023,7 @@ function OnboardingPanel() {
           Already have an account?{" "}
           <Link
             href="/login"
-            className="font-medium text-cream transition-colors hover:text-salmon"
+            className="font-medium text-[var(--text)] transition-colors hover:text-[var(--accent)]"
           >
             Log in
           </Link>
@@ -1047,20 +1035,20 @@ function OnboardingPanel() {
           style={{ animationDelay: "280ms" }}
         >
           <div className="flex items-center justify-center gap-3">
-            <Link href="/about" className="transition-colors hover:text-cream">
+            <Link href="/about" className="transition-colors hover:text-[var(--text)]">
               About
             </Link>
             <span aria-hidden>·</span>
             <Link
               href="/contact"
-              className="transition-colors hover:text-cream"
+              className="transition-colors hover:text-[var(--text)]"
             >
               Contact
             </Link>
             <span aria-hidden>·</span>
             <Link
               href="/ops-signin"
-              className="transition-colors hover:text-cream"
+              className="transition-colors hover:text-[var(--text)]"
             >
               Ops sign in
             </Link>
@@ -1073,7 +1061,7 @@ function OnboardingPanel() {
 }
 
 const inputCls =
-  "h-12 w-full rounded-xl border border-[var(--border)] bg-espresso/60 px-4 text-sm text-cream outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-terracotta focus:ring-1 focus:ring-terracotta/40";
+  "h-12 w-full rounded-2xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-4 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)]";
 
 // Labelled field for the doctor profile step — unlike step 1's placeholder-only
 // inputs, a dozen fields need visible labels to stay scannable.
@@ -1107,7 +1095,7 @@ function SocialButton({
   const toast = useToast();
   const [leaving, setLeaving] = useState(false);
   const cls =
-    "grid h-11 w-11 place-items-center rounded-full text-cream/80 transition-colors hover:bg-white/8 hover:text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50";
+    "grid h-11 w-11 place-items-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[rgb(var(--accent-rgb)/0.07)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-rgb)/0.4)]";
   if (href) {
     return (
       <a
@@ -1122,7 +1110,7 @@ function SocialButton({
         className={cn(cls, leaving && "cursor-wait")}
       >
         {leaving ? (
-          <Loader2 className="h-5 w-5 animate-spin text-cream" />
+          <Loader2 className="h-5 w-5 animate-spin text-[var(--text)]" />
         ) : (
           children
         )}
@@ -1149,66 +1137,6 @@ function SocialButton({
 }
 
 // ── Right: deck cover plate — green radial, gold rings, mascot ─
-function CoverPlate() {
-  return (
-    <section
-      className="relative hidden flex-col items-center justify-center overflow-hidden lg:flex"
-      style={{
-        background:
-          "radial-gradient(125% 95% at 80% 15%, rgb(var(--c-espresso-700)) 0%, rgb(var(--c-espresso-800)) 44%, rgb(var(--c-espresso)) 100%)",
-      }}
-    >
-      {/* left hairline between the panels */}
-      <div className="absolute inset-y-0 left-0 w-px bg-cream/10" />
-
-      {/* concentric gold rings, echoing the deck cover */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[8%] top-1/2 -translate-y-1/2"
-      >
-        <div className="relative h-[26rem] w-[26rem]">
-          <span className="absolute inset-0 rounded-full border border-tan/25" />
-          <span className="absolute inset-[13%] rounded-full border border-tan/15" />
-          <span className="absolute inset-[26%] rounded-full border border-tan/10" />
-          <span className="absolute inset-0 grid place-items-center">
-            <DoctorFigure className="h-40 w-40 animate-float motion-reduce:animate-none" />
-          </span>
-        </div>
-      </div>
-
-      {/* brand block, lower-left */}
-      <div className="relative z-10 mr-auto max-w-md px-12">
-        <span className="text-sm font-semibold tracking-tight text-salmon">
-          India&apos;s front door to care.
-        </span>
-        <div className="mt-4">
-          <span className="font-serif text-6xl leading-none tracking-tight text-cream">
-            Doc<span className="text-salmon">ee</span>to
-          </span>
-          {/* gold underline swoosh */}
-          <svg viewBox="0 0 220 12" className="mt-2 h-3 w-56" aria-hidden>
-            <path
-              d="M2 7 C 60 1, 110 1, 150 6 C 170 8.5, 200 8, 218 3"
-              fill="none"
-              className="stroke-tan"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        <p className="mt-4 font-serif text-2xl text-salmon">
-          Care that reaches you.
-        </p>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-cream/70">
-          A real doctor, on demand, at your door. One tap for urgent help, and
-          medicine sent to you, all in one place.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-
 // Brand glyphs inlined (no lucide brand-icon dependency). Google keeps its
 // colors to read at a glance; Apple rides currentColor.
 function GoogleGlyph() {
