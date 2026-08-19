@@ -91,7 +91,7 @@ export default function SalesPolicyPage() {
               <P>
                 Healthcare services provided by a clinical establishment or an
                 authorised medical practitioner are <T>exempt from GST</T> under
-                Notification 12/2017 – Central Tax (Rate). Our{" "}
+                Notification 12/2017-Central Tax (Rate). Our{" "}
                 <T>platform fee, delivery charges and other non-clinical
                 services are taxable</T> and carry GST at the applicable rate.
               </P>
@@ -306,10 +306,10 @@ export default function SalesPolicyPage() {
               <Table
                 columns={["Paid by", "Refunded to", "Typical time"]}
                 rows={[
-                  ["UPI", "The same UPI ID", "1–3 working days"],
-                  ["Card", "The same card", "5–7 working days"],
-                  ["Net banking", "The same bank account", "5–7 working days"],
-                  ["Wallet", "The same wallet", "1–3 working days"],
+                  ["UPI", "The same UPI ID", "1 to 3 working days"],
+                  ["Card", "The same card", "5 to 7 working days"],
+                  ["Net banking", "The same bank account", "5 to 7 working days"],
+                  ["Wallet", "The same wallet", "1 to 3 working days"],
                   [
                     "Cash",
                     "Bank transfer to details you provide, once recovered from the provider",
