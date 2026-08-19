@@ -37,9 +37,9 @@ import { BrandMark, GOLD_DOT, VIEWBOX } from "@/components/brand/wordmark";
 // ─── Brand colour tokens ────────────────────────────────────────────────────
 
 const GOLD = "#C9A13F";
-const GOLD_FAINT = "rgba(201, 161, 63, 0.22)";
-const GOLD_MID = "rgba(201, 161, 63, 0.55)";
-const GOLD_STRONG = "rgba(201, 161, 63, 0.88)";
+const GOLD_FAINT = "rgba(201, 161, 63, 0.45)";
+const GOLD_MID = "rgba(201, 161, 63, 0.72)";
+const GOLD_STRONG = "rgba(201, 161, 63, 0.95)";
 
 // ─── Interaction constants ───────────────────────────────────────────────────
 
@@ -434,7 +434,7 @@ function NetworkLines({
       if (tetherRef.current) {
         const dist = Math.hypot(dx, dy);
         const maxDist = Math.hypot(W, H) * 0.4;
-        const opacity = Math.max(0, (1 - dist / maxDist) * 0.5);
+        const opacity = Math.max(0, (1 - dist / maxDist) * 0.65);
         const el = tetherRef.current;
         el.setAttribute("x2", `${dotPx}%`);
         el.setAttribute("y2", `${dotPy}%`);
@@ -448,7 +448,7 @@ function NetworkLines({
         const prox = proximities[node.id] ?? 0;
         el.setAttribute("x1", `${dotPx}%`);
         el.setAttribute("y1", `${dotPy}%`);
-        el.style.opacity = String(0.18 + prox * 0.75);
+        el.style.opacity = String(0.45 + prox * 0.5);
         el.setAttribute(
           "stroke",
           prox > 0.65 ? GOLD_STRONG : prox > 0.3 ? GOLD_MID : GOLD_FAINT,
@@ -483,7 +483,7 @@ function NetworkLines({
         x2={`${ax}%`}
         y2={`${ay}%`}
         stroke={GOLD}
-        strokeWidth="1.5"
+        strokeWidth="1.75"
         strokeLinecap="round"
         strokeDasharray="3 4"
         style={{ opacity: 0 }}
@@ -532,8 +532,8 @@ function CareNode({
   enterDelay,
 }: CareNodeProps) {
   const scale = 1 + proximity * 0.22 + (active ? 0.08 : 0);
-  const ringOpacity = 0.35 + proximity * 0.65;
-  const labelOpacity = 0.6 + proximity * 0.4;
+  const borderOpacity = 0.75 + proximity * 0.25;
+  const labelOpacity = 0.75 + proximity * 0.25;
 
   return (
     <motion.div
@@ -561,25 +561,29 @@ function CareNode({
             <motion.div
               key="pulse"
               className="absolute inset-0 rounded-full"
-              style={{ border: `1.5px solid ${GOLD}` }}
-              initial={{ scale: 1, opacity: 0.8 }}
+              style={{ border: `2px solid ${GOLD}` }}
+              initial={{ scale: 1, opacity: 0.85 }}
               animate={{ scale: 2.2, opacity: 0 }}
               transition={{ duration: 1.1, ease: "easeOut", repeat: Infinity }}
             />
           )}
         </AnimatePresence>
 
-        {/* 48px circle node */}
+        {/* 48px circle node with strong gold border and high contrast */}
         <div
-          className="h-12 w-12 rounded-full flex items-center justify-center shadow-lg backdrop-blur-md transition-colors duration-300"
+          className="h-12 w-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300"
           style={{
-            border: `1.5px solid rgba(201, 161, 63, ${ringOpacity})`,
+            border: `2px solid rgba(201, 161, 63, ${borderOpacity})`,
             background: active
-              ? "rgba(201, 161, 63, 0.25)"
-              : "rgba(15, 41, 34, 0.85)",
+              ? "rgb(201, 161, 63)"
+              : proximity > 0.3
+                ? "rgba(21, 61, 50, 0.96)"
+                : "rgba(21, 61, 50, 0.92)",
             boxShadow: active
-              ? "0 0 20px rgba(201, 161, 63, 0.4)"
-              : "0 4px 14px rgba(0, 0, 0, 0.35)",
+              ? "0 0 18px rgba(201, 161, 63, 0.6), 0 4px 14px rgba(21, 61, 50, 0.35)"
+              : proximity > 0.3
+                ? "0 0 12px rgba(201, 161, 63, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25)"
+                : "0 4px 12px rgba(0, 0, 0, 0.2)",
           }}
         >
           <Icon
@@ -594,10 +598,10 @@ function CareNode({
 
       {/* Prominent, readable 14px label */}
       <span
-        className="pointer-events-none select-none text-center text-[14px] font-semibold tracking-wide text-paper drop-shadow-md"
+        className="pointer-events-none select-none text-center text-[14px] font-bold tracking-wide drop-shadow-sm"
         style={{
           opacity: labelOpacity,
-          color: active ? "#FFFFFF" : "#ECEAE0",
+          color: active ? "#153D32" : "#1B4C3E",
           transition: "opacity 0.2s ease, color 0.2s ease",
         }}
       >
