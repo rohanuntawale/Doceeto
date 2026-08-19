@@ -116,7 +116,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
               onClick={() => setOpen(false)}
               variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }}
               transition={{ duration: reduceMotion ? 0 : 0.25 }}
-              className="absolute inset-0 h-full w-full cursor-default"
+              className="absolute inset-0 h-full w-full cursor-default bg-black/40 backdrop-blur-sm"
             />
 
             {/* Panel */}
@@ -147,10 +147,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                 </button>
               </div>
 
-              <nav
-                aria-label="Main"
-                className="min-h-0 overflow-y-auto px-4 py-4"
-              >
+              <nav aria-label="Main" className="min-h-0 overflow-y-auto px-4 py-4">
                 <ul className="grid grid-cols-2 gap-1">
                   {links.map((l, i) => (
                     <motion.li
@@ -163,12 +160,7 @@ export function LandingSidebar({ links }: { links: SidebarLink[] }) {
                       transition={
                         reduceMotion
                           ? { duration: 0 }
-                          : {
-                              delay: 0.06 + i * 0.045,
-                              type: "spring",
-                              stiffness: 500,
-                              damping: 40,
-                            }
+                          : { delay: 0.06 + i * 0.045, type: "spring", stiffness: 500, damping: 40 }
                       }
                     >
                       <Link

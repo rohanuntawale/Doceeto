@@ -45,8 +45,8 @@ export default function PrivacyPolicyPage() {
       intro={
         <Callout tone="info" title="The short version">
           <P>
-            We collect what is needed to get care to you, who you are, where you
-            are, and what is wrong. Your health profile is shared with the
+            We collect what is needed to get care to you, who you are, where
+            you are, and what is wrong. Your health profile is shared with the
             specific doctor or nurse treating you, and with an AI provider when
             you use the symptom checker. We do not sell your data, we do not run
             advertising on it, and you can delete your account and health record
@@ -63,12 +63,13 @@ export default function PrivacyPolicyPage() {
               <P>
                 {COMPANY.legalName} (&ldquo;{COMPANY.shortName}&rdquo;,
                 &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates the {COMPANY.brand}{" "}
-                platform: the website at {COMPANY.web.domain}, the{" "}
-                {COMPANY.brand} mobile applications, and the connected consoles
-                used by doctors, nurses and our operations team.
+                platform: the website at {COMPANY.web.domain}, the {COMPANY.brand}{" "}
+                mobile applications, and the connected consoles used by doctors,
+                nurses and our operations team.
               </P>
               <P>
-                Under the <T>Digital Personal Data Protection Act, 2023</T> (the{" "}
+                Under the{" "}
+                <T>Digital Personal Data Protection Act, 2023</T> (the{" "}
                 <T>DPDP Act</T>) we are the <T>Data Fiduciary</T> for the
                 personal data described here, meaning we decide why and how it
                 is processed, and we are accountable for it. You are the{" "}
@@ -78,9 +79,8 @@ export default function PrivacyPolicyPage() {
                   Procedures and Sensitive Personal Data or Information) Rules,
                   2011
                 </T>{" "}
-                apply, your health data is{" "}
-                <T>Sensitive Personal Data or Information</T> and we treat it to
-                that standard.
+                apply, your health data is <T>Sensitive Personal Data or
+                Information</T> and we treat it to that standard.
               </P>
               <KeyValues
                 items={[
@@ -100,12 +100,9 @@ export default function PrivacyPolicyPage() {
               <P>
                 Some parts of the product still carry our internal codename,{" "}
                 <T>{COMPANY.internalCodename}</T>, you will see it in cookie
-                names such as{" "}
-                <code className="rounded bg-espresso-700 px-1.5 py-0.5 font-mono text-[13px] text-cream">
-                  iyashi_sid_patient
-                </code>
-                . Those are ours. See the{" "}
-                <Xref href="/legal/cookies">Cookie Policy</Xref>.
+                names such as <code className="rounded bg-espresso-700 px-1.5 py-0.5 font-mono text-[13px] text-cream">iyashi_sid_patient</code>.
+                Those are ours. See the <Xref href="/legal/cookies">Cookie
+                Policy</Xref>.
               </P>
             </>
           ),
@@ -139,8 +136,8 @@ export default function PrivacyPolicyPage() {
             <>
               <P>
                 Grouped by why it exists. Nothing in the &ldquo;health&rdquo; or
-                &ldquo;location&rdquo; groups is required to browse the site it
-                is collected when you ask for care.
+                &ldquo;location&rdquo; groups is required to browse the site
+                it is collected when you ask for care.
               </P>
               <Table
                 columns={["Category", "What it includes", "When we get it"]}
@@ -218,8 +215,8 @@ export default function PrivacyPolicyPage() {
                 fee, our commission and the net amount for each completed visit
                 is also held. Much of this is <T>deliberately public</T>: a
                 patient choosing a clinician is entitled to see their
-                credentials. See the{" "}
-                <Xref href="/legal/providers">Provider Terms</Xref>.
+                credentials. See the <Xref href="/legal/providers">Provider
+                Terms</Xref>.
               </P>
             </>
           ),
@@ -331,11 +328,11 @@ export default function PrivacyPolicyPage() {
                 <T>relevant fields from your health profile</T>, age band, BMI,
                 diagnosed diabetes or hypertension, current medication,
                 allergies, family history and lifestyle, to{" "}
-                <Ext href="https://openrouter.ai/privacy">OpenRouter</Ext>,
-                which routes the request to a large language model. That is what
-                makes the checker personalised: a hypertensive 55-year-old
-                reporting chest pain is triaged as exactly that person rather
-                than as a generic patient.
+                <Ext href="https://openrouter.ai/privacy">OpenRouter</Ext>, which
+                routes the request to a large language model. That is what makes
+                the checker personalised: a hypertensive 55-year-old reporting
+                chest pain is triaged as exactly that person rather than as a
+                generic patient.
               </P>
               <UL>
                 <LI>
@@ -353,9 +350,9 @@ export default function PrivacyPolicyPage() {
                 </LI>
                 <LI>
                   If you would rather not use it, simply do not run a check.
-                  Every part of {COMPANY.brand}, booking a doctor, a home visit,
-                  medicine, SOS, works without it. Clearing your saved checks in
-                  Account removes the stored history.
+                  Every part of {COMPANY.brand}, booking a doctor, a home
+                  visit, medicine, SOS, works without it. Clearing your saved
+                  checks in Account removes the stored history.
                 </LI>
                 <LI>
                   If no AI provider is configured, or the call fails, the
@@ -368,10 +365,8 @@ export default function PrivacyPolicyPage() {
                   The checker suggests which kind of clinician to see and how
                   urgently. It does not diagnose, and it can be wrong in both
                   directions. Read the{" "}
-                  <Xref href="/legal/medical-disclaimer">
-                    Medical Disclaimer
-                  </Xref>{" "}
-                  before you rely on it.
+                  <Xref href="/legal/medical-disclaimer">Medical
+                  Disclaimer</Xref> before you rely on it.
                 </P>
               </Callout>
             </>
@@ -445,15 +440,10 @@ export default function PrivacyPolicyPage() {
               />
 
               <H3>Anyone holding a prescription link</H3>
-              <Callout
-                tone="warn"
-                title="Shared prescription links are unlisted, not private"
-              >
+              <Callout tone="warn" title="Shared prescription links are unlisted, not private">
                 <P>
                   A prescription can be opened at a{" "}
-                  <code className="rounded bg-espresso-700 px-1.5 py-0.5 font-mono text-[13px] text-cream">
-                    /rx/…
-                  </code>{" "}
+                  <code className="rounded bg-espresso-700 px-1.5 py-0.5 font-mono text-[13px] text-cream">/rx/…</code>{" "}
                   link containing a long, unguessable token, so that you can
                   hand it to a chemist without either of you signing in. That
                   link <T>is</T> the credential: anyone you forward it to can
@@ -583,10 +573,8 @@ export default function PrivacyPolicyPage() {
                 Retained clinical records are locked down to what the retention
                 purpose needs and are not used to market to you, profile you, or
                 rebuild a deleted account. See{" "}
-                <Xref href="/legal/data-deletion">
-                  Account &amp; Data Deletion
-                </Xref>{" "}
-                for exactly what goes and what stays.
+                <Xref href="/legal/data-deletion">Account &amp; Data
+                Deletion</Xref> for exactly what goes and what stays.
               </P>
             </>
           ),
@@ -625,10 +613,10 @@ export default function PrivacyPolicyPage() {
                   smallest possible group, over authenticated connections.
                 </LI>
                 <LI>
-                  <T>Arrival codes.</T> A home visit is confirmed by a
-                  four-digit code shown only to you, which the provider must
-                  enter. It is never shown to providers or to our operations
-                  team, and it locks after five wrong attempts.
+                  <T>Arrival codes.</T> A home visit is confirmed by a four-digit
+                  code shown only to you, which the provider must enter. It is
+                  never shown to providers or to our operations team, and it
+                  locks after five wrong attempts.
                 </LI>
                 <LI>
                   <T>Audit logging</T> records administrative actions taken
@@ -638,10 +626,9 @@ export default function PrivacyPolicyPage() {
               <P>
                 No system is perfectly secure, and we will not pretend
                 otherwise. If you find a weakness, please tell us, see{" "}
-                <Xref href="/legal/security">
-                  Security &amp; Vulnerability Disclosure
-                </Xref>
-                , which includes safe-harbour terms for good-faith researchers.
+                <Xref href="/legal/security">Security &amp; Vulnerability
+                Disclosure</Xref>, which includes safe-harbour terms for good-faith
+                researchers.
               </P>
               <H3>If there is a breach</H3>
               <P>
@@ -663,8 +650,7 @@ export default function PrivacyPolicyPage() {
                 The DPDP Act gives you the following rights. Exercise any of
                 them by writing to <MailLink address={CONTACTS.privacy} />, or
                 from <T>Account</T> in the app where a self-service control
-                exists. We respond within{" "}
-                {OFFICERS.dataProtection.respondWithin}.
+                exists. We respond within {OFFICERS.dataProtection.respondWithin}.
               </P>
               <UL>
                 <LI>
@@ -676,15 +662,13 @@ export default function PrivacyPolicyPage() {
                   <T>Correction and completion.</T> Fix anything inaccurate,
                   fill in anything incomplete, update anything stale. Most of
                   this you can do yourself in Account. A clinical record already
-                  issued, a prescription, say, cannot be silently rewritten, but
-                  we will annotate it with your correction.
+                  issued, a prescription, say, cannot be silently rewritten,
+                  but we will annotate it with your correction.
                 </LI>
                 <LI>
                   <T>Erasure.</T> Delete your data and your account. See{" "}
-                  <Xref href="/legal/data-deletion">
-                    Account &amp; Data Deletion
-                  </Xref>
-                  .
+                  <Xref href="/legal/data-deletion">Account &amp; Data
+                  Deletion</Xref>.
                 </LI>
                 <LI>
                   <T>Withdraw consent.</T> As easily as you gave it. Withdrawal
@@ -715,7 +699,7 @@ export default function PrivacyPolicyPage() {
                   impersonate someone else when giving personal data, do not
                   suppress material information where it is legally required,
                   and do not file a false or frivolous grievance. In a
-                  healthcare setting the first two matter more than usual,{" "}
+                  healthcare setting the first two matter more than usual, {" "}
                   <T>
                     a doctor prescribing on the strength of an allergy list you
                     filled in wrongly can do you real harm
@@ -752,18 +736,18 @@ export default function PrivacyPolicyPage() {
                   <T>verifiable consent</T> from the parent or guardian first.
                 </LI>
                 <LI>
-                  We never track, behaviourally monitor, or direct advertising
-                  at a child. Section 9(3) of the Act forbids it, and we do not
-                  do it to adults either.
+                  We never track, behaviourally monitor, or direct advertising at
+                  a child. Section 9(3) of the Act forbids it, and we do not do
+                  it to adults either.
                 </LI>
                 <LI>
                   The same protections apply to a person with a disability who
                   has a lawful guardian.
                 </LI>
                 <LI>
-                  If you believe a child has created an account without parental
-                  consent, write to <MailLink address={CONTACTS.privacy} /> and
-                  we will remove it.
+                  If you believe a child has created an account without
+                  parental consent, write to{" "}
+                  <MailLink address={CONTACTS.privacy} /> and we will remove it.
                 </LI>
               </UL>
             </>
@@ -833,7 +817,11 @@ export default function PrivacyPolicyPage() {
                     "Telling you a doctor accepted, arrived, or that an order is out for delivery.",
                     "Check the app for status instead.",
                   ],
-                  ["Contacts", "Not requested.", ", "],
+                  [
+                    "Contacts",
+                    "Not requested.",
+                    ", ",
+                  ],
                 ]}
               />
               <P>
@@ -845,10 +833,8 @@ export default function PrivacyPolicyPage() {
               <P>
                 You can delete your account from inside the app, without
                 contacting us and without reinstalling anything:{" "}
-                <Xref href="/legal/data-deletion">
-                  Account &amp; Data Deletion
-                </Xref>
-                .
+                <Xref href="/legal/data-deletion">Account &amp; Data
+                Deletion</Xref>.
               </P>
             </>
           ),
@@ -862,9 +848,9 @@ export default function PrivacyPolicyPage() {
                 When we change this policy we bump the version and effective
                 date at the top of the page. For any change that materially
                 affects your rights or widens what we do with your data, we will
-                notify you by email and in the app <T>before</T> it takes
-                effect, and where the law requires consent we will ask again
-                rather than assume it.
+                notify you by email and in the app <T>before</T> it takes effect,
+                and where the law requires consent we will ask again rather than
+                assume it.
               </P>
               <P>
                 Superseded versions are kept and can be requested from{" "}

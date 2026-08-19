@@ -4,7 +4,6 @@ import { Suspense, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRight,
   Eye,
   EyeOff,
@@ -66,11 +65,9 @@ function AuthShell({
       {/* The landing hero's footage, same file and same full-opacity treatment
           as components/landing/landing-hero.tsx. Must be z-0, not -z-10: main
           has z-index:auto, so a negative child escapes to the root stacking
-          context and paints behind main's own background. Scaled from the top
-          left so the generator watermark in the bottom-right corner is pushed
-          outside the frame. */}
+          context and paints behind main's own background. */}
       <video
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full origin-top-left scale-[1.14] object-cover motion-reduce:hidden"
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover motion-reduce:hidden"
         autoPlay
         loop
         muted
@@ -233,16 +230,7 @@ function AuthPanel({
        short windows, not the expected experience. */
     /* 85% surface over the footage: the paper texture still moves behind the
        form, without the type losing its ground. */
-    <section className="relative flex h-full min-h-0 flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface-rgb)/0.85)] px-6 py-8 backdrop-blur-2xl short:py-6 sm:px-10">
-      {/* Pinned to the panel corner rather than placed in the column, so it
-          cannot push the centred form off its axis. */}
-      <Link
-        href="/"
-        className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.7)] px-3 py-1.5 text-[11px] font-semibold text-[var(--text-muted)] transition-colors hover:text-[var(--text)] sm:left-6 sm:top-6"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to home
-      </Link>
-
+    <section className="flex h-full min-h-0 flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface-rgb)/0.85)] px-6 py-8 backdrop-blur-2xl short:py-6 sm:px-10">
       <div className="w-full max-w-[22rem]">
         <div className="flex justify-center">
           <Link href="/" aria-label="Doceeto home">
@@ -365,9 +353,7 @@ function AuthPanel({
               rather than a red box, with the address as login_hint. */}
           {error && googleOnly ? (
             <div className="space-y-2.5 rounded-2xl border border-[rgb(var(--accent-rgb)/0.3)] bg-[rgb(var(--accent-rgb)/0.07)] p-3">
-              <p className="text-[11px] font-medium text-[var(--text)]">
-                {error}
-              </p>
+              <p className="text-[11px] font-medium text-[var(--text)]">{error}</p>
               <GoogleButton
                 role={googleRole}
                 next={next || undefined}
@@ -394,11 +380,7 @@ function AuthPanel({
               </>
             ) : (
               <>
-                {mode === "signin"
-                  ? "Log in"
-                  : providerPicked
-                    ? "Continue"
-                    : "Start"}
+                {mode === "signin" ? "Log in" : providerPicked ? "Continue" : "Start"}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
@@ -412,50 +394,24 @@ function AuthPanel({
             onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
             className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
           >
-            {mode === "signin" ? (
-              <Link
-                href="/signup"
-                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
-              >
-                Create an account
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
-              >
-                Log in
-              </Link>
-            )}
+            {mode === "signin" ? "Create an account" : "Log in"}
           </button>
         </p>
 
         <div className="mt-5 flex items-center justify-center gap-2 text-[10.5px] text-[var(--text-faint)] shorter:hidden">
-          <Link
-            href="/about"
-            className="transition-colors hover:text-[var(--text)]"
-          >
+          <Link href="/about" className="transition-colors hover:text-[var(--text)]">
             About
           </Link>
           <span>·</span>
-          <Link
-            href="/contact"
-            className="transition-colors hover:text-[var(--text)]"
-          >
+          <Link href="/contact" className="transition-colors hover:text-[var(--text)]">
             Contact
           </Link>
           <span>·</span>
-          <Link
-            href="/terms"
-            className="transition-colors hover:text-[var(--text)]"
-          >
+          <Link href="/terms" className="transition-colors hover:text-[var(--text)]">
             Terms
           </Link>
           <span>·</span>
-          <Link
-            href="/privacy"
-            className="transition-colors hover:text-[var(--text)]"
-          >
+          <Link href="/privacy" className="transition-colors hover:text-[var(--text)]">
             Privacy
           </Link>
         </div>
@@ -547,7 +503,7 @@ function FilmPanel() {
 
       <div className="absolute inset-x-0 bottom-7 flex justify-center">
         <span className="rounded-full border border-white/20 bg-forest/85 px-4 py-2 text-[12px] font-medium text-paper backdrop-blur-md">
-          Care that reaches you
+          Care that reaches you — drag the mark around
         </span>
       </div>
     </section>
