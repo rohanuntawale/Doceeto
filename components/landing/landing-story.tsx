@@ -60,7 +60,7 @@ export function LandingStory() {
           className="flex shrink-0 whitespace-nowrap"
           animate={{ x: ["0%", "-50%"] }}
           transition={{
-            duration: 200,
+            duration: 100,
             ease: "linear",
             repeat: Infinity,
           }}
