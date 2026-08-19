@@ -14,7 +14,8 @@ import {
   Syringe,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { BrandMark, Wordmark } from "@/components/brand/wordmark";
+import { Wordmark } from "@/components/brand/wordmark";
+import { CareNetwork } from "@/components/auth/care-network";
 import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
 import { SIGNUP_HANDOFF_KEY, surfaceFromPath } from "@/lib/auth/constants";
@@ -483,38 +484,35 @@ const inputCls =
   "h-12 w-full rounded-2xl border border-[var(--border)] bg-[rgb(var(--bg-rgb)/0.75)] px-4 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[rgb(var(--accent-rgb)/0.4)] short:h-11";
 
 /**
- * Right: a clear window onto the page's footage — no panel fill of its own,
- * just an inset frame and the tagline, so the video is the whole picture.
+ * Right: a dedicated dark forest panel housing the interactive Care Network.
+ * High contrast for gold accents and text, self-contained and calm.
  */
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);
   return (
-    <section className="relative hidden overflow-hidden lg:block">
-      <div className="absolute inset-y-0 left-0 w-px bg-white/25" />
+    <section className="relative hidden overflow-hidden lg:block bg-[#0B211B] text-paper">
+      {/* Soft radial spotlight in center for atmospheric depth & contrast */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-80"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 45%, rgba(27, 76, 62, 0.7) 0%, rgba(11, 33, 27, 0.98) 75%)",
+        }}
+      />
 
-      {/* Where the reference floats its 3D object: the app-icon mark, grabbable
-          and springing back on release. The drag transform lives on the wrapper
-          and the idle drift on the mark, so the two never fight over one
-          transform. */}
-      <div ref={bounds} className="absolute inset-10 grid place-items-center">
-        <motion.div
-          drag
-          dragConstraints={bounds}
-          dragElastic={0.18}
-          dragSnapToOrigin
-          dragTransition={{ bounceStiffness: 260, bounceDamping: 18 }}
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.95 }}
-          className="cursor-grab touch-none active:cursor-grabbing"
-        >
-          <BrandMark className="h-[min(11rem,26vh)] w-[min(11rem,26vh)] animate-float drop-shadow-[0_18px_35px_rgba(16,45,35,0.35)] motion-reduce:animate-none" />
-        </motion.div>
+      {/* Hairline separator between form and panel */}
+      <div className="absolute inset-y-0 left-0 z-10 w-px bg-white/15" />
+
+      {/* Full panel bounds — used as drag constraint for the gold dot */}
+      <div ref={bounds} className="absolute inset-0 z-10">
+        <CareNetwork boundsRef={bounds} />
       </div>
 
-      <div className="absolute inset-x-0 bottom-7 flex justify-center">
-        <span className="rounded-full border border-white/20 bg-forest/85 px-4 py-2 text-[12px] font-medium text-paper backdrop-blur-md">
-          Care that reaches you — drag the mark around
-        </span>
+      {/* Tagline — clean typography, no pill or border */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center">
+        <p className="font-serif text-[14px] italic text-paper/65 tracking-wide drop-shadow">
+          Care that reaches you.
+        </p>
       </div>
     </section>
   );
