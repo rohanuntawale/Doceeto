@@ -7,7 +7,7 @@ import { Home, LogOut, Search, Stethoscope, Pill, User } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
-import { MEDICINE_ENABLED, isDemoMode } from "@/lib/config";
+import { MEDICINE_ENABLED } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { resetPatientSession } from "@/lib/hooks/use-current-patient";
 import { useT } from "@/lib/i18n";
@@ -75,15 +75,13 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
    * could find themselves signed out by their own patient account.
    */
   async function logout() {
-    if (!isDemoMode) {
-      try {
-        await apiFetch("/api/auth/logout", { method: "POST" });
-      } catch {
-        /* ignore — the redirect below still gets them out */
-      }
+    try {
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore — the redirect below still gets them out */
     }
     resetPatientSession();
-    router.push(isDemoMode ? "/" : "/login");
+    router.push("/login");
     router.refresh();
   }
 
@@ -121,8 +119,8 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2">
           <button
             onClick={logout}
-            aria-label={isDemoMode ? "Exit demo" : "Sign out"}
-            title={isDemoMode ? "Exit demo" : "Sign out"}
+            aria-label="Sign out"
+            title="Sign out"
             className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border)] bg-surface/70 text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
           >
             <LogOut className="h-4 w-4" />

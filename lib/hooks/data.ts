@@ -1,23 +1,15 @@
 "use client";
 
 /**
- * Unified data hooks. Exported hooks bind ONCE at module load to either
- * the demo engine (in-browser store) or the live backend (Neo4j via the
- * /api routes), chosen by the build-time isDemoMode constant. Components
- * import only from here and never care which backend is live.
+ * Unified data hooks. All reads/writes go through the /api routes.
+ * Components import only from here for entity data.
  *
- * Live mode has no realtime feed (Neo4j is not Postgres), so reads poll
- * on a short interval and every mutation invalidates the matching query.
+ * Reads poll on a short interval and every mutation invalidates the
+ * matching query. SSE events from RealtimeBridge also trigger refreshes.
  */
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
-import { demoStore } from "@/lib/demo/store";
-import { readStoredDoctorId as currentDoctorId } from "@/lib/demo/current-doctor";
-import { hasOngoingConsult, isOnGig } from "@/lib/scheduling/slots";
-import { activeGigs, gigFromPrice } from "@/lib/gigs/rules";
-import { cadreOf } from "@/lib/nurse";
 import type {
   Ambulance,
   Cadre,
@@ -80,11 +72,6 @@ export function setSseConnected(v: boolean) {
   sseConnected = v;
 }
 
-// ── Demo primitive ──────────────────────────────────────────
-function useDemoState() {
-  return useSyncExternalStore(demoStore.subscribe, demoStore.get, demoStore.get);
-}
-
 // ── Live primitive: fetch an entity from /api/data with polling ──
 async function fetchEntity<T>(entity: string): Promise<T[]> {
   const res = await apiFetch(`/api/data?entity=${entity}`, { cache: "no-store" });
@@ -119,43 +106,18 @@ function useApiEntity<T>(entity: string, scope?: Record<string, string>): T[] {
   return data ?? [];
 }
 
-// ── Entity hooks (bound once to the active backend) ─────────
-function useRequestsDemo(): ConsultRequest[] {
-  return useDemoState().requests;
+// ── Entity hooks ──────────────────────────────────────────
+export function useConsultRequests(): ConsultRequest[] {
+  return useApiEntity<ConsultRequest>("requests");
 }
-export const useConsultRequests = isDemoMode
-  ? useRequestsDemo
-  : () => useApiEntity<ConsultRequest>("requests");
 
-function useOrdersDemo(): Order[] {
-  return useDemoState().orders;
+export function useOrders(): Order[] {
+  return useApiEntity<Order>("orders");
 }
-export const useOrders = isDemoMode ? useOrdersDemo : () => useApiEntity<Order>("orders");
 
-function useDoctorsDemo(cadre?: Cadre): Doctor[] {
-  const s = useDemoState();
-  // /api/data attaches these derived fields on every doctor read, so the demo
-  // path has to as well or the search list would silently lose the "on a gig"
-  // badge and the gig teasers in demo mode.
-  const all = useMemo(
-    () =>
-      s.doctors.map((d) => {
-        const live = activeGigs(s.gigs.filter((g) => g.doctorId === d.id));
-        return {
-          ...d,
-          onGig: isOnGig(s.requests, d.id),
-          onConsult: hasOngoingConsult(s.requests, d.id),
-          gigCount: live.length,
-          gigFromPrice: gigFromPrice(live),
-        };
-      }),
-    [s.doctors, s.gigs, s.requests],
-  );
-  return cadre ? all.filter((d) => cadreOf(d) === cadre) : all;
+export function useDoctors(cadre?: Cadre): Doctor[] {
+  return useApiEntity<Doctor>("doctors", cadre ? { cadre } : undefined);
 }
-export const useDoctors = isDemoMode
-  ? (cadre?: Cadre) => useDoctorsDemo(cadre)
-  : (cadre?: Cadre) => useApiEntity<Doctor>("doctors", cadre ? { cadre } : undefined);
 
 /**
  * The nurse roster, for the patient-facing home-care search.
@@ -165,13 +127,9 @@ export const useDoctors = isDemoMode
  * server defaults `?entity=doctors` to the doctor cadre for the same reason,
  * so nurses can only ever arrive somewhere that asked for them.
  */
-function useNursesDemo(): Doctor[] {
-  return useDoctorsDemo("nurse");
+export function useNurses(): Doctor[] {
+  return useApiEntity<Doctor>("doctors", { cadre: "nurse" });
 }
-
-export const useNurses = isDemoMode
-  ? useNursesDemo
-  : () => useApiEntity<Doctor>("doctors", { cadre: "nurse" });
 
 /**
  * Ops-only deep read of ONE doctor: profile, account, reviews, consults, gigs
@@ -206,59 +164,34 @@ export function useDoctorDetail(doctorId: string) {
   };
 }
 
-function useReviewsDemo(doctorId?: string): Review[] {
-  const all = useDemoState().reviews;
-  return doctorId
-    ? all.filter((r) => (r as Review & { doctorId?: string }).doctorId === doctorId)
-    : all;
-}
 /** Reviews, optionally scoped to one doctor (server filters via ?doctorId=). */
-export const useReviews = isDemoMode
-  ? (doctorId?: string) => useReviewsDemo(doctorId)
-  : (doctorId?: string) =>
-      useApiEntity<Review>("reviews", doctorId ? { doctorId } : undefined);
-
-function useGigsDemo(doctorId?: string): Gig[] {
-  const s = useDemoState();
-  if (!doctorId) return s.gigs;
-  // Patient view of one doctor's shelf: nothing is hireable while that
-  // doctor is committed to a gig or offline — same rules the live
-  // /api/data applies. Offline takes the whole shelf off the platform.
-  const doc = s.doctors.find((d) => d.id === doctorId);
-  if (!doc || doc.status === "offline") return [];
-  if (isOnGig(s.requests, doctorId)) return [];
-  return s.gigs.filter((g) => g.doctorId === doctorId);
+export function useReviews(doctorId?: string): Review[] {
+  return useApiEntity<Review>("reviews", doctorId ? { doctorId } : undefined);
 }
+
 /**
  * Gig listings. Pass a doctorId to read one doctor's shelf — the server then
  * returns only their ACTIVE gigs, which is what a patient should see. Called
  * with no argument by a signed-in doctor it returns their own gigs in every
  * status, so they can manage paused and archived ones.
  */
-export const useGigs = isDemoMode
-  ? (doctorId?: string) => useGigsDemo(doctorId)
-  : (doctorId?: string) =>
-      useApiEntity<Gig>("gigs", doctorId ? { doctorId } : undefined);
-
-function usePrescriptionsDemo(): Prescription[] {
-  return useDemoState().prescriptions;
+export function useGigs(doctorId?: string): Gig[] {
+  return useApiEntity<Gig>("gigs", doctorId ? { doctorId } : undefined);
 }
+
 /**
  * Prescriptions this account can see: a patient's own, or the ones a doctor
  * wrote. The server does the scoping — there is no "all prescriptions" read to
  * ask for, by design.
  */
-export const usePrescriptions = isDemoMode
-  ? usePrescriptionsDemo
-  : () => useApiEntity<Prescription>("prescriptions");
-
-function useTransactionsDemo(): Transaction[] {
-  return useDemoState().transactions;
+export function usePrescriptions(): Prescription[] {
+  return useApiEntity<Prescription>("prescriptions");
 }
+
 /** A doctor's wallet ledger (server scopes to the signed-in doctor). */
-export const useTransactions = isDemoMode
-  ? useTransactionsDemo
-  : () => useApiEntity<Transaction>("transactions");
+export function useTransactions(): Transaction[] {
+  return useApiEntity<Transaction>("transactions");
+}
 
 // ── Derived ops snapshot ────────────────────────────────────
 export function useOpsSnapshot(): OpsSnapshot {
@@ -397,11 +330,6 @@ export interface Actions {
   verifyProvider: (providerId: string, verified: boolean) => Promise<unknown>;
 }
 
-/** Wipe locally-created test data (demo mode only). No-op in live mode. */
-export function resetTestData() {
-  if (isDemoMode) demoStore.reset();
-}
-
 /** POST an action to the live backend and refresh the affected data. Unlike
  *  a fire-and-forget call, this SURFACES server rejections (400/403/409/500):
  *  the returned promise rejects with the server's error message so callers can
@@ -435,59 +363,7 @@ export function useActions(): Actions {
   }, []);
 
   return useMemo<Actions>(() => {
-    if (isDemoMode) {
-      return {
-        // async so a rejected slot surfaces the same way it does live: the
-        // store throws, the promise rejects, the caller's catch runs.
-        createRequest: async (input) => void demoStore.createConsultRequest(input),
-        createOrder: (input) => void demoStore.createOrder(input),
-        createReview: (input) => void demoStore.createReview(input),
-        // Demo store has no patient-rating model; no-op keeps the surface identical.
-        ratePatient: async () => {},
-        updateDoctor: demoStore.updateDoctor,
-        setDoctorStatus: demoStore.setDoctorStatus,
-        // Demo mode has no sessions and no server to be absent from: the one
-        // browser holding the store IS the doctor, so presence is a given.
-        heartbeat: async () => {},
-        setAvailability: async (id, availability) =>
-          demoStore.setDoctorAvailability(id, availability),
-        acceptRequest: async (id, doctorId) => demoStore.acceptRequest(id, doctorId),
-        declineRequest: async (id) =>
-          demoStore.declineRequest(id, currentDoctorId() ?? undefined),
-        // The demo store has no session, so "who is cancelling" is inferred
-        // from whether a reason was given — the doctor path is the only one
-        // that requires one.
-        cancelRequest: async (id, reason) =>
-          demoStore.cancelRequest(id, { reason, byDoctor: Boolean(reason) }),
-        completeRequest: demoStore.completeRequest,
-        issuePrescription: async (requestId, draft) =>
-          demoStore.issuePrescription(requestId, draft),
-        createGig: async (input) => {
-          const id = currentDoctorId();
-          if (!id) throw new Error("Register as a doctor first.");
-          demoStore.createGig({ ...input, doctorId: id });
-        },
-        updateGig: async (id, patch) => demoStore.updateGig(id, patch),
-        setGigStatus: async (id, status) => demoStore.setGigStatus(id, status),
-        deleteGig: async (id) => demoStore.deleteGig(id),
-        advanceTrip: async (id) => void demoStore.advanceTrip(id),
-        // Demo has no server to check a code against; starting is immediate.
-        verifyStartCode: async (id) => void demoStore.advanceTrip(id),
-        startConsultAsPatient: async (id) => void demoStore.advanceTrip(id),
-        reissueStartCode: async () => ({}),
-        requestPayout: demoStore.requestPayout,
-        advanceOrder: (id) => demoStore.advanceOrder(id),
-        // Demo mode has no accounts to remove, so this is refused rather than
-        // faked — a delete that silently does nothing is the worst outcome.
-        deleteDoctor: async () => {
-          throw new Error("Deleting a doctor needs the live backend.");
-        },
-        verifyProvider: async () => {
-          throw new Error("Verifying a provider needs the live backend.");
-        },
-      };
-    }
-    // Live: the server takes patient identity from the session, so the
+    // The server takes patient identity from the session, so the
     // patientId/patientName here are ignored server-side (anti-spoof).
     return {
       createRequest: async (input) => void (await callAction(qc, "createRequest", { ...input })),

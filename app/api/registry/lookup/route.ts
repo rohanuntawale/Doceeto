@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * note in lib/registry.
  */
 export async function GET(req: Request) {
-  if (!rateLimit(`registry:${clientIp(req)}`, 12, 60_000)) {
+  if (!(await rateLimit(`registry:${clientIp(req)}`, 12, 60_000))) {
     return NextResponse.json(
       { error: "Too many lookups. Wait a minute and try again." },
       { status: 429 },

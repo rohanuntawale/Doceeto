@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { isDemoMode } from "@/lib/config";
 import { surfaceFromPath } from "@/lib/auth/constants";
 import { setSseConnected } from "@/lib/hooks/data";
 
@@ -67,7 +66,7 @@ export function RealtimeBridge() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isDemoMode || typeof window === "undefined" || !("EventSource" in window)) {
+    if (typeof window === "undefined" || !("EventSource" in window)) {
       return;
     }
 

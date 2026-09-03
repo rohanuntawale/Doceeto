@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { MAP_CENTER, isDemoMode } from "@/lib/config";
+import { MAP_CENTER } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 
 export interface PatientIdentity {
@@ -57,12 +57,7 @@ function emit() {
 }
 
 function persist() {
-  if (!isDemoMode) return; // live identity lives on the server
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(current));
-  } catch {
-    /* ignore */
-  }
+  // Live identity lives on the server; persist is a no-op on the client.
 }
 
 function hydrateOnce() {
@@ -70,9 +65,8 @@ function hydrateOnce() {
   hydrated = true;
   const version = hydrationVersion;
 
-  if (!isDemoMode) {
-    // Live: pull the real signed-in patient.
-    apiFetch("/api/auth/me", { cache: "no-store" })
+  // Live: pull the real signed-in patient.
+  apiFetch("/api/auth/me", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (version !== hydrationVersion) return;
@@ -125,32 +119,6 @@ function hydrateOnce() {
         current = { ...current, ready: true };
         emit();
       });
-    return;
-  }
-
-  // Demo: stable per-browser identity.
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) {
-      // Same rule as live mode: a fix already applied by the device beats the
-      // remembered one.
-      const live = current.located
-        ? { lat: current.lat, lng: current.lng, address: current.address, located: true }
-        : {};
-      const stored = { ...(JSON.parse(raw) as Record<string, unknown>) };
-      for (const field of ["lat", "lng", "address", "addressFull", "located"]) {
-        delete stored[field];
-      }
-      current = { ...DEFAULT, ...stored, ...live, ready: true };
-    } else {
-      current = { ...DEFAULT, id: `patient-${Date.now().toString(36)}`, ready: true };
-      persist();
-    }
-    emit();
-  } catch {
-    current = { ...current, ready: true };
-    emit();
-  }
 }
 
 function subscribe(listener: () => void) {
@@ -213,8 +181,7 @@ export function resetPatientSession() {
 }
 
 /** The signed-in patient ("me") for the patient app.
- *  Demo -> a stable per-browser identity in localStorage.
- *  Live -> the patient from /api/auth/me (the real account). */
+ *  The patient from /api/auth/me (the real account). */
 export function useCurrentPatient() {
   const patient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const update = useCallback((patch: Partial<PatientIdentity>) => {

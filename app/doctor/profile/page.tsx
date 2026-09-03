@@ -22,7 +22,6 @@ import { OnlineToggle } from "@/components/doctor/online-toggle";
 import { EditProfileDialog } from "@/components/doctor/edit-profile-dialog";
 import { AvatarUploader } from "@/components/ui/avatar-uploader";
 import { useQueryClient } from "@tanstack/react-query";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { useActions, useReviews } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
@@ -48,10 +47,6 @@ export default function ProfilePage() {
    *  in demo mode. */
   async function setPhoto(dataUrl: string) {
     if (!me) return;
-    if (isDemoMode) {
-      updateDoctor(me.id, { avatarUrl: dataUrl });
-      return;
-    }
     const res = await apiFetch("/api/auth/avatar", {
       method: "POST",
       headers: { "content-type": "application/json" },

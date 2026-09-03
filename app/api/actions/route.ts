@@ -551,7 +551,7 @@ export async function POST(req: Request) {
         if (role !== "patient") return needs("patients");
         // Cheap to call but not free — a doctor watching the screen shouldn't
         // be able to farm codes by pestering the patient to re-roll.
-        if (!rateLimit(`startcode:${me}`, 10, 10 * 60_000)) {
+        if (!(await rateLimit(`startcode:${me}`, 10, 10 * 60_000))) {
           return NextResponse.json(
             { error: "Too many new codes. Try again in a few minutes." },
             { status: 429 },

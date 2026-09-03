@@ -26,7 +26,7 @@ function coord(v: string | null, max: number): number | null {
 export async function GET(req: Request) {
   const session = await getRequestSession(req);
   const who = session?.userId ?? clientIp(req);
-  if (!rateLimit(`directions:${who}`, 40, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`directions:${who}`, 40, 10 * 60_000))) return tooMany();
 
   const url = new URL(req.url);
   const [fromLat, fromLng] = (url.searchParams.get("from") ?? "").split(",");

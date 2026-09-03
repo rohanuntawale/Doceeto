@@ -12,14 +12,14 @@ export async function POST(req: Request) {
   try {
     const ip = clientIp(req);
     // 20 attempts / 10 min per IP — stops brute force without hurting users.
-    if (!rateLimit(`login:ip:${ip}`, 20, 10 * 60_000)) return tooMany();
+    if (!(await rateLimit(`login:ip:${ip}`, 20, 10 * 60_000))) return tooMany();
 
     const body = await req.json();
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
 
     // 8 attempts / 15 min per account — stops targeted credential stuffing.
-    if (email && !rateLimit(`login:email:${email}`, 8, 15 * 60_000)) return tooMany();
+    if (email && !(await rateLimit(`login:email:${email}`, 8, 15 * 60_000))) return tooMany();
 
     const user = await db.findUserByEmail(email);
     /**

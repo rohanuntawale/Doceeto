@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { isDemoMode } from "@/lib/config";
-
 /**
  * Fire-and-forget database wake-up for pages that lead into sign-in.
  *
@@ -13,7 +11,6 @@ import { isDemoMode } from "@/lib/config";
  */
 export function useWarmBackend() {
   useEffect(() => {
-    if (isDemoMode) return;
     fetch("/api/warm").catch(() => {
       /* best-effort */
     });

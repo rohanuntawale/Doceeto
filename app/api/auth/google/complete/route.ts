@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
  * cannot sign up as somebody else.
  */
 export async function POST(req: Request) {
-  if (!rateLimit(`oauth-complete:ip:${clientIp(req)}`, 20, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`oauth-complete:ip:${clientIp(req)}`, 20, 10 * 60_000))) return tooMany();
 
   const jar = cookies();
   const pendingId = jar.get(PENDING_SIGNUP_COOKIE)?.value;

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { cn } from "@/lib/utils/cn";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { clearOpsAuthed } from "@/lib/ops-auth";
 
@@ -31,16 +30,14 @@ export function Shell({
 
   async function logout() {
     if (role === "ops") clearOpsAuthed();
-    if (!isDemoMode) {
-      try {
-        // Surface-tagged, so signing out here leaves any other role signed in.
-        await apiFetch("/api/auth/logout", { method: "POST" });
-      } catch {
-        /* ignore */
-      }
+    try {
+      // Surface-tagged, so signing out here leaves any other role signed in.
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
     }
     if (role === "ops") router.push("/ops-signin");
-    else router.push(isDemoMode ? "/" : "/login");
+    else router.push("/login");
     router.refresh();
   }
 
@@ -66,7 +63,7 @@ export function Shell({
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-[var(--text-muted)] transition-colors hover:bg-espresso-800 hover:text-cream"
           >
             <LogOut className="h-4 w-4" />
-            {isDemoMode ? "Exit demo" : "Sign out"}
+            Sign out
           </button>
         </div>
       </aside>

@@ -91,7 +91,7 @@ function publicProvider(d: {
 export async function GET(req: Request) {
   // Unauthenticated and cacheable-looking, so it needs its own ceiling —
   // otherwise it is a free directory scrape.
-  if (!rateLimit(`public:${clientIp(req)}`, 60, 60_000)) {
+  if (!(await rateLimit(`public:${clientIp(req)}`, 60, 60_000))) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
 

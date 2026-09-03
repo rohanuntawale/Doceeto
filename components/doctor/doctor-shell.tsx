@@ -18,8 +18,6 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { cn } from "@/lib/utils/cn";
-import { isDemoMode } from "@/lib/config";
-import { clearCurrentDoctorId } from "@/lib/demo/current-doctor";
 import { apiFetch } from "@/lib/api/client";
 
 /**
@@ -57,18 +55,13 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   const active = activeIndex(pathname);
 
   async function logout() {
-    if (!isDemoMode) {
-      try {
-        // Surface-tagged: ends the cockpit session only, not the patient's.
-        await apiFetch("/api/auth/logout", { method: "POST" });
-      } catch {
-        /* ignore */
-      }
+    try {
+      // Surface-tagged: ends the cockpit session only, not the patient's.
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
     }
-    // Same reason as the nurse console: the remembered provider id is what
-    // decides who "me" is, so signing out has to forget it as well.
-    clearCurrentDoctorId();
-    router.push(isDemoMode ? "/" : "/login");
+    router.push("/login");
     router.refresh();
   }
 
@@ -101,7 +94,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2">
           <button
             onClick={logout}
-            aria-label={isDemoMode ? "Exit demo" : "Sign out"}
+            aria-label="Sign out"
             className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border)] bg-surface/70 text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
           >
             <LogOut className="h-4 w-4" />

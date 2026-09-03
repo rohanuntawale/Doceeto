@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (session.role !== "patient") {
     return NextResponse.json({ error: "Only patients have a health profile." }, { status: 403 });
   }
-  if (!rateLimit(`health-profile:${session.userId}`, 30, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`health-profile:${session.userId}`, 30, 10 * 60_000))) return tooMany();
 
   let raw: unknown;
   try {

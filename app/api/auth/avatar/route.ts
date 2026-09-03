@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Only patients and providers have profile photos." }, { status: 403 });
   }
 
-  if (!rateLimit(`avatar:${session.userId}`, 10, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`avatar:${session.userId}`, 10, 10 * 60_000))) return tooMany();
 
   let dataUrl: string;
   try {

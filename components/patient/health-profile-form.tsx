@@ -16,7 +16,6 @@ import {
   sanitizeHealthProfile,
   type HealthProfile,
 } from "@/lib/health/profile";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -138,19 +137,14 @@ export function HealthProfileForm() {
     setSaving(true);
     setSaveStatus("idle");
     try {
-      if (!isDemoMode) {
-        const res = await apiFetch("/api/auth/health-profile", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(profile),
-        });
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body.error ?? "Couldn't save your health profile.");
-        update({ healthProfile: body.healthProfile ?? profile });
-      } else {
-        profile.updatedAt = new Date().toISOString();
-        update({ healthProfile: profile });
-      }
+      const res = await apiFetch("/api/auth/health-profile", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(profile),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "Couldn't save your health profile.");
+      update({ healthProfile: body.healthProfile ?? profile });
       // Only clear the dirty guard when the response contains the latest
       // draft. If the user edited during the request, the autosave effect will
       // persist that newer draft next.

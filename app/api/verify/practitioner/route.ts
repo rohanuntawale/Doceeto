@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   }
   // Registry lookups cost money and rate limits upstream; a handful per hour
   // is plenty for someone correcting a typo.
-  if (!rateLimit(`verify-practitioner:${session.userId}`, 8, 60 * 60_000)) {
+  if (!(await rateLimit(`verify-practitioner:${session.userId}`, 8, 60 * 60_000))) {
     return tooMany();
   }
 

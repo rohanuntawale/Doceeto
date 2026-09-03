@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   // Positions stream in from a watch, so the limit is generous — it exists to
   // keep a stuck client from hammering Nominatim, not to ration normal use.
   const who = session?.userId ?? clientIp(req);
-  if (!rateLimit(`locate:${who}`, 60, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`locate:${who}`, 60, 10 * 60_000))) return tooMany();
 
   let body: unknown;
   try {

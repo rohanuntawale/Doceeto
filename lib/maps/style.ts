@@ -30,13 +30,12 @@ const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? "";
 export const hasVectorBasemap = Boolean(MAPTILER_KEY);
 
 /**
- * MapTiler's `dataviz` styles, over `streets`, deliberately: they draw the
- * road network without the shop-and-restaurant label soup, so our own route
- * line and markers stay the loudest thing on screen — the same reason
- * ride-hailing apps strip their basemaps back.
+ * MapTiler's `streets-v2` for a colorful, readable basemap: green parks,
+ * blue water, coloured roads, POI labels. Dark variant for the doctor/nurse
+ * shells which use dark backgrounds.
  */
 const vectorStyle = (light: boolean) =>
-  `https://api.maptiler.com/maps/${light ? "dataviz-light" : "dataviz-dark"}/style.json?key=${MAPTILER_KEY}`;
+  `https://api.maptiler.com/maps/${light ? "streets-v2" : "streets-v2-dark"}/style.json?key=${MAPTILER_KEY}`;
 
 /** CARTO's free, keyless basemaps as a MapLibre style. Attribution required
  *  and carried on the source, which surfaces it in the attribution control. */

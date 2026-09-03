@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  RotateCcw,
   LogOut,
   ChevronRight,
   Languages,
@@ -10,9 +9,7 @@ import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { AvatarUploader } from "@/components/ui/avatar-uploader";
 import { HealthProfileForm } from "@/components/patient/health-profile-form";
 import { useT, type LangCode } from "@/lib/i18n";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
-import { resetTestData } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { AvatarImage } from "@/components/ui/avatar-image";
@@ -25,16 +22,14 @@ export default function PatientAccount() {
   /** Persist a new profile photo: the server for live accounts, the browser
    *  store in demo mode. Either way the shared identity updates in place. */
   async function setPhoto(dataUrl: string) {
-    if (!isDemoMode) {
-      const res = await apiFetch("/api/auth/avatar", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ dataUrl }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Couldn't save the photo.");
-      }
+    const res = await apiFetch("/api/auth/avatar", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Couldn't save the photo.");
     }
     update({ avatarUrl: dataUrl });
   }
@@ -101,16 +96,6 @@ export default function PatientAccount() {
 
       {/* Actions */}
       <div className="overflow-hidden rounded-3xl fh-card shadow-soft">
-        {isDemoMode && (
-          <Row
-            icon={<RotateCcw className="h-4 w-4" />}
-            label={t("account.clearData")}
-            onClick={() => {
-              resetTestData();
-              toast.push({ tone: "info", title: "Test data cleared" });
-            }}
-          />
-        )}
         <Row
           icon={<LogOut className="h-4 w-4" />}
           label={t("account.signOut")}

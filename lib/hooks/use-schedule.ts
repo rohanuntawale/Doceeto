@@ -8,15 +8,10 @@
  * patients hold. In DEMO mode the in-browser store has everything, so the
  * same functions run locally and produce an identical shape.
  */
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
-import { isDemoMode } from "@/lib/config";
-import { useConsultRequests, useDoctors } from "@/lib/hooks/data";
+import { useDoctors } from "@/lib/hooks/data";
 import {
-  bookableState,
-  buildSchedule,
-  busyIntervals,
   DEFAULT_AVAILABILITY,
   type BookableState,
   type DayView,
@@ -53,12 +48,11 @@ const SCHEDULE_POLL_MS = 15_000;
 
 export function useDoctorSchedule(doctorId?: string | null): DoctorSchedule {
   const doctors = useDoctors();
-  const requests = useConsultRequests();
   const doctor = doctors.find((d) => d.id === doctorId);
 
   const { data, isPending } = useQuery({
     queryKey: ["availability", doctorId],
-    enabled: !isDemoMode && Boolean(doctorId),
+    enabled: Boolean(doctorId),
     refetchInterval: SCHEDULE_POLL_MS,
     queryFn: async (): Promise<Omit<DoctorSchedule, "loading">> => {
       const res = await apiFetch(`/api/availability?doctorId=${encodeURIComponent(doctorId!)}`, {
@@ -69,19 +63,6 @@ export function useDoctorSchedule(doctorId?: string | null): DoctorSchedule {
     },
   });
 
-  // Demo path: the store holds every request, so the grid is cut locally
-  // with the very same helpers the server uses.
-  const local = useMemo<DoctorSchedule | null>(() => {
-    if (!isDemoMode || !doctorId) return null;
-    const state = bookableState(doctor, requests);
-    return {
-      ...state,
-      days: buildSchedule(state.availability, { busy: busyIntervals(requests, doctorId) }),
-      loading: false,
-    };
-  }, [doctor, doctorId, requests]);
-
-  if (local) return local;
   if (!doctorId) return { ...EMPTY, loading: false };
   return data ? { ...data, loading: false } : { ...EMPTY, loading: isPending };
 }

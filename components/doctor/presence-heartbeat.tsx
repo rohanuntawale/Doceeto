@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { useActions } from "@/lib/hooks/data";
-import { isDemoMode } from "@/lib/config";
 import { HEARTBEAT_MS } from "@/lib/presence";
 
 /**
@@ -26,7 +25,7 @@ export function PresenceHeartbeat() {
   const doctorId = me?.id;
 
   useEffect(() => {
-    if (isDemoMode || !doctorId) return;
+    if (!doctorId) return;
 
     let stopped = false;
     const beat = () => {

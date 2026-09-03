@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   const origin = url.origin;
 
   // Same budget as the password route: this path creates accounts too.
-  if (!rateLimit(`oauth:ip:${clientIp(req)}`, 20, 10 * 60_000)) {
+  if (!(await rateLimit(`oauth:ip:${clientIp(req)}`, 20, 10 * 60_000))) {
     return fail(origin, "Too many sign-in attempts. Try again in a few minutes.");
   }
 

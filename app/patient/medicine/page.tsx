@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useActions } from "@/lib/hooks/data";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { MED_CATALOG, DARK_STORES } from "@/lib/demo/seed";
+import { MED_CATALOG, DARK_STORES } from "@/lib/catalog";
 import { formatINR } from "@/lib/utils/format";
 
 /** Medicine is switched off for patients: anyone landing here by URL or an

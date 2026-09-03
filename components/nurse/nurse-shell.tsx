@@ -16,8 +16,6 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { cn } from "@/lib/utils/cn";
-import { isDemoMode } from "@/lib/config";
-import { clearCurrentDoctorId } from "@/lib/demo/current-doctor";
 import { apiFetch } from "@/lib/api/client";
 import { useT } from "@/lib/i18n";
 import { NURSE_ACCENT_VARS } from "@/lib/nurse";
@@ -57,22 +55,14 @@ export function NurseShell({ children }: { children: React.ReactNode }) {
   const active = activeIndex(pathname);
 
   async function logout() {
-    if (!isDemoMode) {
-      try {
-        // Surface-tagged: ends the nurse session only, not a patient session
-        // signed in on the same browser. Without this call the cookie stays
-        // valid and "signing out" only changes the page.
-        await apiFetch("/api/auth/logout", { method: "POST" });
-      } catch {
-        /* ignore */
-      }
+    try {
+      // Surface-tagged: ends the nurse session only, not a patient session
+      // signed in on the same browser.
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
     }
-    // Drop the remembered provider identity too. The cookie alone was not the
-    // whole story: this key is what the console reads to decide who "me" is,
-    // so leaving it behind kept a clinician signed in from the browser's point
-    // of view even after the session was gone.
-    clearCurrentDoctorId();
-    router.push(isDemoMode ? "/" : "/login");
+    router.push("/login");
     router.refresh();
   }
 
@@ -102,7 +92,7 @@ export function NurseShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2">
           <button
             onClick={logout}
-            aria-label={isDemoMode ? t("nurse.exitDemo") : t("nurse.signOut")}
+            aria-label={t("nurse.signOut")}
             className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border)] bg-surface/70 text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
           >
             <LogOut className="h-4 w-4" />

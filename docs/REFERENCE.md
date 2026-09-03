@@ -164,13 +164,8 @@ a.advanceSos(sosId, current)    a.advanceOrder(orderId, current)
 
 // patient identity + reset
 useCurrentPatient()   // { patient:{id,name,address,lat,lng}, update() }
-resetTestData()       // wipe locally-created test data (demo mode)
-```
 
-**Local mode connection:** in demo/local mode the create actions write to
-`lib/demo/store.ts`, which persists to `localStorage` and broadcasts over a
-`BroadcastChannel` — so a patient action in one tab pushes live into the doctor/ops tabs.
-The store starts **empty** — no seeded data of any kind; everything is user-created.
+```
 
 **To wire a different backend:** implement these hooks/actions in `lib/hooks/data.ts`
 returning the same domain types. Nothing in `app/` or `components/` changes.
@@ -243,7 +238,7 @@ rename or recolor a status everywhere.
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Privileged ops (never expose) |
 | `NEXT_PUBLIC_APP_URL` | client | Auth redirect base |
 
-Absent all of the above → **demo mode**. See `.env.example`.
+See `.env.example` for all configuration options.
 
 ---
 

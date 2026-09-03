@@ -6,7 +6,7 @@ import type { AdvancedMapProps } from "@/components/ui/interactive-map";
 import { useDoctors } from "@/lib/hooks/data";
 import type { PatientIdentity } from "@/lib/hooks/use-current-patient";
 import { requestDeviceLocation, useDeviceLocation } from "@/lib/geo/device-location";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const AdvancedMap = dynamic(
   () => import("@/components/ui/interactive-map").then((module) => module.AdvancedMap),
@@ -22,17 +22,38 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
   const geo = useDeviceLocation();
   const [requesting, setRequesting] = useState(false);
   const nearby = doctors.filter((d) => d.status !== "offline");
-  const markers: AdvancedMapProps["markers"] = nearby.flatMap((doctor) =>
-    doctor.lat != null && doctor.lng != null
-      ? [{
-          id: doctor.id,
-          position: [doctor.lat, doctor.lng] as [number, number],
-          color: doctor.status === "online" ? "green" : "blue",
-          size: "medium",
-          popup: { title: doctor.fullName, content: doctor.specialty },
-        }]
-      : [],
+
+  // Use the real device location when available; fall back to patient record
+  // (Nagpur centre) while loading or when geolocation is unavailable.
+  const effectiveCenter: [number, number] = useMemo(
+    () =>
+      geo.lat != null && geo.lng != null
+        ? [geo.lat, geo.lng]
+        : [patient.lat, patient.lng],
+    [geo.lat, geo.lng, patient.lat, patient.lng],
   );
+
+  const markers: NonNullable<AdvancedMapProps["markers"]> = [
+    // Patient "you are here" dot — always first so it renders on top.
+    {
+      id: "__me",
+      position: effectiveCenter,
+      color: "red" as const,
+      size: "large" as const,
+      popup: { title: "You are here", content: "Your current location" },
+    },
+    ...nearby.flatMap((doctor) =>
+      doctor.lat != null && doctor.lng != null
+        ? [{
+            id: doctor.id,
+            position: [doctor.lat, doctor.lng] as [number, number],
+            color: (doctor.status === "online" ? "green" : "blue") as "green" | "blue",
+            size: "medium" as const,
+            popup: { title: doctor.fullName, content: doctor.specialty },
+          }]
+        : [],
+    ),
+  ];
   const area = patient.located && patient.address
     ? patient.address
     : geo.status === "locating" || requesting
@@ -54,12 +75,12 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
     <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
       <div className="h-[330px] w-full sm:h-[350px]">
         <AdvancedMap
-          center={[patient.lat, patient.lng]}
+          center={effectiveCenter}
           zoom={13}
           markers={markers}
           enableClustering={markers.length > 4}
-          enableSearch
-          enableControls
+          enableSearch={false}
+          enableControls={false}
           style={{ height: "100%", width: "100%" }}
         />
       </div>

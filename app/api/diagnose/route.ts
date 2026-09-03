@@ -448,7 +448,7 @@ export async function POST(req: Request) {
    * not lock each other out, and a rate-limited visitor still gets an answer
    * because the client falls back to the offline rule engine.
    */
-  if (!rateLimit(`diagnose:${clientIp(req)}`, 40, 60 * 60_000)) {
+  if (!(await rateLimit(`diagnose:${clientIp(req)}`, 40, 60 * 60_000))) {
     return NextResponse.json({ unavailable: true, reason: "rate-limited" });
   }
 

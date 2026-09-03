@@ -76,16 +76,12 @@ zero CLS). Deployable to **Vercel** (primary) and **Render** (`render.yaml`) wit
 ## Architecture rules (non-negotiable)
 
 1. **One data seam.** The UI never calls a backend directly. All reads/writes go through
-   hooks in `lib/hooks/data.ts` that return **domain types** (`lib/types/domain.ts`). Those
-   hooks are bound *once at module load* (via the compile-time `isDemoMode` constant) to one
-   of two backends — so React always sees a stable hook.
-2. **Two modes, same UI.** With **no Supabase env → demo mode**: an in-memory store
-   (`lib/demo/`) with *simulated realtime* (new SOS arrive, orders advance, ambulances move)
-   so the whole product is alive on `npm run dev` with zero setup. With Supabase env → **live
-   mode**: real Postgres + Auth + Realtime. Identical components either way. The app must
-   always deploy, even with no env.
-3. **Realtime, never polling.** Live SOS/orders/requests via Supabase `postgres_changes`
-   channels; invalidate the matching query key on change. Optimistic writes on every
+   hooks in `lib/hooks/data.ts` that return **domain types** (`lib/types/domain.ts`).
+2. **Server-backed.** All data reads/writes go through the `/api` routes. The server-side
+   store defaults to a JSON file store; set `DATABASE_URL` for Postgres (Neon).
+3. **Realtime via SSE.** `/api/stream` pushes entity-change notifications via Server-Sent
+   Events. `RealtimeBridge` connects when signed in and invalidates the matching TanStack
+   Query key on change. Polling at 4 s as a safety net. Optimistic writes on every
    accept/dispatch action.
 4. **Performance.** Server Components for shells; client only for live widgets. Map is
    lazy-loaded (`dynamic`, no SSR) so it never blocks the SOS path. Gate time-relative text
@@ -122,11 +118,10 @@ with a landing page that enters either console. Role-guard `/ops` vs `/doctor` i
 
 ## Acceptance criteria
 
-- `npm install && npm run dev` → a complete, alive dashboard with **no setup**; SOS events
-  arrive on their own, orders advance, the map shows moving units.
+- `npm install && npm run dev` → the app starts and serves the dashboard.
 - `npm run build` and `npm run typecheck` pass clean; ESLint clean.
-- Adding Supabase keys + running the migration/seed switches to live data with **no code
-  change**; inserting an `sos_events` row appears on the ops board **without a refresh**.
+- The app connects to the Postgres backend when configured; the data seam means no code
+  changes are needed to swap backing stores.
 - Deploys to Vercel and Render with zero extra config.
 - Lighthouse performance ≥ 90 on the doctor cockpit; no layout shift from fonts.
 - Visually faithful to the deck: espresso shell, cream/terracotta, serif numbers, kanji
@@ -134,8 +129,8 @@ with a landing page that enters either console. Role-guard `/ops` vs `/doctor` i
 
 ## How to extend (keep the seam intact)
 
-- **New module (e.g. Kenshin):** add its tables + realtime; add a `useX()` demo/live hook
-  pair in `data.ts`; add the route + a nav entry (kanji). Components stay dumb.
+- **New module (e.g. Kenshin):** add its tables + realtime; add a `useX()` hook in
+  `data.ts`; add the route + a nav entry (kanji). Components stay dumb.
 - **New backend:** re-implement the `lib/hooks/data.ts` hooks/actions to return the same
   domain types. `app/` and `components/` don't change.
 

@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   if (action === "send-otp") {
     // Tighter than most: this reaches UIDAI through ABDM, and a loose limit
     // here is a way to spam somebody else's phone.
-    if (!rateLimit(`abha-otp:${session.userId}`, 5, 30 * 60_000)) return tooMany();
+    if (!(await rateLimit(`abha-otp:${session.userId}`, 5, 30 * 60_000))) return tooMany();
 
     const result = await abha.sendAadhaarOtp(String(body.aadhaar ?? ""));
     if (!result.ok) {
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
   // ── Complete it, and import what comes back ──
   if (action === "verify-otp") {
-    if (!rateLimit(`abha-verify:${session.userId}`, 10, 30 * 60_000)) return tooMany();
+    if (!(await rateLimit(`abha-verify:${session.userId}`, 10, 30 * 60_000))) return tooMany();
 
     const result = await abha.verifyAadhaarOtp(
       String(body.txnId ?? ""),

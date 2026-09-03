@@ -211,6 +211,9 @@ export default function ClinicMapImpl({
       clinics.forEach((c) => b.extend([c.lng, c.lat]));
       if (userLocation) b.extend([userLocation.lng, userLocation.lat]);
       map.fitBounds(b, { padding: 64, maxZoom: 13.5, duration: 700 });
+    } else if (userLocation) {
+      // No clinics nearby — center on the user so the dot is visible.
+      map.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 11, duration: 700 });
     }
   }, [clinics, userLocation, ready, mapRef]);
 

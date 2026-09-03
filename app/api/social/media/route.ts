@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   if (isError(caller)) return caller.error;
   const { me } = caller;
 
-  if (!rateLimit(`social:upload:${me}`, 40, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`social:upload:${me}`, 40, 10 * 60_000))) return tooMany();
 
   try {
     const form = await req.formData();

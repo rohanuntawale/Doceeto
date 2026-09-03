@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { isDemoMode } from "@/lib/config";
 import { useActions } from "@/lib/hooks/data";
 import { useToast } from "@/components/ui/toast";
 import { isNurse } from "@/lib/nurse";
@@ -34,7 +33,7 @@ export function OnlineToggle({
     // Caught here so the provider lands on the fix, not just an error. The
     // destination follows the cadre — sending a nurse to /doctor/profile would
     // bounce her off the surface guard instead of onto the form she needs.
-    if (next === "online" && !isDemoMode && !doctor.avatarUrl) {
+    if (next === "online" && !doctor.avatarUrl) {
       toast.push({
         tone: "error",
         title: "Add a profile photo first",

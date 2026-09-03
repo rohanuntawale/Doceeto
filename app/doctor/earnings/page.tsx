@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useTransactions, useActions } from "@/lib/hooks/data";
-import { walletBalance } from "@/lib/demo/store";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import { COMMISSION_RATE } from "@/lib/config";
 import { formatINR, formatINRCompact, timeAgo } from "@/lib/utils/format";
@@ -25,7 +24,7 @@ export default function EarningsPage() {
   if (!me) return null;
 
   const mine = txns.filter((t) => t.doctorId === me.id);
-  const balance = walletBalance(mine, me.id);
+  const balance = mine.reduce((a, t) => a + t.net, 0);
   const earned = mine.filter((t) => t.kind === "earning").reduce((a, t) => a + t.net, 0);
   const paidOut = mine.filter((t) => t.kind === "payout").reduce((a, t) => a - t.net, 0);
 

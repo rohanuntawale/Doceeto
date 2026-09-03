@@ -6,12 +6,10 @@ import { useRouter } from "next/navigation";
 import { Lock, ArrowLeft } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
-import { isDemoMode } from "@/lib/config";
-import { OPS_PASSCODE, setOpsAuthed } from "@/lib/ops-auth";
+
 
 export default function OpsSignIn() {
   const router = useRouter();
-  const [passcode, setPasscode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,16 +18,6 @@ export default function OpsSignIn() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    if (isDemoMode) {
-      if (passcode.trim().toLowerCase() === OPS_PASSCODE) {
-        setOpsAuthed();
-        router.push("/ops");
-      } else {
-        setError("Incorrect passcode.");
-      }
-      return;
-    }
 
     setLoading(true);
     const res = await fetch("/api/auth/login", {
@@ -71,23 +59,7 @@ export default function OpsSignIn() {
             </div>
           </div>
 
-          {isDemoMode ? (
-            <label className="block">
-              <span className="label">Passcode</span>
-              <input
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                autoFocus
-                className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-espresso px-3 py-2.5 text-sm text-cream outline-none placeholder:text-[var(--text-faint)] focus:border-terracotta/60"
-                placeholder="Enter admin passcode"
-              />
-              <span className="mt-2 block text-xs text-[var(--text-faint)]">
-                Demo passcode: <span className="font-mono text-salmon">{OPS_PASSCODE}</span>
-              </span>
-            </label>
-          ) : (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <label className="block">
                 <span className="label">Email</span>
                 <input
@@ -111,7 +83,6 @@ export default function OpsSignIn() {
                 />
               </label>
             </div>
-          )}
 
           {error && <p className="mt-3 text-sm text-terracotta-300">{error}</p>}
 

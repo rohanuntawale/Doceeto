@@ -14,7 +14,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function POST(req: Request) {
   try {
     // 10 signups / hour per IP — stops bot floods.
-    if (!rateLimit(`register:ip:${clientIp(req)}`, 10, 60 * 60_000)) return tooMany();
+    if (!(await rateLimit(`register:ip:${clientIp(req)}`, 10, 60 * 60_000))) return tooMany();
 
     const body = await req.json();
     const email = String(body.email ?? "").trim().toLowerCase();

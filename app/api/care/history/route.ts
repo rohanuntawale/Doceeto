@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   if (!id) return NextResponse.json({ ok: false }, { status: 401 });
   // Saves fire per answered question (debounced client-side); a real chat
   // burns nowhere near this budget.
-  if (!rateLimit(`care-history:${id}`, 240, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`care-history:${id}`, 240, 10 * 60_000))) return tooMany();
 
   let body: unknown;
   try {
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const id = await patientId(req);
   if (!id) return NextResponse.json({ ok: false }, { status: 401 });
-  if (!rateLimit(`care-history:${id}`, 240, 10 * 60_000)) return tooMany();
+  if (!(await rateLimit(`care-history:${id}`, 240, 10 * 60_000))) return tooMany();
 
   const sessionId = new URL(req.url).searchParams.get("id");
   const stored = (await db.getChatHistory(id))

@@ -10,7 +10,6 @@ import { PrescriptionComposer } from "@/components/prescription/prescription-com
 import { StartCodeForDoctor } from "@/components/consult/start-code";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/components/ui/toast";
-import { isDemoMode } from "@/lib/config";
 import { useConsultRequests, useActions } from "@/lib/hooks/data";
 import { useCurrentDoctor } from "@/lib/hooks/use-current-doctor";
 import {
@@ -48,7 +47,7 @@ export default function RequestsPage() {
    * the visit is actually held.
    */
   const briefButton = (r: (typeof requests)[number]) =>
-    !isDemoMode && r.patientId ? (
+    r.patientId ? (
       <button
         onClick={() => setBriefFor(r.id)}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"
@@ -267,12 +266,12 @@ export default function RequestsPage() {
                   <div className="space-y-2.5">
                     {/* The consult can't be completed until the patient's
                         code is entered, so the keypad lives right here. */}
-                    {!isDemoMode && awaitingStartCode(r) && (
+                    {awaitingStartCode(r) && (
                       <StartCodeForDoctor req={r} />
                     )}
                     {/* Accepting the consult is what unlocks the patient's
                         health profile, the server enforces the same rule. */}
-                    {!isDemoMode && r.patientId && (
+                    {r.patientId && (
                       <button
                         onClick={() => setBriefFor(r.id)}
                         className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] py-2 text-sm font-medium text-cream transition-colors hover:bg-white/5"

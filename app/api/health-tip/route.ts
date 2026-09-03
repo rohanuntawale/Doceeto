@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
   // One tip per band change is all the client asks for; this cap is a backstop.
-  if (!rateLimit(`health-tip:${session.userId}`, 10, 60 * 60_000)) return tooMany();
+  if (!(await rateLimit(`health-tip:${session.userId}`, 10, 60 * 60_000))) return tooMany();
 
   let raw: unknown;
   try {

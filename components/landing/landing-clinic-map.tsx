@@ -55,17 +55,46 @@ export function LandingClinicMap() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-      },
-      () => {
-        // Location is optional on the public map. The clinic map still works
-        // normally when permission is denied or unavailable.
-      },
-      { enableHighAccuracy: false, maximumAge: 300_000, timeout: 8_000 },
-    );
+    let cancelled = false;
+
+    async function locate() {
+      // 1) Try the browser Geolocation API (works on localhost + mobile)
+      if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              maximumAge: 300_000,
+              timeout: 6_000,
+            });
+          });
+          if (!cancelled) {
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            return;
+          }
+        } catch {
+          // Browser geolocation failed — fall through to IP fallback.
+        }
+      }
+
+      // 2) IP-based geolocation (no permission needed, works everywhere)
+      try {
+        const res = await fetch("https://ipapi.co/json/", {
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && data.latitude && data.longitude) {
+            setUserLocation({ lat: data.latitude, lng: data.longitude });
+          }
+        }
+      } catch {
+        // Both methods failed — map stays centered on MAP_CENTER default.
+      }
+    }
+
+    locate();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -205,7 +234,7 @@ export function LandingClinicMap() {
                 <li className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
                   {clinics.length === 0
                     ? "No clinics published yet."
-                    : `Nothing matches “${query}”.`}
+                    : `Nothing matches "${query}".`}
                 </li>
               )}
             </ul>

@@ -42,45 +42,35 @@ Completing or cancelling releases it, so a crash mid-gig cannot strand anyone. T
 `Doctor.status` field stays what it always was — the doctor's own online/offline
 intent — and is never machine-written.
 
-`bookableState()` in `lib/scheduling/slots.ts` is the single source for every
-"can this be booked?" flag, called by both `/api/availability` and the demo path.
+``bookableState()` in `lib/scheduling/slots.ts` is the single source for every
+"can this be booked?" flag, called by `/api/availability`.
 
 The product's four pillars map to features: **Tasuke** (助け, emergency SOS), **Zumi**
 (freelance doctors), **AuraMed** (薬, medicine delivery). **Kenshin** (検診, diagnostics)
 is reserved in the schema for a later phase.
 
-## 2. Two modes, one seam
+## 2. The data seam
 
 The single most important design decision: **the UI never talks to a backend directly.**
 Every read and write goes through the hooks in [`lib/hooks/data.ts`](../lib/hooks/data.ts),
-which are bound **once at module load** to one of two implementations:
-
-```
-DEMO  (no env)          →  lib/demo/store.ts        (in-browser, cross-tab)
-LIVE  (NEXT_PUBLIC_BACKEND) →  the /api routes      (see the store split below)
-```
-
-`isDemoMode` is derived from `NEXT_PUBLIC_BACKEND` ([`lib/config.ts`](../lib/config.ts)),
-so it's a compile-time constant — React always sees a stable hook (no conditional-hook
-hazard). Because both paths return the same **domain types**
-([`lib/types/domain.ts`](../lib/types/domain.ts)), components are identical in either mode.
+which fetch from the `/api` routes and return **domain types**
+([`lib/types/domain.ts`](../lib/types/domain.ts)).
 
 ```
 Component  ──►  useConsultRequests() / useGigs() / useActions()
 (dumb UI)       (lib/hooks/data.ts)
                      │
-                     ├─ demo store  (dev, zero-config, BroadcastChannel)
                      └─ /api/data + /api/actions
                               │
                               ├─ lib/filedb/repo.ts  (default; JSON file store)
-                              └─ lib/neo4j/repo.ts   (NEO4J_URI set)
+                              └─ lib/postgres/repo.ts (Postgres/Neon)
 ```
 
 The server-side store is chosen in [`lib/db/index.ts`](../lib/db/index.ts) and the API
 routes talk to `db` without caring which is behind it.
 
-**Why:** the founder sees a fully-alive product on `npm run dev` with no setup, and there
-is exactly one file to change when swapping the source.
+**Why:** there is exactly one file to change when swapping the backing store, and
+components are identical regardless of what's behind the API.
 
 ### The rules live in one place, not three
 
@@ -107,18 +97,15 @@ synchronously before the mutation; Neo4j repeats it as a guarded Cypher `SET`.
 
 Emergencies can't lag, so the app is push-based:
 
-- **Live mode:** Supabase Realtime `postgres_changes` on `sos_events`, `consult_requests`,
-  `orders`, `doctors`, `ambulances`. A change invalidates the matching TanStack Query key
-  and the UI re-renders. See `useLiveTable` in `lib/hooks/data.ts`.
-- **Local mode:** `lib/demo/store.ts` is a browser-only engine that **persists to
-  localStorage** and **broadcasts every change over a `BroadcastChannel`** — so a patient
-  action in one tab pushes live into the doctor/ops tabs (patient→provider actually
-  connects, no server). UI subscribes via `useSyncExternalStore`. There is **no fake
-  auto-generated activity** — all SOS/consults/orders are created by the patient app.
-  The store starts **completely empty** — there is no seeded data of any kind.
+- **SSE via `/api/stream`:** a Server-Sent Events endpoint pushes entity-change
+  notifications to the browser. `RealtimeBridge` connects when signed in and
+  invalidates the matching TanStack Query key on each event, so the UI re-renders
+  instantly. Polling backs off to a slow safety net while SSE is connected.
+- **Polling fallback:** when SSE can't connect (serverless, proxy, offline), reads
+  poll on a short interval (4 s) and every mutation invalidates the matching query.
 
 Mutations (accept request, dispatch ambulance, advance order) update state immediately
-(optimistic in spirit); in live mode the Realtime echo reconciles across every open client.
+(optimistic); the SSE echo or next poll reconciles across every open client.
 
 ## 4. Rendering & performance
 
@@ -133,13 +120,10 @@ Mutations (accept request, dispatch ambulance, advance order) update state immed
 
 ## 5. Auth & routing
 
-- `middleware.ts` → `lib/supabase/middleware.ts` refreshes the Supabase session each
-  request and guards `/doctor` and `/ops` (redirect to `/login` when unauthenticated).
-- **Demo mode:** middleware is a pass-through; the landing page enters either console.
-- **Role model:** `profiles.role ∈ {doctor, ops, admin}`. Doctors self-onboard at `/signup`
-  (a Postgres trigger creates their `profiles` + `doctors` rows). Ops accounts are seeded /
-  invited. Role-based hard-guarding of `/ops` vs `/doctor` is a hook point in the layouts
-  (see REFERENCE → "Tightening for production").
+- `middleware.ts` refreshes the session each request and guards `/doctor` and `/ops`
+  (redirect to `/login` when unauthenticated).
+- **Role model:** Doctors self-onboard at `/signup`. Ops accounts are seeded/invited.
+  Role-based hard-guarding of `/ops` vs `/doctor` is handled in the layouts.
 
 ## 6. Directory map
 
@@ -162,11 +146,11 @@ components/
   zumi/ auramed/        per-module cards
   map/                  MapLibre maps — browse, ops, live trip (all dynamic)
 lib/
-  hooks/data.ts         THE data seam (demo ⇄ live), useActions, useGigs, useOpsSnapshot
+  hooks/data.ts         THE data seam (useActions, useGigs, useOpsSnapshot, etc.)
   hooks/use-schedule.ts one doctor's calendar + bookable flags
   db/index.ts           server store selector (Neo4j ⇄ file store)
   filedb/ neo4j/        the two server stores, same exported surface
-  demo/                 store.ts (in-browser, cross-tab)
+
   scheduling/           time, slots, booking, trip — the shared rules
   gigs/rules.ts         gig bounds + normalisation
   types/domain.ts       the shared domain types

@@ -43,7 +43,6 @@ import {
 import { useCurrentProvider } from "@/lib/hooks/use-current-doctor";
 import { useT } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
-import { isDemoMode } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { formatINR, initials, timeAgo } from "@/lib/utils/format";
 import { ongoingConsultOf, visibleToProvider } from "@/lib/scheduling/slots";
@@ -441,10 +440,6 @@ function Profile() {
    *  endpoint writes both the account and the public provider row. */
   async function setPhoto(dataUrl: string) {
     if (!me) return;
-    if (isDemoMode) {
-      updateDoctor(me.id, { avatarUrl: dataUrl });
-      return;
-    }
     const res = await apiFetch("/api/auth/avatar", {
       method: "POST",
       headers: { "content-type": "application/json" },

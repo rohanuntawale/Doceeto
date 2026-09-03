@@ -9,10 +9,8 @@ import { Name, BrandMark } from "@/components/brand/wordmark";
 import { RegistryAutofill } from "@/components/auth/registry-autofill";
 import { AuthShell, authPanelCls } from "@/components/auth/auth-shell";
 import { useToast } from "@/components/ui/toast";
-import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
-import { setCurrentDoctorId } from "@/lib/hooks/use-current-doctor";
-import { demoStore } from "@/lib/demo/store";
-import { googleAuthEnabled as googleEnabled, isDemoMode } from "@/lib/config";
+
+import { googleAuthEnabled as googleEnabled } from "@/lib/config";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
 import { SIGNUP_HANDOFF_KEY } from "@/lib/auth/constants";
 import {
@@ -68,7 +66,6 @@ function OnboardingPanel() {
   const router = useRouter();
   const params = useSearchParams();
   const toast = useToast();
-  const { update } = useCurrentPatient();
   // Wake the database while they're still reading — sign-in lands warm.
   useWarmBackend();
 
@@ -193,26 +190,23 @@ function OnboardingPanel() {
       // rules) so nobody fills the whole profile only to bounce on a weak
       // password afterwards.
       if (step === 1) {
-        if (!isDemoMode) {
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            return setError("Enter a valid email address.");
-          }
-          if (
-            password.length < 8 ||
-            !/[a-zA-Z]/.test(password) ||
-            !/\d/.test(password)
-          ) {
-            return setError(
-              "Password must be 8+ characters and include a letter and a number.",
-            );
-          }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          return setError("Enter a valid email address.");
+        }
+        if (
+          password.length < 8 ||
+          !/[a-zA-Z]/.test(password) ||
+          !/\d/.test(password)
+        ) {
+          return setError(
+            "Password must be 8+ characters and include a letter and a number.",
+          );
         }
         setStep(2);
         return;
       }
 
-      // Step 2 — the profile itself. Demo keeps the doctor in the browser;
-      // live creates the account + session on the backend.
+      // Step 2 — the profile itself.
       const ageNum = Math.round(Number(age));
       if (!gender) return setError("Select your gender.");
       if (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 100) {
@@ -247,18 +241,6 @@ function OnboardingPanel() {
         homeVisitFee: Math.max(0, Number(homeVisitFee) || 900),
         clinicAddress: clinicAddress.trim(),
       };
-
-      if (isDemoMode) {
-        const doc = demoStore.registerDoctor(profile);
-        setCurrentDoctorId(doc.id);
-        toast.push({
-          tone: "success",
-          title: "Welcome to Doceeto",
-          desc: "Your profile is live, go online when ready.",
-        });
-        router.push("/doctor");
-        return;
-      }
 
       // Google doctor: the identity is already proved and parked server-side,
       // so this submit carries the practice profile only — no email, no
@@ -311,19 +293,17 @@ function OnboardingPanel() {
       // Step 1 → 2: same account checks as the doctor path. (A Google nurse
       // never sees step 1 — identity is already parked server-side.)
       if (step === 1) {
-        if (!isDemoMode) {
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            return setError("Enter a valid email address.");
-          }
-          if (
-            password.length < 8 ||
-            !/[a-zA-Z]/.test(password) ||
-            !/\d/.test(password)
-          ) {
-            return setError(
-              "Password must be 8+ characters and include a letter and a number.",
-            );
-          }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          return setError("Enter a valid email address.");
+        }
+        if (
+          password.length < 8 ||
+          !/[a-zA-Z]/.test(password) ||
+          !/\d/.test(password)
+        ) {
+          return setError(
+            "Password must be 8+ characters and include a letter and a number.",
+          );
         }
         setStep(2);
         return;
@@ -331,9 +311,6 @@ function OnboardingPanel() {
 
       // Step 2 — the nurse profile. Patients filter on skills, so at least
       // one is required; the server allowlists them against NURSE_SERVICES.
-      if (isDemoMode) {
-        return setError("Nurse signup needs the live backend.");
-      }
       const ageNum = Math.round(Number(age));
       if (!gender) return setError("Select your gender.");
       if (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 100) {
@@ -403,19 +380,7 @@ function OnboardingPanel() {
       return;
     }
 
-    // Patient — the effortless path. Demo keeps identity in the browser;
-    // live creates the real account on the backend and sets the session.
-    if (isDemoMode) {
-      update({ name: name.trim() || "Guest" });
-      toast.push({
-        tone: "success",
-        title: "Welcome to Doceeto",
-        desc: "Your space is ready.",
-      });
-      router.push("/patient");
-      return;
-    }
-
+    // Patient — the effortless path.
     setLoading(true);
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -584,7 +549,7 @@ function OnboardingPanel() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
                   autoComplete="email"
-                  required={!isDemoMode}
+                  required
                 />
               </label>
               <label className="relative block">
@@ -596,7 +561,7 @@ function OnboardingPanel() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
                   autoComplete="new-password"
-                  required={!isDemoMode}
+                  required
                 />
                 <button
                   type="button"

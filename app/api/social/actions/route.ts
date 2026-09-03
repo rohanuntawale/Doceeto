@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       case "createPost": {
         // Bursts are what a scripted client looks like; a person writing posts
         // does not produce twelve in five minutes.
-        if (!rateLimit(`social:post:${me}`, 12, 5 * 60_000)) return tooMany();
+        if (!(await rateLimit(`social:post:${me}`, 12, 5 * 60_000))) return tooMany();
         const content = clean_(str("content", POST_MAX));
         const post = await social.createPost({
           authorId: me,
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
       }
 
       case "addComment": {
-        if (!rateLimit(`social:comment:${me}`, 30, 5 * 60_000)) return tooMany();
+        if (!(await rateLimit(`social:comment:${me}`, 30, 5 * 60_000))) return tooMany();
         const text = clean_(str("text", COMMENT_MAX));
         if (!text) return bad("Write a comment first.");
         const result = await social.addComment(id("postId"), me, text);
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
       }
 
       case "sendMessage": {
-        if (!rateLimit(`social:dm:${me}`, 60, 60_000)) return tooMany();
+        if (!(await rateLimit(`social:dm:${me}`, 60, 60_000))) return tooMany();
         const content = clean_(str("content", MESSAGE_MAX));
         const result = await chat.sendMessage({
           conversationId: id("conversationId"),
@@ -348,7 +348,7 @@ export async function POST(req: Request) {
         return done({ ok: true }, [KEYS.channels]);
 
       case "sendChannelMessage": {
-        if (!rateLimit(`social:channel:${me}`, 60, 60_000)) return tooMany();
+        if (!(await rateLimit(`social:channel:${me}`, 60, 60_000))) return tooMany();
         const result = await chat.sendChannelMessage({
           channelId: id("channelId"),
           senderId: me,
