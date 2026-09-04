@@ -446,8 +446,29 @@ function NetworkLines({
         const el = lineRefs.current[node.id];
         if (!el) continue;
         const prox = proximities[node.id] ?? 0;
+
+        const nodePxX = (node.x / 100) * W;
+        const nodePxY = (node.y / 100) * H;
+        const dotPxX = (dotPx / 100) * W;
+        const dotPxY = (dotPy / 100) * H;
+
+        const dist = Math.hypot(nodePxX - dotPxX, nodePxY - dotPxY);
+        let endX = nodePxX;
+        let endY = nodePxY;
+        if (dist > 20) {
+          const ux = (nodePxX - dotPxX) / dist;
+          const uy = (nodePxY - dotPxY) / dist;
+          endX = nodePxX - 20 * ux;
+          endY = nodePxY - 20 * uy;
+        }
+
+        const endPctX = (endX / W) * 100;
+        const endPctY = (endY / H) * 100;
+
         el.setAttribute("x1", `${dotPx}%`);
         el.setAttribute("y1", `${dotPy}%`);
+        el.setAttribute("x2", `${endPctX}%`);
+        el.setAttribute("y2", `${endPctY}%`);
         el.style.opacity = String(0.45 + prox * 0.5);
         el.setAttribute(
           "stroke",
@@ -537,7 +558,7 @@ function CareNode({
 
   return (
     <motion.div
-      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 z-20"
+      className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
       style={{ left: `${x}%`, top: `${y}%` }}
       initial={{ opacity: 0, scale: 0.6 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -594,19 +615,19 @@ function CareNode({
             }}
           />
         </div>
-      </motion.div>
 
-      {/* Prominent, readable 14px label */}
-      <span
-        className="pointer-events-none select-none text-center text-[14px] font-bold tracking-wide drop-shadow-sm"
-        style={{
-          opacity: labelOpacity,
-          color: active ? "#153D32" : "#1B4C3E",
-          transition: "opacity 0.2s ease, color 0.2s ease",
-        }}
-      >
-        {label}
-      </span>
+        {/* Prominent, readable 14px label positioned directly below circle */}
+        <span
+          className="pointer-events-none absolute top-full mt-2 left-1/2 -translate-x-1/2 select-none text-center text-[14px] font-bold tracking-wide drop-shadow-sm whitespace-nowrap"
+          style={{
+            opacity: labelOpacity,
+            color: active ? "#153D32" : "#1B4C3E",
+            transition: "opacity 0.2s ease, color 0.2s ease",
+          }}
+        >
+          {label}
+        </span>
+      </motion.div>
     </motion.div>
   );
 }

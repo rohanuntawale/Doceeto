@@ -141,10 +141,20 @@ export function useGlMap(opts: GlMapOptions = {}) {
   useEffect(() => {
     const map = mapRef.current;
     const container = containerRef.current;
-    if (!map || !container) return;
+    if (!map || !container || !ready) return;
+
+    map.resize();
+    const timer = setTimeout(() => map.resize(), 200);
+    const raf = requestAnimationFrame(() => map.resize());
+
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(container);
-    return () => ro.disconnect();
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [ready]);
 
   return { containerRef, map: mapRef, ready, armed };

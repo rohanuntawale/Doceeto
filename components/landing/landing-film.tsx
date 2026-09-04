@@ -103,7 +103,9 @@ export function LandingFilm() {
        assigning it now costs nothing and buys the right file. */
     const cut = pickCut();
     setPoster(cut.poster);
-    video.src = cut.src;
+    if (video.getAttribute("src") !== cut.src) {
+      video.src = cut.src;
+    }
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -181,7 +183,7 @@ export function LandingFilm() {
         >
           <video
             ref={videoRef}
-            className="pointer-events-none aspect-video w-full bg-[var(--forest)] object-cover sm:aspect-[16/10] lg:aspect-video"
+            className="pointer-events-none aspect-[4/5] w-full bg-[var(--forest)] object-cover sm:aspect-[16/10] lg:aspect-video"
             poster={poster}
             muted
             loop

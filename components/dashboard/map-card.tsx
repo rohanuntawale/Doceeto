@@ -73,22 +73,22 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
 
   return (
     <section className="fh-card map-chip-overlay relative overflow-hidden rounded-3xl">
-      <div className="h-[330px] w-full sm:h-[350px]">
+      <div className="relative z-0 h-[330px] w-full sm:h-[350px]">
         <AdvancedMap
           center={effectiveCenter}
           zoom={13}
           markers={markers}
           enableClustering={markers.length > 4}
-          enableSearch={false}
-          enableControls={false}
+          enableSearch={true}
+          enableControls={true}
           style={{ height: "100%", width: "100%" }}
         />
       </div>
 
       {/* Glass overlays. The deeper bottom padding leaves the map's
           attribution strip its own lane under the action row. */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pb-8">
-        <div className="flex items-start justify-between gap-2">
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-3 pb-8">
+        <div className="flex items-start justify-between gap-2 pt-12">
           <button
             type="button"
             onClick={locate}

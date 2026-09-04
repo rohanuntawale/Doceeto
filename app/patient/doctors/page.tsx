@@ -308,7 +308,7 @@ function DoctorsBrowser() {
           panel sits beside the map rather than covering it. */}
       <div
         className={cn(
-          "absolute inset-0 transition-[right] duration-300 ease-out",
+          "absolute inset-0 z-0 transition-[right] duration-300 ease-out",
           panelOpen && "lg:right-96",
         )}
       >
@@ -324,7 +324,7 @@ function DoctorsBrowser() {
       {/* Context chip, what the pins on the map currently represent. */}
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 transition-[right] duration-300 ease-out",
+          "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 transition-[right] duration-300 ease-out",
           panelOpen && "lg:right-96",
         )}
       >
@@ -356,7 +356,7 @@ function DoctorsBrowser() {
           map's right edge, clear of the panel. */}
       <div
         className={cn(
-          "glass-control absolute bottom-[calc(var(--sheet-h)+0.75rem)] right-3 flex flex-col overflow-hidden rounded-2xl transition-[bottom,right] duration-300 lg:bottom-3",
+          "glass-control absolute z-20 bottom-[calc(var(--sheet-h)+0.75rem)] right-3 flex flex-col overflow-hidden rounded-2xl transition-[bottom,right] duration-300 lg:bottom-3",
           panelOpen ? "lg:right-[calc(24rem+0.75rem)]" : "lg:right-3",
         )}
         style={{ "--sheet-h": SNAPS[snap] } as React.CSSProperties}
@@ -388,7 +388,7 @@ function DoctorsBrowser() {
         aria-label={panelOpen ? "Hide the doctor list" : "Show the doctor list"}
         title={panelOpen ? "Hide list" : "Show list"}
         className={cn(
-          "fh-card absolute top-1/2 hidden h-16 w-7 -translate-y-1/2 place-items-center rounded-l-xl rounded-r-none border-r-0 text-primary transition-[right] duration-300 ease-out hover:text-[rgb(var(--c-terracotta))] lg:grid",
+          "fh-card absolute top-1/2 z-20 hidden h-16 w-7 -translate-y-1/2 place-items-center rounded-l-xl rounded-r-none border-r-0 text-primary transition-[right] duration-300 ease-out hover:text-[rgb(var(--c-terracotta))] lg:grid",
           panelOpen ? "right-96" : "right-0",
         )}
       >
@@ -402,7 +402,7 @@ function DoctorsBrowser() {
       {/* Side panel (desktop), same content as the sheet, docked right. */}
       <aside
         className={cn(
-          "glass-sheet absolute inset-y-0 right-0 hidden w-96 flex-col border-l transition-transform duration-300 ease-out lg:flex lg:rounded-r-3xl",
+          "glass-sheet absolute inset-y-0 right-0 z-30 hidden w-96 flex-col border-l transition-transform duration-300 ease-out lg:flex lg:rounded-r-3xl",
           !panelOpen && "lg:translate-x-full",
         )}
         aria-hidden={!panelOpen}
@@ -414,7 +414,7 @@ function DoctorsBrowser() {
       {/* Bottom sheet (mobile), a right-hand panel on a phone would cover
           the map entirely, so the drag-to-snap sheet stays there. */}
       <div
-        className="glass-sheet absolute inset-x-0 bottom-0 flex flex-col rounded-t-[1.75rem] border-t transition-[height] duration-300 ease-out lg:hidden"
+        className="glass-sheet absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-[1.75rem] border-t transition-[height] duration-300 ease-out lg:hidden"
         style={{ height: SNAPS[snap] }}
       >
         {/* Drag handle */}
