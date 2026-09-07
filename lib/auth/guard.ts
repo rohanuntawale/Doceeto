@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession, currentPath } from "@/lib/auth/session";
 import { homeFor, signInFor, type SurfaceRole } from "@/lib/auth/constants";
 import type { SessionRecord } from "@/lib/db/shared";
+import { db } from "@/lib/db";
 
 /**
  * Surfaces that hold other people's medical data, dispatch a human to a home,
@@ -57,7 +58,16 @@ export async function requireSurface(surface: SurfaceRole): Promise<SessionRecor
   if (demoBypassAllowed(surface)) return null; // patient demo on a dev machine only
 
   const session = await getSession(surface);
-  if (session) return session;
+  if (session) {
+    if (surface === "patient" && currentPath()?.split("?")[0] !== "/patient/onboarding") {
+      const patient = await db.getPatientProfile(session.userId);
+      if (!patient?.healthProfile?.updatedAt) redirect("/patient/onboarding");
+    }
+    if ((surface === "doctor" || surface === "nurse") && !(await db.getDoctorById(session.userId))?.verified) {
+      redirect(`/verification?as=${surface}`);
+    }
+    return session;
+  }
 
   const next = currentPath() ?? homeFor(surface);
   redirect(signInFor(surface, next));

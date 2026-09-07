@@ -365,6 +365,34 @@ body::after {
   backdrop-filter: var(--card-blur);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), var(--elev-shadow);
 }
+
+.mira-chat {
+  --c-cream: 32 40 36;
+  --c-terracotta: 21 61 50;
+  --c-salmon: 83 101 93;
+  --c-tan: 122 93 36;
+  --text: #202824;
+  --text-muted: #53655d;
+  --text-faint: #68776f;
+  --surface: #ffffff;
+  --bg-rgb: 255 255 255;
+  --accent: #153d32;
+  --accent-rgb: 21 61 50;
+  --border: #dfe5e1;
+  --card-fill: #f5f6f5;
+  --glass-border: #dfe5e1;
+  --elev-shadow: none;
+  --card-blur: none;
+  background: #fff;
+  color: var(--text);
+  border-radius: 24px;
+}
+.mira-chat > div { background-color: #fff; }
+.mira-chat input { min-width: 0; }
+.mira-chat .fh-card { box-shadow: none; background: #f5f6f5; }
+.profile-page .fh-card { border-radius: 18px; box-shadow: none; }
+.profile-page h1 { font-family: var(--font-playfair), Georgia, serif; font-size: clamp(2rem, 4vw, 3rem); }
+.profile-page input, .profile-page select, .profile-page textarea { background-color: var(--surface); }
 [data-theme="fresh"] .fh-card {
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 42%),

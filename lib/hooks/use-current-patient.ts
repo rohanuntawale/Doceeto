@@ -104,7 +104,11 @@ function hydrateOnce() {
             ...DEFAULT,
             ...account,
             ...live,
-            located: current.located,
+            address: current.located ? current.address : String(data.patient.address ?? ""),
+            addressFull: current.located ? current.addressFull : String(data.patient.addressFull ?? ""),
+            lat: current.located ? current.lat : (data.patient.lat ?? DEFAULT.lat),
+            lng: current.located ? current.lng : (data.patient.lng ?? DEFAULT.lng),
+            located: current.located || data.patient.located === true,
             ready: true,
           };
         } else {

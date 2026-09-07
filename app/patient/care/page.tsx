@@ -39,7 +39,6 @@ import {
   applyAiAnswer,
   applyText,
   nextStep,
-  forceConclusion,
   bankOption,
   type DState,
   type DStep,
@@ -50,6 +49,7 @@ import {
   type Urgency,
 } from "@/lib/diagnose/engine";
 import { cn } from "@/lib/utils/cn";
+import { MiraCompanion } from "@/components/patient/mira-companion";
 
 export default function CarePage() {
   return (
@@ -196,7 +196,7 @@ function profilePriors(hp?: import("@/lib/health/profile").HealthProfile): strin
 
 function CareInner() {
   const { patient } = useCurrentPatient();
-  const { t } = useT();
+  const { t, lang } = useT();
   const router = useRouter();
   const params = useSearchParams();
   const seed = params.get("q") ?? "";
@@ -270,9 +270,7 @@ function CareInner() {
          from PAST the emergency screen (the keyword scan has already run over
          every answer, so that safety net stayed live throughout). */
       const offline = () => {
-        if (aiDrove.current && state.answers.length >= 3) {
-          setStep(forceConclusion(state));
-        } else if (
+        if (
           aiDrove.current &&
           state.answers.length > 0 &&
           !state.tags.includes("screened")
@@ -297,11 +295,13 @@ function CareInner() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             seed: state.seed,
+            sessionId: sessionId.current,
+            lang,
             answers: state.answers.map((a) => ({
+              questionId: a.questionId,
               prompt: a.prompt,
               label: a.label,
             })),
-            history: recentConditions(),
           }),
         });
         const data = await res.json();
@@ -423,8 +423,8 @@ function CareInner() {
 
   function sendText() {
     const text = draft.trim();
-    if (!text) return;
-    setState((s) => applyText(s, text));
+    if (!text || thinking || viewed) return;
+    setState((s) => applyText(s, text, step?.kind === "question" ? step.question : undefined));
     setDraft("");
   }
 
@@ -465,7 +465,7 @@ function CareInner() {
   const fresh = !view.seed && view.answers.length === 0 && !activeConclusion;
 
   return (
-    <>
+    <div className="mira-chat">
       <ChatSidebar
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -497,7 +497,7 @@ function CareInner() {
           </button>
           <div className="flex flex-1 items-center gap-2">
             <h1 className="text-base font-semibold text-cream">
-              {t("care.title")}
+              Mira
             </h1>
             {aiOn && (
               <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
@@ -525,9 +525,7 @@ function CareInner() {
               and the Q&A lives inside its "Review your answers" disclosure. */}
           {activeConclusion ? null : fresh ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/15 text-primary">
-                <Sparkles className="h-7 w-7" />
-              </span>
+              <MiraCompanion thinking={thinking} typing={Boolean(draft)} answerKey={step?.kind === "question" ? step.question.id : "welcome"} />
               <h2 className="mt-4 text-lg font-semibold text-cream">
                 {t("care.title")}
               </h2>
@@ -687,6 +685,7 @@ function CareInner() {
           )}
         >
           <div>
+            <MiraCompanion thinking={thinking} typing={Boolean(draft)} answerKey={step?.kind === "question" ? step.question.id : "assessment"} />
             {fresh ? (
               <>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-faint)]">
@@ -901,7 +900,7 @@ function CareInner() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

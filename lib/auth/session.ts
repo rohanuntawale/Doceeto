@@ -72,7 +72,13 @@ export function surfaceOf(req: Request): SurfaceRole | null {
 
 /** Session for the surface this request speaks for. */
 export async function getRequestSession(req: Request): Promise<SessionRecord | null> {
-  return getSession(surfaceOf(req));
+  const session = await getSession(surfaceOf(req));
+  if (session && (session.role === "doctor" || session.role === "nurse")) {
+    const path = new URL(req.url).pathname;
+    const permitted = ["/api/auth/me", "/api/auth/logout", "/api/auth/avatar"];
+    if (!permitted.includes(path) && !(await db.getDoctorById(session.userId))?.verified) return null;
+  }
+  return session;
 }
 
 /** The path being rendered, published by the middleware for server components. */

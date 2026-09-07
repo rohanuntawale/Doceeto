@@ -13,6 +13,8 @@ import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { AvatarImage } from "@/components/ui/avatar-image";
+import { IdentityImport } from "@/components/patient/identity-import";
+import { healthProfileCompletion } from "@/lib/health/profile";
 
 export default function PatientAccount() {
   const { patient, update } = useCurrentPatient();
@@ -46,10 +48,15 @@ export default function PatientAccount() {
   const firstName = patient.name.split(" ")[0] || "Guest";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="profile-page mx-auto max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight text-cream">
         {t("account.title")}
       </h1>
+      <p className="max-w-xl text-sm leading-relaxed text-[var(--text-muted)]">Your care starts here. Keep your health details current so Mira and your clinician can understand the full picture.</p>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <div className="mb-3 flex justify-between text-sm"><span>Health profile completeness</span><strong>{healthProfileCompletion(patient.healthProfile)}%</strong></div>
+        <progress aria-label="Health profile completeness" max={100} value={healthProfileCompletion(patient.healthProfile)} className="h-2 w-full accent-[#153d32]" />
+      </div>
 
       {/* Profile card, the avatar doubles as the photo upload control. */}
       <div className="flex items-center gap-4 rounded-3xl fh-card p-5 shadow-soft">
@@ -71,6 +78,7 @@ export default function PatientAccount() {
       </div>
 
       {/* Health basics, what a doctor reads before treating them. */}
+      <IdentityImport />
       <HealthProfileForm />
 
 

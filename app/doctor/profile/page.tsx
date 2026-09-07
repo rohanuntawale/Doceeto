@@ -66,7 +66,7 @@ export default function ProfilePage() {
   const st = doctorStatusOf(me.status);
 
   return (
-    <>
+    <div className="profile-page mx-auto max-w-6xl">
       <PageHeader
         label="DOCEETO · PROFILE"
         title="Your profile"
@@ -234,13 +234,13 @@ export default function ProfilePage() {
         onClose={() => setEditing(false)}
       />
 
-    </>
+    </div>
   );
 }
 
 function FeeTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-espresso p-3">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="metric text-xl text-cream">{value}</div>
       <div className="label mt-1">{label}</div>
     </div>

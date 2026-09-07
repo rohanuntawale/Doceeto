@@ -30,6 +30,9 @@ export async function POST(req: Request) {
   // Sanitize server-side regardless of what the form sent; out-of-range
   // values are dropped rather than stored wrong.
   const profile = sanitizeHealthProfile(raw);
+  const existing = (await db.getPatientProfile(session.userId))?.healthProfile;
+  if (existing?.aadhaarDocument) profile.aadhaarDocument = existing.aadhaarDocument;
+  if (existing?.abhaVerified && existing.abhaNumber === profile.abhaNumber) profile.abhaVerified = true;
   profile.updatedAt = new Date().toISOString();
 
   await db.setPatientHealthProfile(session.userId, profile);

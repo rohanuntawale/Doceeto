@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 import { emitChange } from "@/lib/server/events";
 import { NURSE_SERVICES } from "@/lib/nurse";
+import { providerDetailsError, validProviderInvite } from "@/lib/verify/invite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
+    if (!["patient", "doctor", "nurse"].includes(body.role)) return NextResponse.json({ error: "Choose a valid account role." }, { status: 400 });
+    if (body.role === "patient" && (typeof body.name !== "string" || body.name.trim().length < 2)) return NextResponse.json({ error: "Enter your name." }, { status: 400 });
+    const provider = body.role === "doctor" || body.role === "nurse";
+    const detailsError = provider ? providerDetailsError(body) : null;
+    if (detailsError) return NextResponse.json({ error: detailsError }, { status: 400 });
+    const invited = provider && validProviderInvite(body.inviteCode, email, body.role);
+    if (body.inviteCode && !invited) return NextResponse.json({ error: "This invite is invalid, expired, or belongs to another email. Remove it to request verification." }, { status: 400 });
 
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
@@ -67,6 +75,8 @@ export async function POST(req: Request) {
         lat,
         lng,
       });
+      if (invited) await db.verifyProvider(user.id, true);
+      await db.audit({ actorId: user.id, role: "doctor", action: invited ? "provider.invited" : "provider.review_requested", meta: { registrationNo: doctor.registrationNo } });
       await setSession({ id: user.id, role: "doctor", name: user.name });
       emitChange(["doctors"]); // patients' maps pick the new doctor up live
       return NextResponse.json({ ok: true, role: "doctor", doctor });
@@ -102,6 +112,8 @@ export async function POST(req: Request) {
         lat,
         lng,
       });
+      if (invited) await db.verifyProvider(user.id, true);
+      await db.audit({ actorId: user.id, role: "nurse", action: invited ? "provider.invited" : "provider.review_requested", meta: { registrationNo: doctor.registrationNo } });
       await setSession({ id: user.id, role: "nurse", name: user.name });
       emitChange(["doctors"]); // the nurse roster and maps pick them up live
       return NextResponse.json({ ok: true, role: "nurse", nurse: doctor });

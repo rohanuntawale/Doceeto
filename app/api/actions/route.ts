@@ -253,6 +253,7 @@ export async function POST(req: Request) {
         // (Broadcasts carry no doctorId and reach whoever is online.)
         if (doctorId) {
           const target = await repo.getDoctorById(doctorId);
+          if (!target?.verified) return bad("This provider is awaiting verification. Choose a verified provider.");
           if (!target || target.status === "offline")
             return bad("That doctor is offline right now. Pick another doctor.");
         }

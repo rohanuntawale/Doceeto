@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { NURSE_SERVICES } from "@/lib/nurse";
 import { emitChange } from "@/lib/server/events";
 import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
+import { providerDetailsError, validProviderInvite } from "@/lib/verify/invite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,10 @@ export async function POST(req: Request) {
   }
 
   const str = (v: unknown, cap: number) => (typeof v === "string" ? v.trim().slice(0, cap) : "");
+  const detailsError = providerDetailsError(body);
+  if (detailsError) return bad(detailsError);
+  const invited = validProviderInvite(body.inviteCode, pending.email, pending.role);
+  if (body.inviteCode && !invited) return bad("This invite is invalid, expired, or belongs to another email. Remove it to request verification.");
 
   // ── Nurse: same trust model as the doctor branch below — identity from the
   // pending row, the professional profile from this submit, nothing invented.
@@ -106,6 +111,8 @@ export async function POST(req: Request) {
 
       await db.deletePendingSignup(pending.id);
       jar.delete(PENDING_SIGNUP_COOKIE);
+      if (invited) await db.verifyProvider(user.id, true);
+      await db.audit({ actorId: user.id, role: "nurse", action: invited ? "provider.invited" : "provider.review_requested", meta: { registrationNo } });
       await setSession({ id: user.id, role: "nurse", name: user.name });
       emitChange(["doctors"]);
 
@@ -182,6 +189,8 @@ export async function POST(req: Request) {
 
     await db.deletePendingSignup(pending.id);
     jar.delete(PENDING_SIGNUP_COOKIE);
+    if (invited) await db.verifyProvider(user.id, true);
+    await db.audit({ actorId: user.id, role: "doctor", action: invited ? "provider.invited" : "provider.review_requested", meta: { registrationNo } });
     await setSession({ id: user.id, role: "doctor", name: user.name });
     emitChange(["doctors"]);
 

@@ -9,6 +9,7 @@
  */
 
 export interface HealthProfile {
+  aadhaarDocument?: { name: string; checkedAt: string; method: "uidai-offline-xml" };
   /** Height in centimetres. */
   heightCm?: number;
   /** Weight in kilograms. */

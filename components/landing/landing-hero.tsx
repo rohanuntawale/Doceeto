@@ -20,11 +20,12 @@ export function LandingHero() {
             3D visual, so it adds movement without becoming another foreground
             object competing with the promise and CTAs. */}
         <video
-          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+          className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-25 motion-reduce:hidden"
           autoPlay
           loop
           muted
           playsInline
+          preload="none"
           aria-hidden="true"
         >
           <source src="/hero-background.mp4" type="video/mp4" />
@@ -46,7 +47,7 @@ export function LandingHero() {
             behind the type, with a clean base for the stats row. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-0 opacity-0"
+          className="pointer-events-none absolute inset-0 z-0"
         >
           <div className="absolute inset-0 bg-[rgb(var(--bg-rgb)/0.06)]" />
           <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(var(--bg-rgb)/0.42)_0%,rgb(var(--bg-rgb)/0.24)_38%,rgb(var(--bg-rgb)/0.06)_66%,rgb(var(--bg-rgb)/0)_100%)]" />

@@ -12,12 +12,15 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:pipeline": "node scripts/e2e-pipeline.mjs",
+    "test:visual": "node scripts/visual-smoke.mjs",
+    "provider:invite": "node scripts/create-provider-invite.mjs",
     "db:migrate:neo4j-to-postgres": "node scripts/migrate-neo4j-to-postgres.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.2",
+    "@xmldom/xmldom": "^0.9.12",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
@@ -32,7 +35,8 @@
     "react-leaflet": "^4.2.1",
     "react-leaflet-cluster": "^2.1.0",
     "tailwind-merge": "^2.5.4",
-    "three": "^0.169.0"
+    "three": "^0.169.0",
+    "xml-crypto": "^6.1.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

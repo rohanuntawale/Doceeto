@@ -164,6 +164,8 @@ function OnboardingPanel() {
   const [qualifications, setQualifications] = useState("");
   const [education, setEducation] = useState("");
   const [registrationNo, setRegistrationNo] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [accessPath, setAccessPath] = useState<"review" | "invite">("review");
   const [consultFee, setConsultFee] = useState("400");
   const [homeVisitFee, setHomeVisitFee] = useState("900");
   const [clinicAddress, setClinicAddress] = useState("");
@@ -223,7 +225,10 @@ function OnboardingPanel() {
       if (!qualifications.trim()) {
         return setError("Add your qualifications, patients see these first.");
       }
+      if (!registrationNo.trim()) return setError("Enter your medical council registration number.");
+      if (accessPath === "invite" && !inviteCode.trim()) return setError("Enter your invitation code, or choose Get verified.");
       const profile = {
+        inviteCode: accessPath === "invite" ? inviteCode.trim() : undefined,
         fullName: name.trim() || "Doctor",
         specialty,
         kind,
@@ -262,7 +267,7 @@ function OnboardingPanel() {
         toast.push({
           tone: "success",
           title: "Welcome to Doceeto",
-          desc: "Your profile is live, go online when ready.",
+          desc: "Your application is saved. We will check your access status next.",
         });
         router.push("/doctor");
         router.refresh();
@@ -282,7 +287,7 @@ function OnboardingPanel() {
       toast.push({
         tone: "success",
         title: "Welcome to Doceeto",
-        desc: "Your profile is live, go online when ready.",
+        desc: "Your application is saved. We will check your access status next.",
       });
       router.push("/doctor");
       router.refresh();
@@ -332,6 +337,7 @@ function OnboardingPanel() {
       }
 
       const nurseProfile = {
+        inviteCode: accessPath === "invite" ? inviteCode.trim() : undefined,
         fullName: name.trim() || "Nurse",
         title: nurseTitle,
         qualifications: nurseCadre,
@@ -928,7 +934,15 @@ function OnboardingPanel() {
             </>
           )}
 
-          {error && <p className="text-sm text-[var(--accent)]-300">{error}</p>}
+          {step === 2 && role !== "patient" && <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left">
+            <h2 className="font-semibold text-[var(--text)]">Your route to Doceeto</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAccessPath("review")} aria-pressed={accessPath === "review"} className={cn("rounded-xl border px-3 py-3 text-sm", accessPath === "review" ? "border-[var(--accent)] font-bold" : "border-[var(--border)]")}>Get verified</button>
+              <button type="button" onClick={() => setAccessPath("invite")} aria-pressed={accessPath === "invite"} className={cn("rounded-xl border px-3 py-3 text-sm", accessPath === "invite" ? "border-[var(--accent)] font-bold" : "border-[var(--border)]")}>I have an invite</button>
+            </div>
+            {accessPath === "invite" ? <Field label="Invitation code"><input className={inputCls} value={inviteCode} onChange={event => setInviteCode(event.target.value)} required autoComplete="off" placeholder="Paste the code sent to your email" /></Field> : <p className="text-sm leading-relaxed text-[var(--text-muted)]">Submit your licence number and practice details. Our in-house team will contact you through your account email. You will have access after verification; until then your application stays pending.</p>}
+          </div>}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
           {/* primary CTA with a subtle sheen sweep on hover */}
           <div className="group relative overflow-hidden rounded-lg">
@@ -941,7 +955,7 @@ function OnboardingPanel() {
               {loading
                 ? "Setting up…"
                 : step === 2
-                  ? "Join"
+                  ? accessPath === "invite" ? "Join with invite" : "Submit for verification"
                   : role === "patient"
                     ? "Start"
                     : "Continue"}

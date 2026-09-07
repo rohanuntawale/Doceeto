@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { apiFetch } from "@/lib/api/client";
 import {
   mergeSessions,
@@ -34,6 +35,8 @@ const OWNER_KEY = "iyashi:medhistory:owner";
 let sessions: CheckSession[] = [];
 let hydrated = false;
 let serverSynced = false;
+let activeOwner = "";
+let ownerVersion = 0;
 let listeners: Array<() => void> = [];
 
 const emit = () => listeners.forEach((l) => l());
@@ -51,7 +54,7 @@ function hydrateOnce() {
   hydrated = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) {
+    if (raw && activeOwner && window.localStorage.getItem(OWNER_KEY) === activeOwner) {
       sessions = (JSON.parse(raw) as unknown[])
         .map(sanitizeSession)
         .filter(Boolean) as CheckSession[];
@@ -66,6 +69,7 @@ function hydrateOnce() {
 /** Pull the account's history and reconcile it with the device cache. */
 async function syncFromServer() {
   if (serverSynced) return;
+  const version = ownerVersion;
   serverSynced = true;
   try {
     const res = await apiFetch("/api/care/history");
@@ -74,6 +78,7 @@ async function syncFromServer() {
       sessions: unknown[] | null;
       patientId?: string;
     };
+    if (version !== ownerVersion) return;
     // Signed out → stay device-local.
     if (!Array.isArray(data.sessions) || !data.patientId) return;
 
@@ -128,10 +133,12 @@ async function syncFromServer() {
 const pushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function pushToServer(s: CheckSession) {
+  const version = ownerVersion;
   clearTimeout(pushTimers.get(s.id));
   pushTimers.set(
     s.id,
     setTimeout(() => {
+      if (version !== ownerVersion) return;
       pushTimers.delete(s.id);
       apiFetch("/api/care/history", {
         method: "POST",
@@ -195,6 +202,19 @@ export function recentConditions(limit = 5): string[] {
 const NO_SESSIONS: CheckSession[] = [];
 
 export function useMedicalHistory() {
+  const { patient } = useCurrentPatient();
+  useEffect(() => {
+    if (!patient.ready || patient.id === activeOwner) return;
+    ownerVersion += 1;
+    activeOwner = patient.id;
+    pushTimers.forEach(timer => clearTimeout(timer));
+    pushTimers.clear();
+    sessions = [];
+    hydrated = false;
+    serverSynced = false;
+    hydrateOnce();
+    emit();
+  }, [patient.id, patient.ready]);
   const list = useSyncExternalStore(subscribe, () => sessions, () => NO_SESSIONS);
   const save = useCallback((s: CheckSession) => saveSession(s), []);
   return {

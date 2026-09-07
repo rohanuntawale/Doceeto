@@ -115,7 +115,7 @@ export async function GET(req: Request) {
             // come through, so neither console nor history breaks.
             .filter(
               (d) =>
-                cadreOf(d) !== "nurse" || d.verified || d.id === me || mine.has(d.id),
+                d.verified || d.id === me || mine.has(d.id),
             )
             .map((d) => {
               // Stale coordinates never leave the server; a doctor mid-gig

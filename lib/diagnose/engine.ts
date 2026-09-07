@@ -13,6 +13,7 @@
  */
 import { analyzeSymptoms, type TriageResult, type Urgency } from "@/lib/triage";
 import type { SosCategory } from "@/lib/types/domain";
+import { assessmentQuestion } from "./assessment";
 
 export type { Urgency };
 
@@ -922,7 +923,7 @@ function areaTagFor(t: TriageResult): string | null {
 
 /** Fold free-text the patient types mid-flow into the running state, so the
  *  chat box and the option chips drive the same funnel. */
-export function applyText(prev: DState, text: string): DState {
+export function applyText(prev: DState, text: string, displayedQuestion?: DQuestion): DState {
   const clean = text.trim();
   const s: DState = {
     ...prev,
@@ -944,7 +945,7 @@ export function applyText(prev: DState, text: string): DState {
     flags: [...prev.flags],
     answers: [
       ...prev.answers,
-      { questionId: "free", prompt: "You told us", value: clean, label: clean },
+      { questionId: displayedQuestion?.id ?? "free", prompt: displayedQuestion?.prompt ?? "You told us", value: clean, label: clean },
     ],
     askedIds: [...prev.askedIds],
   };
@@ -962,15 +963,14 @@ export function applyText(prev: DState, text: string): DState {
 
   // Typing has to answer whatever is on screen, or `nextStep` keeps handing
   // back the same first unanswered question and the funnel never moves.
-  const pending = nextStep(prev);
+  const pending: DStep = displayedQuestion ? { kind: "question", question: displayedQuestion } : nextStep(prev);
   if (pending.kind === "question") {
     const q = pending.question;
     if (!s.askedIds.includes(q.id)) s.askedIds.push(q.id);
     // Typed the option in words → score it exactly like tapping the chip;
     // otherwise fall back to whatever the question assumes for prose.
     const chosen =
-      spokenOption(q, clean) ??
-      q.options.find((o) => o.value === q.assumeWhenTyped);
+      spokenOption(q, clean);
     if (chosen) foldOption(s, chosen);
   }
 
@@ -1002,6 +1002,8 @@ export function nextStep(s: DState): DStep {
       !s.askedIds.includes(question.id) && (question.when ? question.when(s) : true),
   );
   if (q) return { kind: "question", question: q };
+  const detail = assessmentQuestion(s.seed, s.answers);
+  if (detail) return { kind: "question", question: detail };
 
   // No more relevant questions → conclude.
   return conclude(s);

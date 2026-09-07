@@ -17,7 +17,21 @@
  * Requires the dev server running in a non-production build (the role switcher
  * is disabled in production). Exit code 0 = all checks passed.
  */
+import { createHmac } from "node:crypto";
+
 const BASE = process.env.BASE || "http://localhost:3000";
+const INVITE_SECRET = process.env.PROVIDER_INVITE_SECRET;
+
+function providerInvite(email, role) {
+  if (!INVITE_SECRET || INVITE_SECRET.length < 32) {
+    throw new Error("Set PROVIDER_INVITE_SECRET (32+ characters) before running the provider pipeline checks.");
+  }
+  const payload = Buffer.from(
+    JSON.stringify({ email: email.trim().toLowerCase(), role, expiresAt: Date.now() + 60 * 60_000 }),
+  ).toString("base64url");
+  const signature = createHmac("sha256", INVITE_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
 
 // Sessions are per-role opaque cookies (iyashi_sid_<role>); registering sets
 // exactly one non-empty one and clears the retired names.
@@ -58,10 +72,23 @@ const setAvatar = async (cookie) =>
  * through the signup rate limit (10/hour per IP) after a handful of runs.
  */
 const sessionFor = async (role) => {
-  const creds = { email: `e2e.${role}@doceeto.local`, password: `e2e-${role}-1` };
+  const creds = {
+    email: role === "doctor" ? "e2e.verified.doctor@doceeto.local" : `e2e.${role}@doceeto.local`,
+    password: `e2e-${role}-1`,
+  };
   const profile =
     role === "doctor"
-      ? { role: "doctor", fullName: "E2E Doctor", specialty: "General Physician" }
+      ? {
+          role: "doctor",
+          fullName: "E2E Doctor",
+          specialty: "General Physician",
+          qualifications: "MBBS",
+          registrationNo: "E2E-REG-001",
+          age: 34,
+          gender: "male",
+          languages: ["English"],
+          inviteCode: providerInvite(creds.email, "doctor"),
+        }
       : { role: "patient", name: "E2E Patient" };
   const reg = await fetch(`${BASE}/api/auth/register`, {
     method: "POST",
@@ -101,11 +128,22 @@ const act = async (action, payload, cookie) => {
  * a stable extra account (and signs back into it on later runs).
  */
 const secondDoctorSession = async () => {
-  const creds = { email: "e2e.second.doctor@doceeto.local", password: "e2e-doctor-1" };
+  const creds = { email: "e2e.verified.second.doctor@doceeto.local", password: "e2e-doctor-1" };
   const reg = await fetch(`${BASE}/api/auth/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...creds, role: "doctor", fullName: "Dr. Second Opinion", specialty: "General Physician" }),
+    body: JSON.stringify({
+      ...creds,
+      role: "doctor",
+      fullName: "Dr. Second Opinion",
+      specialty: "General Physician",
+      qualifications: "MBBS",
+      registrationNo: "E2E-REG-002",
+      age: 35,
+      gender: "female",
+      languages: ["English"],
+      inviteCode: providerInvite(creds.email, "doctor"),
+    }),
   });
   let cookie = "";
   if (reg.ok) {
