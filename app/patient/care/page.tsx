@@ -17,13 +17,7 @@ import {
   AlertTriangle,
   ArrowRight,
   History,
-  Thermometer,
   HeartPulse,
-  Bone,
-  Hand,
-  Brain,
-  Baby,
-  type LucideIcon,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api/client";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
@@ -211,10 +205,9 @@ function CareInner() {
   );
   const [step, setStep] = useState<DStep | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [aiOn, setAiOn] = useState(false);
-  const [aiModel, setAiModel] = useState<string | null>(null);
-  /** True when the server confirmed it used this patient's health record. */
-  const [aiPersonalised, setAiPersonalised] = useState(false);
+  const aiOn = false;
+  const aiModel: string | null = null;
+  const aiPersonalised = false;
   const [draft, setDraft] = useState("");
   // ?history=1 deep-links straight into the past-chats drawer — it's where
   // "See all" on the home screen's health history lands.
@@ -244,7 +237,6 @@ function CareInner() {
     const local = nextStep(state);
     if (state.flags.length > 0) {
       setStep(local);
-      setAiOn(false);
       return;
     }
 
@@ -253,9 +245,6 @@ function CareInner() {
     // model makes Start over feel broken and wastes a GPU request.
     if (!state.seed && state.answers.length === 0) {
       setStep(local);
-      setAiOn(false);
-      setAiModel(null);
-      setAiPersonalised(false);
       setThinking(false);
       return;
     }
@@ -287,7 +276,6 @@ function CareInner() {
         } else {
           setStep(local);
         }
-        setAiOn(false);
       };
       try {
         const res = await apiFetch("/api/diagnose", {
@@ -309,9 +297,6 @@ function CareInner() {
         if (data?.step) {
           aiDrove.current = true;
           setStep(fromAiStep(data.step));
-          setAiModel(typeof data.model === "string" ? data.model : null);
-          setAiPersonalised(Boolean(data.personalised));
-          setAiOn(true);
         } else {
           offline();
         }
@@ -402,9 +387,6 @@ function CareInner() {
     setState(initState("", priors()));
     setStep(null);
     setThinking(false);
-    setAiOn(false);
-    setAiModel(null);
-    setAiPersonalised(false);
     setViewed(null);
     setDraft("");
     setDrawerOpen(false);
@@ -495,15 +477,10 @@ function CareInner() {
           >
             <Menu className="h-[18px] w-[18px]" />
           </button>
-          <div className="flex flex-1 items-center gap-2">
+          <div className="flex flex-1 items-center">
             <h1 className="text-base font-semibold text-cream">
               Mira
             </h1>
-            {aiOn && (
-              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                AI
-              </span>
-            )}
           </div>
           <button
             onClick={newCheck}
@@ -663,36 +640,22 @@ function CareInner() {
       {/* The floor is sized by the shell's chrome vars so a short laptop
           window can't push the composer down under the dock; the transcript
           absorbs the loss since it scrolls. */}
-      <div className="relative left-1/2 hidden h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[420px] w-screen -translate-x-1/2 flex-col overflow-hidden lg:-mb-[calc(var(--chrome-dock)+1.75rem)] lg:flex">
-        {/* floating scene */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute left-[12%] top-[16%] h-56 w-56 animate-float rounded-full bg-[rgb(var(--c-terracotta))] opacity-10 blur-3xl" />
-          <div
-            className="absolute right-[14%] top-[28%] h-64 w-64 animate-float rounded-full bg-[rgb(var(--c-salmon))] opacity-[0.12] blur-3xl"
-            style={{ animationDelay: "-3s" }}
-          />
-          <div
-            className="absolute bottom-[8%] left-[42%] h-52 w-52 animate-float rounded-full bg-[rgb(var(--c-tan))] opacity-10 blur-3xl"
-            style={{ animationDelay: "-6s" }}
-          />
-        </div>
-
+      <div className="relative left-1/2 hidden h-[calc(100dvh-var(--chrome-top)-var(--chrome-dock))] min-h-[420px] w-screen -translate-x-1/2 flex-col overflow-hidden border-y border-[var(--border)] bg-white lg:-mb-[calc(var(--chrome-dock)+1.75rem)] lg:flex">
         {/* top bar */}
         <div
           className={cn(
-            "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-10 transition-all duration-300",
-            fresh ? "pt-6" : "pt-0",
+            "relative z-10 flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-white/92 px-8 py-3 backdrop-blur-xl xl:px-12",
           )}
         >
           <div>
             <MiraCompanion thinking={thinking} typing={Boolean(draft)} answerKey={step?.kind === "question" ? step.question.id : "assessment"} />
             {fresh ? (
               <>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-faint)]">
+                <p className="sr-only">
                   Symptom checker · Guided
                 </p>
 
-                <h1 className="mt-1 text-3xl font-bold tracking-tight text-cream">
+                <h1 className="sr-only">
                   {t(greetKey)},{" "}
                   <span className="text-[rgb(var(--c-terracotta))]">
                     {firstName}
@@ -706,6 +669,33 @@ function CareInner() {
             )}
           </div>
 
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={newCheck}
+              className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-[var(--text-muted)] transition-colors hover:bg-[#f2f5f3] hover:text-[#153d32]"
+              aria-label="New check"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden xl:inline">New chat</span>
+            </button>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-[var(--text-muted)] transition-colors hover:bg-[#f2f5f3] hover:text-[#153d32]"
+              aria-label="Open history and reports"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden xl:inline">History</span>
+            </button>
+            <button
+              onClick={() => router.push("/patient/now")}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+              aria-label="Get emergency care"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <span className="hidden xl:inline">Emergency</span>
+            </button>
+          </div>
+
           <div
             title={
               aiModel
@@ -713,7 +703,7 @@ function CareInner() {
                 : "Offline rule engine"
             }
             className={cn(
-              "flex items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]",
+              "hidden items-center gap-2 rounded-full fh-card px-3.5 py-2 text-xs font-medium text-[var(--text-muted)]",
               !fresh && "mt-[-2px]",
             )}
           >
@@ -727,40 +717,6 @@ function CareInner() {
           </div>
         </div>
 
-        {/* left rail, body areas */}
-        <div className="absolute left-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
-          {AREAS.map((a) => (
-            <ImmersiveRail
-              key={a.seed}
-              icon={a.icon}
-              title={a.title}
-              onClick={() => {
-                if (!thinking && !viewed) setState((s) => applyText(s, a.seed));
-              }}
-            />
-          ))}
-        </div>
-
-        {/* right rail, actions */}
-        <div className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5">
-          <ImmersiveRail icon={Plus} title="New check" onClick={newCheck} />
-          <ImmersiveRail
-            icon={History}
-            title="History"
-            onClick={() => setDrawerOpen(true)}
-          />
-          <ImmersiveRail
-            icon={FileText}
-            title="Reports"
-            onClick={() => setDrawerOpen(true)}
-          />
-          <ImmersiveRail
-            icon={AlertTriangle}
-            title="Emergency"
-            onClick={() => router.push("/patient/now")}
-          />
-        </div>
-
         {/* Transcript + composer share one flex column. They used to be two
             absolutely-positioned blocks with a fixed gap between them, which
             the option chips outgrew as soon as they wrapped onto extra rows
@@ -769,8 +725,7 @@ function CareInner() {
             column is click-through so the side rails behind it stay usable. */}
         <div
           className={cn(
-            "pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col pb-1",
-            fresh ? "pt-24" : "pt-6",
+            "pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col pb-4 pt-3",
           )}
         >
           <div
@@ -785,7 +740,7 @@ function CareInner() {
               className={cn(
                 "flex min-h-full flex-col gap-3 py-3",
                 // Chat hugs the composer; the assessment reads from the top.
-                activeConclusion ? "justify-start" : "justify-end",
+                activeConclusion ? "justify-start" : fresh ? "justify-center" : "justify-end",
               )}
             >
               {activeConclusion ? (
@@ -804,13 +759,33 @@ function CareInner() {
               ) : (
                 <>
                   {fresh ? (
-                    <div className="flex flex-col items-center pb-6 text-center">
-                      <span className="grid h-16 w-16 place-items-center rounded-3xl bg-primary/15 text-primary">
-                        <Sparkles className="h-8 w-8" />
-                      </span>
-                      <p className="mt-4 max-w-sm text-[15px] text-[var(--text-muted)]">
-                        {t("care.subtitle")}
+                    <div className="flex flex-col items-center pb-4 text-center">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6a7d74]">Private care guidance</p>
+                      <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-[-0.045em] text-[#1d2b25] xl:text-5xl">
+                        {t(greetKey)}, {firstName}. What can I help with?
+                      </h1>
+                      <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--text-muted)]">
+                        Share what is bothering you. Mira will ask useful follow-ups before helping you find the right care.
                       </p>
+                      {!thinking && step?.kind === "question" ? (
+                        <div className="mt-8 w-full max-w-2xl">
+                          <p className="mb-3 text-center text-[15px] font-semibold text-[#26352e]">
+                            {step.question.prompt}
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {step.question.options.map((option) => (
+                              <button
+                                key={option.value}
+                                onClick={() => pick(option)}
+                                className="flex min-h-12 items-center gap-2 rounded-2xl border border-[#dfe7e2] bg-[#f8faf9] px-4 py-3 text-left text-sm font-medium text-[#26352e] transition-all hover:-translate-y-0.5 hover:border-[#b6c8be] hover:bg-white hover:shadow-[0_10px_24px_rgb(21_61_50/0.08)] sm:last:col-span-2"
+                              >
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#153d32]" />
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <>
@@ -848,18 +823,13 @@ function CareInner() {
               actions live on the sheet itself. */}
           {activeConclusion ? null : (
           <div className="pointer-events-auto mx-auto w-full max-w-2xl px-6 pt-0">
-            {fresh && step?.kind === "question" && (
-              <p className="mb-3 text-center text-[15px] font-medium text-cream">
-                {step.question.prompt}
-              </p>
-            )}
-            {!viewed && !thinking && step?.kind === "question" && (
-              <div className="mb-2 flex flex-wrap justify-center gap-2">
+            {!viewed && !thinking && !fresh && step?.kind === "question" && (
+              <div className="mb-3 grid gap-2 sm:grid-cols-2">
                 {step.question.options.map((o) => (
                   <button
                     key={o.value}
                     onClick={() => pick(o)}
-                    className="flex items-center gap-2 rounded-full fh-card px-4 py-2.5 text-sm font-medium text-cream transition-colors hover:border-primary/50 hover:text-[rgb(var(--c-terracotta))]"
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-[#dfe7e2] bg-[#f8faf9] px-4 py-3 text-left text-sm font-medium text-[#26352e] transition-all hover:-translate-y-0.5 hover:border-[#b6c8be] hover:bg-white hover:shadow-[0_10px_24px_rgb(21_61_50/0.08)]"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--c-terracotta))]" />
                     {o.label}
@@ -875,7 +845,7 @@ function CareInner() {
                 <Plus className="h-4 w-4" /> New check
               </button>
             ) : (
-              <div className="flex items-center gap-2 rounded-full fh-card p-2 shadow-soft-lg">
+              <div className="flex items-center gap-2 rounded-2xl border border-[#d9e2dc] bg-white p-2 shadow-[0_10px_30px_rgb(21_61_50/0.10)]">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
                   <Sparkles className="h-[18px] w-[18px]" />
                 </span>
@@ -901,36 +871,6 @@ function CareInner() {
         </div>
       </div>
     </div>
-  );
-}
-
-const AREAS: { icon: LucideIcon; title: string; seed: string }[] = [
-  { icon: Thermometer, title: "Fever / whole body", seed: "fever" },
-  { icon: HeartPulse, title: "Chest / breathing", seed: "chest pain" },
-  { icon: Brain, title: "Head / mind", seed: "headache" },
-  { icon: Hand, title: "Skin", seed: "skin rash" },
-  { icon: Bone, title: "Bones / joints", seed: "joint pain" },
-  { icon: Baby, title: "Child", seed: "my child is sick" },
-];
-
-function ImmersiveRail({
-  icon: Icon,
-  title,
-  onClick,
-}: {
-  icon: LucideIcon;
-  title: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className="grid h-11 w-11 place-items-center rounded-full fh-card text-[var(--text-muted)] transition-all hover:scale-105 hover:text-[rgb(var(--c-terracotta))]"
-    >
-      <Icon className="h-5 w-5" />
-    </button>
   );
 }
 

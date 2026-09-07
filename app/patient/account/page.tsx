@@ -10,7 +10,6 @@ import { AvatarUploader } from "@/components/ui/avatar-uploader";
 import { HealthProfileForm } from "@/components/patient/health-profile-form";
 import { useT, type LangCode } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api/client";
-import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { IdentityImport } from "@/components/patient/identity-import";
@@ -19,7 +18,6 @@ import { healthProfileCompletion } from "@/lib/health/profile";
 export default function PatientAccount() {
   const { patient, update } = useCurrentPatient();
   const { t, lang, setLang, languages } = useT();
-  const toast = useToast();
 
   /** Persist a new profile photo: the server for live accounts, the browser
    *  store in demo mode. Either way the shared identity updates in place. */
@@ -46,36 +44,35 @@ export default function PatientAccount() {
   }
 
   const firstName = patient.name.split(" ")[0] || "Guest";
+  const completion = healthProfileCompletion(patient.healthProfile);
 
   return (
-    <div className="profile-page mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-cream">
-        {t("account.title")}
-      </h1>
-      <p className="max-w-xl text-sm leading-relaxed text-[var(--text-muted)]">Your care starts here. Keep your health details current so Mira and your clinician can understand the full picture.</p>
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <div className="mb-3 flex justify-between text-sm"><span>Health profile completeness</span><strong>{healthProfileCompletion(patient.healthProfile)}%</strong></div>
-        <progress aria-label="Health profile completeness" max={100} value={healthProfileCompletion(patient.healthProfile)} className="h-2 w-full accent-[#153d32]" />
-      </div>
-
-      {/* Profile card, the avatar doubles as the photo upload control. */}
-      <div className="flex items-center gap-4 rounded-3xl fh-card p-5 shadow-soft">
-        <AvatarUploader onPhoto={setPhoto}>
-          <AvatarImage
-            src={patient.avatarUrl}
-            fallback={firstName.charAt(0).toUpperCase()}
-            background="linear-gradient(135deg, rgb(var(--c-terracotta)), rgb(var(--c-salmon)))"
-            className="h-14 w-14 rounded-full text-xl font-semibold text-on-accent"
-          />
-        </AvatarUploader>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold text-cream">{patient.name}</p>
-          <p className="truncate text-sm text-[var(--text-muted)]">{patient.address}</p>
-          <p className="mt-0.5 text-xs text-[var(--text-faint)]">
-            {patient.avatarUrl ? t("account.tapPhoto") : t("account.addPhoto")}
-          </p>
+    <div className="profile-page patient-profile mx-auto max-w-4xl space-y-6">
+      <section className="patient-profile-hero overflow-hidden rounded-[2rem] p-6 sm:p-8">
+        <div className="relative z-10 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <AvatarUploader onPhoto={setPhoto}>
+              <AvatarImage
+                src={patient.avatarUrl}
+                fallback={firstName.charAt(0).toUpperCase()}
+                background="linear-gradient(135deg, #f3c96b, #c58b2e)"
+                className="h-20 w-20 rounded-[1.65rem] border-4 border-white/20 text-2xl font-semibold text-[#173f33] shadow-[0_16px_32px_rgb(0_0_0/0.18)]"
+              />
+            </AvatarUploader>
+            <div className="min-w-0 text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Your care profile</p>
+              <h1 className="mt-1 truncate font-serif text-4xl leading-none sm:text-5xl">{patient.name}</h1>
+              <p className="mt-2 truncate text-sm text-white/75">{patient.address || "Add your home area for faster care"}</p>
+              <p className="mt-2 text-xs text-white/65">{patient.avatarUrl ? t("account.tapPhoto") : t("account.addPhoto")}</p>
+            </div>
+          </div>
+          <div className="w-full rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur sm:max-w-56">
+            <div className="flex items-baseline justify-between gap-3 text-sm text-white/80"><span>Care profile</span><strong className="text-2xl text-white">{completion}%</strong></div>
+            <progress aria-label="Health profile completeness" max={100} value={completion} className="mt-3 h-2 w-full accent-[#f3c96b]" />
+            <p className="mt-2 text-xs leading-relaxed text-white/65">A fuller profile helps Mira ask better questions and clinicians prepare.</p>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Health basics, what a doctor reads before treating them. */}
       <IdentityImport />

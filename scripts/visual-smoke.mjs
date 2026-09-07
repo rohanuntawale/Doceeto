@@ -36,7 +36,7 @@ async function completePatientOnboarding(cookie) {
   if (!response.ok) throw new Error(`Onboarding save failed (${response.status}): ${(await response.text()).slice(0, 240)}`);
 }
 
-async function visit(browser, label, pathname, cookie, { skipSplash = false } = {}) {
+async function visit(browser, label, pathname, cookie, { skipSplash = false, readySelector } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 1000, deviceScaleFactor: 1 });
   const pageErrors = [];
@@ -46,6 +46,10 @@ async function visit(browser, label, pathname, cookie, { skipSplash = false } = 
   if (skipSplash) {
     await page.mouse.click(720, 500);
     await new Promise(resolve => setTimeout(resolve, 700));
+  }
+  if (readySelector) {
+    await page.waitForSelector(readySelector, { timeout: 10_000 });
+    await new Promise(resolve => setTimeout(resolve, 400));
   }
   await page.screenshot({ path: path.join(output, `${label}.png`), fullPage: true });
   const title = await page.title();
@@ -82,12 +86,14 @@ async function main() {
   try {
     const landing = await visit(browser, "landing", "/");
     if (!landing.startsWith(base)) throw new Error("Landing page redirected unexpectedly.");
-    const onboarding = await visit(browser, "patient-onboarding", "/patient/onboarding", patient, { skipSplash: true });
+    const onboarding = await visit(browser, "patient-onboarding", "/patient/onboarding", patient, { skipSplash: true, readySelector: ".profile-page" });
     if (!onboarding.includes("/patient/onboarding")) throw new Error("New patient did not reach onboarding.");
     await completePatientOnboarding(patient);
-    const care = await visit(browser, "mira-care", "/patient/care", patient, { skipSplash: true });
+    const profile = await visit(browser, "patient-profile", "/patient/account", patient, { skipSplash: true, readySelector: ".patient-profile-hero" });
+    if (!profile.includes("/patient/account")) throw new Error("Completed patient did not reach their profile.");
+    const care = await visit(browser, "mira-care", "/patient/care", patient, { skipSplash: true, readySelector: ".mira-chat" });
     if (!care.includes("/patient/care")) throw new Error("Completed patient did not reach Mira care.");
-    const verification = await visit(browser, "doctor-verification", "/doctor", pendingDoctor, { skipSplash: true });
+    const verification = await visit(browser, "doctor-verification", "/doctor", pendingDoctor, { skipSplash: true, readySelector: "h1" });
     if (!verification.includes("/verification?as=doctor")) throw new Error("Unverified doctor was not held for review.");
   } finally {
     await browser.close();
