@@ -14,6 +14,7 @@
     "test:pipeline": "node scripts/e2e-pipeline.mjs",
     "test:visual": "node scripts/visual-smoke.mjs",
     "provider:invite": "node scripts/create-provider-invite.mjs",
+    "provider:cohort-invite": "node scripts/create-provider-cohort-invite.mjs",
     "db:migrate:neo4j-to-postgres": "node scripts/migrate-neo4j-to-postgres.mjs"
   },
   "dependencies": {

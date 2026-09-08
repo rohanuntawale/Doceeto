@@ -9,7 +9,7 @@ export async function patientContext(patientId: string, activeId?: string) {
     const session = sanitizeSession(raw);
     if (!session || session.id === activeId) continue;
     const id = `episode:${session.id}`;
-    nodes.push({ id, type: "past_patient_report", source: new Date(session.startedAt).toISOString(), text: JSON.stringify({ complaint: session.seed, answers: session.answers.map(answer => ({ question: answer.prompt, patientSaid: answer.label })), unconfirmedAiSuggestion: session.conclusion?.summary ?? session.conclusion?.conditions }) });
+    nodes.push({ id, type: "past_patient_report", source: new Date(session.updatedAt ?? session.startedAt).toISOString(), text: JSON.stringify({ complaint: session.seed, pathwayVersion: session.pathwayVersion, answers: session.answers.map(answer => ({ question: answer.prompt, patientSaid: answer.label, answeredAt: answer.answeredAt })), unconfirmedAssessment: session.conclusion?.summary ?? session.conclusion?.conditions }) });
     edges.push({ from: "patient", relation: "reported_in_past", to: id });
   }
   for (const prescription of prescriptions.filter(item => item.patientId === patientId)) {

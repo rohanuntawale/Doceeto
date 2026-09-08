@@ -10,6 +10,10 @@ import type { DAnswer, DConclusion } from "@/lib/diagnose/engine";
 export interface CheckSession {
   id: string;
   startedAt: number;
+  /** Latest recorded turn, used to order the patient timeline across devices. */
+  updatedAt?: number;
+  /** The reviewed pathway that produced this assessment. */
+  pathwayVersion?: string;
   title: string;
   seed: string;
   answers: DAnswer[];
@@ -52,6 +56,9 @@ export function sanitizeSession(raw: unknown): CheckSession | null {
           prompt: str(x.prompt, 500),
           value: str(x.value, 500) || label,
           label,
+          answeredAt: Number.isFinite(Number(x.answeredAt))
+            ? Number(x.answeredAt)
+            : undefined,
         },
       ];
     });
@@ -59,6 +66,8 @@ export function sanitizeSession(raw: unknown): CheckSession | null {
   const session: CheckSession = {
     id,
     startedAt: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : Date.now(),
+    updatedAt: Number.isFinite(Number(r.updatedAt)) ? Number(r.updatedAt) : undefined,
+    pathwayVersion: str(r.pathwayVersion, 80) || undefined,
     title: str(r.title, 80) || "Symptom check",
     seed: str(r.seed, 500),
     answers,

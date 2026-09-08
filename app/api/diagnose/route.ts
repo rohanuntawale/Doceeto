@@ -461,6 +461,12 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object" || (body.seed !== undefined && typeof body.seed !== "string") || (body.answers !== undefined && !Array.isArray(body.answers))) return NextResponse.json({ error: "Invalid transcript." }, { status: 400 });
   body.seed = (body.seed ?? "").slice(0, 2000);
   body.answers = (body.answers ?? []).slice(0, 80).filter(answer => answer && typeof answer.prompt === "string" && typeof answer.label === "string").map(answer => ({ questionId: typeof answer.questionId === "string" ? answer.questionId.slice(0, 100) : "", prompt: answer.prompt.slice(0, 600), label: answer.label.slice(0, 2000) }));
+  // A generative model must not quietly become the clinical decision maker.
+  // The patient app uses the reviewed pathway engine by default. This route is
+  // only enabled for an explicitly approved, evaluated model experiment.
+  if (process.env.DIAGNOSE_MODEL_ENABLED !== "true") {
+    return NextResponse.json({ unavailable: true, reason: "reviewed-pathways" });
+  }
   const safety = analyzeSymptoms(spokenText(body));
   if (safety?.redFlags.length) return NextResponse.json({ step: { kind: "conclusion", emergency: true, urgency: "emergency", specialty: normaliseSpecialty(safety.specialties[0]) ?? "General Physician", conditions: [], causes: [], summary: EMERGENCY_SUMMARY[pickLang(body.lang)](safety.redFlags.join(", ")), advice: EMERGENCY_CALL[pickLang(body.lang)] }, model: "safety-floor" });
   const missing = mentionsSymptom(spokenText(body)) ? assessmentQuestion(body.seed, body.answers.map(answer => ({ ...answer, questionId: answer.questionId ?? "" }))) : null;

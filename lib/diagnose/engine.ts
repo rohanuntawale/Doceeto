@@ -91,6 +91,7 @@ export interface DAnswer {
   prompt: string;
   value: string;
   label: string;
+  answeredAt?: number;
 }
 
 export interface DState {
@@ -842,7 +843,7 @@ export function applyAnswer(prev: DState, q: DQuestion, opt: DOption): DState {
     causes: prev.causes.map((c) => ({ ...c })),
     tags: [...prev.tags],
     flags: [...prev.flags],
-    answers: [...prev.answers, { questionId: q.id, prompt: q.prompt, value: opt.value, label: opt.label }],
+    answers: [...prev.answers, { questionId: q.id, prompt: q.prompt, value: opt.value, label: opt.label, answeredAt: Date.now() }],
     askedIds: prev.askedIds.includes(q.id) ? prev.askedIds : [...prev.askedIds, q.id],
   };
   foldOption(s, opt);
@@ -863,13 +864,8 @@ export function applyAiAnswer(prev: DState, q: DQuestion, opt: DOption): DState 
   // A scored option came from the local bank — applyAnswer already folded it.
   if (opt.score || opt.flag || opt.tags) return s;
 
-  const t = analyzeSymptoms(`${opt.label}`);
-  if (t?.matched) {
-    foldTriage(s, t);
-    t.conditions.forEach((c) => addCondition(s, c));
-    s.urgency = bump(s.urgency, t.urgency);
-    if (t.redFlags[0]) s.flags.push({ label: t.redFlags[0], sos: t.sosCategory ?? "other" });
-  }
+  // Model-authored labels from old sessions are not clinical evidence. Keep
+  // them in the transcript, but never replay them into urgency or red flags.
   return s;
 }
 
@@ -945,7 +941,7 @@ export function applyText(prev: DState, text: string, displayedQuestion?: DQuest
     flags: [...prev.flags],
     answers: [
       ...prev.answers,
-      { questionId: displayedQuestion?.id ?? "free", prompt: displayedQuestion?.prompt ?? "You told us", value: clean, label: clean },
+      { questionId: displayedQuestion?.id ?? "free", prompt: displayedQuestion?.prompt ?? "You told us", value: clean, label: clean, answeredAt: Date.now() },
     ],
     askedIds: [...prev.askedIds],
   };
@@ -1028,7 +1024,7 @@ export function rankedCauses(s: DState): DCause[] {
     const byLikelihood = LIK_RANK[b.likelihood] - LIK_RANK[a.likelihood];
     if (byLikelihood !== 0) return byLikelihood;
     return scoreOf(s, b.specialty) - scoreOf(s, a.specialty);
-  });
+  }).slice(0, 5);
 }
 
 /** One plain-language line naming the leading possibility (never a verdict). */
@@ -1037,11 +1033,11 @@ function summarise(causes: DCause[]): string | undefined {
   if (!top) return undefined;
   const lead =
     top.likelihood === "likely"
-      ? `This most likely points to ${top.name.toLowerCase()}`
-      : `The most likely explanation is ${top.name.toLowerCase()}`;
+      ? `Your answers are more consistent with ${top.name.toLowerCase()}`
+      : `One possibility that fits your answers is ${top.name.toLowerCase()}`;
   const others = causes.slice(1, 3).map((c) => c.name.toLowerCase());
-  if (others.length === 0) return `${lead}. A doctor still needs to confirm it.`;
-  return `${lead}, though ${others.join(" or ")} could also explain it. Only a doctor can confirm which.`;
+  if (others.length === 0) return `${lead}. This is not a diagnosis, a doctor needs to assess you.`;
+  return `${lead}, though ${others.join(" or ")} could also explain it. These are possibilities, not a diagnosis.`;
 }
 
 function conclude(s: DState, emergency = false): DConclusion {

@@ -19,7 +19,6 @@ import {
   History,
   HeartPulse,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
 import { useCurrentPatient } from "@/lib/hooks/use-current-patient";
 import { useConsultRequests, usePrescriptions } from "@/lib/hooks/data";
 import {
@@ -190,7 +189,7 @@ function profilePriors(hp?: import("@/lib/health/profile").HealthProfile): strin
 
 function CareInner() {
   const { patient } = useCurrentPatient();
-  const { t, lang } = useT();
+  const { t } = useT();
   const router = useRouter();
   const params = useSearchParams();
   const seed = params.get("q") ?? "";
@@ -214,9 +213,6 @@ function CareInner() {
   const [drawerOpen, setDrawerOpen] = useState(params.get("history") === "1");
   const [viewed, setViewed] = useState<CheckSession | null>(null);
   const sessionId = useRef(`care-${Date.now().toString(36)}`);
-  /** Whether the AI has driven any turn this session — decides how we recover
-   *  when it drops out (resume the local funnel vs. wrap up). */
-  const aiDrove = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRef2 = useRef<HTMLDivElement>(null);
 
@@ -229,87 +225,13 @@ function CareInner() {
         ? "greeting.afternoon"
         : "greeting.evening";
 
-  // Prefer the AI checker, fall back to the offline rule engine. Red-flag
-  // emergencies short-circuit locally.
+  // A reviewed pathway, not a free-form model, is the authority for every
+  // patient-facing decision. This prevents a loosely-worded option from
+  // becoming an invented diagnosis or an emergency escalation.
   useEffect(() => {
     if (viewed) return;
-    let cancelled = false;
-    const local = nextStep(state);
-    if (state.flags.length > 0) {
-      setStep(local);
-      return;
-    }
-
-    // A fresh check has no symptom to personalise or triage yet. Show the
-    // local opening question immediately; sending an empty transcript to the
-    // model makes Start over feel broken and wastes a GPU request.
-    if (!state.seed && state.answers.length === 0) {
-      setStep(local);
-      setThinking(false);
-      return;
-    }
-
-    setThinking(true);
-    (async () => {
-      /* When the AI drops out mid-session its questions leave no tags on the
-         local state, so `nextStep` would hand back the funnel's very first
-         question, the patient would be asked to screen for emergencies again
-         after five AI turns, which reads as the bot forgetting the chat.
-         With enough answers, wrap up; with a few, continue the local funnel
-         from PAST the emergency screen (the keyword scan has already run over
-         every answer, so that safety net stayed live throughout). */
-      const offline = () => {
-        if (
-          aiDrove.current &&
-          state.answers.length > 0 &&
-          !state.tags.includes("screened")
-        ) {
-          setStep(
-            nextStep({
-              ...state,
-              tags: [...state.tags, "screened"],
-              askedIds: state.askedIds.includes("severe")
-                ? state.askedIds
-                : [...state.askedIds, "severe"],
-            }),
-          );
-        } else {
-          setStep(local);
-        }
-      };
-      try {
-        const res = await apiFetch("/api/diagnose", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            seed: state.seed,
-            sessionId: sessionId.current,
-            lang,
-            answers: state.answers.map((a) => ({
-              questionId: a.questionId,
-              prompt: a.prompt,
-              label: a.label,
-            })),
-          }),
-        });
-        const data = await res.json();
-        if (cancelled) return;
-        if (data?.step) {
-          aiDrove.current = true;
-          setStep(fromAiStep(data.step));
-        } else {
-          offline();
-        }
-      } catch {
-        if (!cancelled) offline();
-      } finally {
-        if (!cancelled) setThinking(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setThinking(false);
+    setStep(nextStep(state));
   }, [state, viewed]);
 
   /* Resume after a refresh: the tab remembers which chat it was in
@@ -334,7 +256,6 @@ function CareInner() {
       return;
     }
     sessionId.current = sess.id;
-    aiDrove.current = sess.answers.length > 0;
     setState(replaySession(sess, priors()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions, state.seed, state.answers.length]);
@@ -360,6 +281,8 @@ function CareInner() {
       seed: state.seed,
       answers: state.answers,
       conclusion,
+      pathwayVersion: "clinical-pathways-v1",
+      updatedAt: Date.now(),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, conclusion, viewed]);
@@ -381,7 +304,6 @@ function CareInner() {
 
   function newCheck() {
     sessionId.current = `care-${Date.now().toString(36)}`;
-    aiDrove.current = false;
     restoreTried.current = true; // an explicit new chat is never restored over
     window.sessionStorage.removeItem(ACTIVE_KEY);
     setState(initState("", priors()));
@@ -397,10 +319,10 @@ function CareInner() {
     const q = step.question;
     const found = q.options.find((o) => o.value === opt.value);
     const dopt: DOption = found ?? { value: opt.value, label: opt.label };
-    // applyAiAnswer, not applyAnswer: AI-written chips carry no scores or
-    // red-flag data, so it runs the keyword triage over the label to keep the
-    // emergency short-circuit and the offline fallback fed underneath.
-    setState((s) => applyAiAnswer(s, q, dopt));
+    // Every option comes from the reviewed pathway and carries its own score,
+    // evidence tags, and explicit red-flag status. Never infer an emergency
+    // from arbitrary option wording.
+    setState((s) => applyAnswer(s, q, dopt));
   }
 
   function sendText() {
@@ -1012,7 +934,10 @@ function ConclusionView({
       {/* ── Differential, a ruled ledger, not stacked boxes ── */}
       {differential.length > 0 ? (
         <div className="mt-7">
-          <p className="label">What this could be</p>
+          <p className="label">Possibilities to discuss with a doctor</p>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+            These are ranked from your answers, not a confirmed diagnosis.
+          </p>
           <ol className="mt-2 divide-y divide-[var(--border)] border-y border-[var(--border)]">
             {differential.map((c, i) => (
               <li
