@@ -65,6 +65,8 @@ export interface AdvancedMapProps {
   enableClustering?: boolean;
   enableSearch?: boolean;
   enableControls?: boolean;
+  /** Renders a compact source notice instead of Leaflet's default branding. */
+  showAttribution?: boolean;
   mapLayers?: {
     openstreetmap?: boolean;
     satellite?: boolean;
@@ -303,6 +305,7 @@ export function AdvancedMap({
   enableClustering = true,
   enableSearch = true,
   enableControls = true,
+  showAttribution = true,
   mapLayers = { openstreetmap: true, satellite: false },
   className,
   style = { height: 500, width: "100%" },
@@ -365,6 +368,7 @@ export function AdvancedMap({
         center={center}
         zoom={zoom}
         zoomControl={false}
+        attributionControl={false}
         scrollWheelZoom
         className="h-full w-full"
       >
@@ -465,9 +469,21 @@ export function AdvancedMap({
           </Polyline>
         ))}
       </MapContainer>
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] rounded-full bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-[#45645a] shadow-sm backdrop-blur-md">
-        <MapIcon className="mr-1 inline h-3 w-3" /> Live care map
-      </div>
+      {showAttribution && (
+        <div className="absolute bottom-2 left-3 z-[1000] flex items-center gap-1.5 rounded-full bg-white/88 px-2.5 py-1 text-[10px] font-semibold text-[#45645a] shadow-sm backdrop-blur-md">
+          <MapIcon className="h-3 w-3" />
+          <span>Live care map</span>
+          <span className="text-[#94a59f]">·</span>
+          <a
+            href={satellite ? "https://www.esri.com" : "https://www.openstreetmap.org/copyright"}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#45645a] underline decoration-[#94a59f]/50 underline-offset-2 hover:text-[#173b31]"
+          >
+            © {satellite ? "Esri" : "OpenStreetMap"}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

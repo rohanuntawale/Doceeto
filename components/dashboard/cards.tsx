@@ -135,9 +135,9 @@ export function GaugeCard({
             strokeDashoffset={offset}
           />
         </svg>
-        <div className="absolute inset-x-0 top-1/2 mx-auto w-[116px] -translate-y-1/2 text-center sm:w-[132px]">
+        <div className="absolute inset-x-0 top-1/2 mx-auto flex w-[112px] -translate-y-1/2 flex-col items-center gap-3 px-1 text-center sm:w-[128px]">
           <p className="text-[1.9rem] font-bold leading-none tracking-[-0.04em] text-cream sm:text-[2.15rem]">{value}%</p>
-          <p className="mt-2 text-[11px] leading-[1.35] text-[var(--text-muted)]">{caption}</p>
+          <p className="text-[11px] leading-4 text-[var(--text-muted)]">{caption}</p>
         </div>
       </div>
       {spark && (

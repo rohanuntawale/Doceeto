@@ -45,6 +45,7 @@ export default function PatientAccount() {
 
   const firstName = patient.name.split(" ")[0] || "Guest";
   const completion = healthProfileCompletion(patient.healthProfile);
+  const health = patient.healthProfile ?? {};
 
   return (
     <div className="profile-page patient-profile mx-auto max-w-4xl space-y-6">
@@ -72,6 +73,27 @@ export default function PatientAccount() {
             <p className="mt-2 text-xs leading-relaxed text-white/65">A fuller profile helps Mira ask better questions and clinicians prepare.</p>
           </div>
         </div>
+      </section>
+
+      <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/70 shadow-soft">
+        <div className="flex flex-col gap-2 border-b border-[var(--border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">Care at a glance</p>
+            <h2 className="mt-1 text-lg font-semibold text-cream">Your patient summary</h2>
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">The essentials a clinician needs first</p>
+        </div>
+        <dl className="grid divide-y divide-[var(--border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <SummaryFact label="Blood group" value={health.bloodGroup || "Not added"} />
+          <SummaryFact label="Allergies" value={health.allergies || "None recorded"} />
+          <SummaryFact label="Current conditions" value={health.conditions || "None recorded"} />
+          <SummaryFact
+            label="Emergency contact"
+            value={health.emergencyContactName
+              ? `${health.emergencyContactName}${health.emergencyContactPhone ? ` · ${health.emergencyContactPhone}` : ""}`
+              : "Not added"}
+          />
+        </dl>
       </section>
 
       {/* Health basics, what a doctor reads before treating them. */}
@@ -109,6 +131,15 @@ export default function PatientAccount() {
           last
         />
       </div>
+    </div>
+  );
+}
+
+function SummaryFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 px-5 py-4 sm:px-6">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)]">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-medium text-cream" title={value}>{value}</dd>
     </div>
   );
 }

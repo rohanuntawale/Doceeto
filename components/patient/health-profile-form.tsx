@@ -197,15 +197,21 @@ export function HealthProfileForm() {
   ]);
 
   return (
-    <section className="rounded-3xl fh-card p-5 shadow-soft">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-cream">
-          <span className="text-primary"><HeartPulse className="h-4 w-4" /></span>
-          {t("health.profileTitle")}
-        </h2>
+    <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/70 shadow-soft">
+      <div className="flex flex-col gap-4 border-b border-[var(--border)] px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">Patient health record</p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold text-cream">
+            <span className="text-primary"><HeartPulse className="h-5 w-5" /></span>
+            {t("health.profileTitle")}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
+            This is the information your clinician sees after accepting your consult. Keep it current for safer, faster care.
+          </p>
+        </div>
         <span
           className={cn(
-            "rounded-full px-2 py-0.5 text-[11px] font-bold",
+            "w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-bold",
             completion >= 80
               ? "bg-[rgb(var(--c-status-ok))]/15 text-[rgb(var(--c-status-ok))]"
               : "bg-tan/15 text-tan",
@@ -214,11 +220,9 @@ export function HealthProfileForm() {
           {t("health.complete", { n: String(completion) })}
         </span>
       </div>
-      <p className="mb-4 text-xs leading-relaxed text-[var(--text-muted)]">
-        {t("health.profileDesc")}
-      </p>
 
-      <div className="space-y-3">
+      <div>
+        <RecordSection number="01" title="Measurements & routine" description="The basics used to understand your current health context.">
         {/* Measurements, the pair that unlocks BMI */}
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.height")}>
@@ -262,6 +266,9 @@ export function HealthProfileForm() {
           </Field>
         </div>
 
+        </RecordSection>
+
+        <RecordSection number="02" title="Clinical snapshot" description="Personal details and common conditions that help clinicians triage safely.">
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.dob")}>
             <input type="date" className={inputCls} value={dob}
@@ -299,7 +306,9 @@ export function HealthProfileForm() {
           </Field>
         </div>
 
+        </RecordSection>
 
+        <RecordSection number="03" title="Medical history" description="A concise record of conditions, medication, past procedures, and family history.">
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.bloodGroup")}>
             <select className={inputCls} value={bloodGroup}
@@ -331,7 +340,14 @@ export function HealthProfileForm() {
             onChange={(e) => setFamilyHistory(e.target.value)} placeholder="Heart disease (father)…" />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        </RecordSection>
+
+        <div className="border-t border-[var(--border)] px-5 py-5 sm:px-6">
+          <div className="mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">04 / Emergency contact</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Who should the care team contact if you need urgent help?</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.ecName")}>
             <input className={inputCls} value={ecName} maxLength={80}
               onChange={(e) => setEcName(e.target.value)} placeholder="Who should we call?" />
@@ -340,7 +356,7 @@ export function HealthProfileForm() {
             <input type="tel" className={inputCls} value={ecPhone} maxLength={20}
               onChange={(e) => setEcPhone(e.target.value)} placeholder="+91…" />
           </Field>
-        </div>
+          </div>
 
         <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white/[0.025] px-3 py-2.5">
           <span className="text-[11px] text-[var(--text-muted)]">
@@ -370,7 +386,33 @@ export function HealthProfileForm() {
             {t("health.savedOn")} {new Date(p.updatedAt).toLocaleString()}
           </p>
         )}
+        </div>
       </div>
+    </section>
+  );
+}
+
+function RecordSection({
+  number,
+  title,
+  description,
+  children,
+}: {
+  number: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-b border-[var(--border)] px-5 py-5 sm:px-6">
+      <div className="mb-4 flex gap-3">
+        <span className="font-mono text-xs font-bold text-primary">{number}</span>
+        <div>
+          <h3 className="text-sm font-semibold text-cream">{title}</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-muted)]">{description}</p>
+        </div>
+      </div>
+      <div className="space-y-3">{children}</div>
     </section>
   );
 }

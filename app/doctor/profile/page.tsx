@@ -69,7 +69,7 @@ export default function ProfilePage() {
     <div className="profile-page mx-auto max-w-6xl">
       <PageHeader
         label="DOCEETO · PROFILE"
-        title="Your profile"
+        title="Professional profile"
         action={
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="h-3.5 w-3.5" /> Edit profile
@@ -79,6 +79,7 @@ export default function ProfilePage() {
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="p-5">
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">Provider identity</p>
           <div className="flex items-start gap-4">
             <AvatarUploader onPhoto={setPhoto}>
               <span
@@ -133,9 +134,12 @@ export default function ProfilePage() {
 
           {/* About + credentials, exactly what patients see. Use “Edit
               profile” to change any of it. */}
-          <div className="mt-5 space-y-3 border-t border-[var(--border)] pt-4">
+          <div className="mt-5 border-t border-[var(--border)] pt-4">
             <div className="flex items-center justify-between">
-              <div className="label">What patients see</div>
+              <div>
+                <div className="label">Professional summary</div>
+                <h3 className="mt-1 text-sm font-semibold text-cream">What patients see</h3>
+              </div>
               <button
                 onClick={() => setEditing(true)}
                 className="text-xs text-salmon transition-colors hover:text-cream"
@@ -143,39 +147,17 @@ export default function ProfilePage() {
                 Edit
               </button>
             </div>
-            <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+            <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
               {doctorAbout(me)}
             </p>
-            <CredLine
-              icon={<MapPin className="h-4 w-4 text-salmon" />}
-              label="Clinic address"
-              value={me.clinicAddress || "Not added yet"}
-            />
-            <CredLine
-              icon={<Award className="h-4 w-4 text-salmon" />}
-              label="Qualifications"
-              value={doctorQualification(me)}
-            />
-            <CredLine
-              icon={<GraduationCap className="h-4 w-4 text-salmon" />}
-              label="Academic background"
-              value={doctorEducation(me)}
-            />
-            <CredLine
-              icon={<Briefcase className="h-4 w-4 text-salmon" />}
-              label="Experience"
-              value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`}
-            />
-            <CredLine
-              icon={<LanguagesIcon className="h-4 w-4 text-salmon" />}
-              label="Languages"
-              value={me.languages.join(", ") || ", "}
-            />
-            <CredLine
-              icon={<ShieldCheck className="h-4 w-4 text-salmon" />}
-              label="Medical reg. no."
-              value={me.registrationNo || "Not added yet"}
-            />
+            <div className="mt-4 grid overflow-hidden rounded-2xl border border-[var(--border)] sm:grid-cols-2">
+              <CredLine icon={<MapPin className="h-4 w-4 text-salmon" />} label="Clinic address" value={me.clinicAddress || "Not added yet"} />
+              <CredLine icon={<Award className="h-4 w-4 text-salmon" />} label="Qualifications" value={doctorQualification(me)} />
+              <CredLine icon={<GraduationCap className="h-4 w-4 text-salmon" />} label="Academic background" value={doctorEducation(me)} />
+              <CredLine icon={<Briefcase className="h-4 w-4 text-salmon" />} label="Experience" value={`${me.experienceYears} yr${me.experienceYears === 1 ? "" : "s"}`} />
+              <CredLine icon={<LanguagesIcon className="h-4 w-4 text-salmon" />} label="Languages" value={me.languages.join(", ") || "Not added yet"} />
+              <CredLine icon={<ShieldCheck className="h-4 w-4 text-salmon" />} label="Medical reg. no." value={me.registrationNo || "Not added yet"} />
+            </div>
           </div>
 
           {!me.avatarUrl && (
@@ -257,13 +239,13 @@ function CredLine({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex min-w-0 items-start gap-3 border-b border-[var(--border)] bg-[var(--surface)]/35 px-3.5 py-3.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-[var(--border)]">
       <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-terracotta/10">
         {icon}
       </span>
       <div className="min-w-0">
-        <div className="text-xs text-[var(--text-faint)]">{label}</div>
-        <div className="text-sm text-cream">{value}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">{label}</div>
+        <div className="mt-1 text-sm text-cream">{value}</div>
       </div>
     </div>
   );
