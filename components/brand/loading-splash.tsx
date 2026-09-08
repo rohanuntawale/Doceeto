@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils/cn";
  */
 export function LoadingSplash({
   src = "/loading/app-load.mp4",
-  mobileSrc,
+  mobileSrc = "/loading/doceeto-landing-mobile.mp4",
 }: {
   src?: string;
   /** Portrait re-cut for phones. Falls back to the main source if absent. */
@@ -34,7 +34,11 @@ export function LoadingSplash({
   }
 
   useEffect(() => {
-    setIsPhone(window.matchMedia("(max-width: 767px)").matches);
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsPhone(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
 
   useEffect(() => {
@@ -59,9 +63,10 @@ export function LoadingSplash({
         autoPlay
         muted
         playsInline
+        preload="auto"
         onEnded={end}
         onError={end}
-        className="h-full w-full scale-100 object-cover sm:scale-[1.15]"
+        className="h-full w-full object-cover"
       />
       <span className="absolute bottom-8 text-[11px] tracking-wide text-[var(--text-faint)]">
         tap to skip

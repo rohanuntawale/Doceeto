@@ -19,7 +19,10 @@ export default async function NurseLayout({ children }: { children: React.ReactN
 
   return (
     <>
-      <LoadingSplash src="/loading/doceeto-landing.mp4" />
+      <LoadingSplash
+        src="/loading/doceeto-landing.mp4"
+        mobileSrc="/loading/doceeto-landing-mobile.mp4"
+      />
       <NurseShell>
         <DoctorLocationPublisher />
         <PresenceHeartbeat />

@@ -15,7 +15,10 @@ export default async function PatientLayout({
 
   return (
     <>
-      <LoadingSplash src="/loading/doceeto-landing.mp4" />
+      <LoadingSplash
+        src="/loading/doceeto-landing.mp4"
+        mobileSrc="/loading/doceeto-landing-mobile.mp4"
+      />
       <PatientShell>
         <PatientLocationSync />
         <ArrivalWatcher />

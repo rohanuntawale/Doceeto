@@ -12,7 +12,10 @@ export default async function DoctorLayout({ children }: { children: React.React
 
   return (
     <>
-      <LoadingSplash src="/loading/doceeto-landing.mp4" />
+      <LoadingSplash
+        src="/loading/doceeto-landing.mp4"
+        mobileSrc="/loading/doceeto-landing-mobile.mp4"
+      />
       <DoctorShell>
         <DoctorLocationPublisher />
         <PresenceHeartbeat />
