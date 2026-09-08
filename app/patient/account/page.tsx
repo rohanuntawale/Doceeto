@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils/cn";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { IdentityImport } from "@/components/patient/identity-import";
 import { healthProfileCompletion } from "@/lib/health/profile";
+import { AccountSecuritySupport } from "@/components/account/account-security-support";
 
 export default function PatientAccount() {
   const { patient, update } = useCurrentPatient();
@@ -49,56 +50,53 @@ export default function PatientAccount() {
 
   return (
     <div className="profile-page patient-profile mx-auto max-w-4xl space-y-6">
-      <section className="patient-profile-hero overflow-hidden rounded-[2rem] p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
+      <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/80 p-6 shadow-soft">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">My profile</p>
+          <div className="mt-5 flex min-w-0 flex-col items-center text-center">
             <AvatarUploader onPhoto={setPhoto}>
               <AvatarImage
                 src={patient.avatarUrl}
                 fallback={firstName.charAt(0).toUpperCase()}
                 background="linear-gradient(135deg, #f3c96b, #c58b2e)"
-                className="h-20 w-20 rounded-[1.65rem] border-4 border-white/20 text-2xl font-semibold text-[#173f33] shadow-[0_16px_32px_rgb(0_0_0/0.18)]"
+                className="h-24 w-24 rounded-[1.8rem] border-4 border-white text-3xl font-semibold text-[#173f33] shadow-[0_16px_32px_rgb(21_61_50/0.18)]"
               />
             </AvatarUploader>
-            <div className="min-w-0 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Your care profile</p>
-              <h1 className="mt-1 truncate font-serif text-4xl leading-none sm:text-5xl">{patient.name}</h1>
-              <p className="mt-2 truncate text-sm text-white/75">{patient.address || "Add your home area for faster care"}</p>
-              <p className="mt-2 text-xs text-white/65">{patient.avatarUrl ? t("account.tapPhoto") : t("account.addPhoto")}</p>
-            </div>
+            <h1 className="mt-4 truncate text-3xl leading-none text-cream">{patient.name}</h1>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">{patient.address || "Add your home area for faster care"}</p>
+            <p className="mt-3 text-xs text-[var(--text-faint)]">{patient.avatarUrl ? t("account.tapPhoto") : t("account.addPhoto")}</p>
           </div>
-          <div className="w-full rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur sm:max-w-56">
-            <div className="flex items-baseline justify-between gap-3 text-sm text-white/80"><span>Care profile</span><strong className="text-2xl text-white">{completion}%</strong></div>
-            <progress aria-label="Health profile completeness" max={100} value={completion} className="mt-3 h-2 w-full accent-[#f3c96b]" />
-            <p className="mt-2 text-xs leading-relaxed text-white/65">A fuller profile helps Mira ask better questions and clinicians prepare.</p>
-          </div>
-        </div>
-      </section>
+          <dl className="mt-6 divide-y divide-[var(--border)] border-y border-[var(--border)]">
+            <ProfileRow label="Care profile" value={`${completion}% complete`} />
+            <ProfileRow label="Home area" value={patient.address || "Not added"} />
+            <ProfileRow label="Emergency contact" value={health.emergencyContactName || "Not added"} />
+          </dl>
+          <button type="button" onClick={() => document.getElementById("health-record")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="mt-5 w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-on-accent transition-transform active:scale-[0.98]">Update care record</button>
+        </section>
 
-      <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/70 shadow-soft">
-        <div className="flex flex-col gap-2 border-b border-[var(--border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">Care at a glance</p>
-            <h2 className="mt-1 text-lg font-semibold text-cream">Your patient summary</h2>
-          </div>
-          <p className="text-xs text-[var(--text-muted)]">The essentials a clinician needs first</p>
+        <div className="space-y-6">
+          <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-white/70 shadow-soft">
+            <div className="flex flex-col gap-2 border-b border-[var(--border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-faint)]">Care at a glance</p>
+                <h2 className="mt-1 text-lg font-semibold text-cream">Your patient summary</h2>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">The essentials a clinician needs first</p>
+            </div>
+            <dl className="grid divide-y divide-[var(--border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+              <SummaryFact label="Blood group" value={health.bloodGroup || "Not added"} />
+              <SummaryFact label="Allergies" value={health.allergies || "None recorded"} />
+              <SummaryFact label="Current conditions" value={health.conditions || "None recorded"} />
+              <SummaryFact label="Emergency contact" value={health.emergencyContactName ? `${health.emergencyContactName}${health.emergencyContactPhone ? ` · ${health.emergencyContactPhone}` : ""}` : "Not added"} />
+            </dl>
+          </section>
+          <AccountSecuritySupport />
         </div>
-        <dl className="grid divide-y divide-[var(--border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-          <SummaryFact label="Blood group" value={health.bloodGroup || "Not added"} />
-          <SummaryFact label="Allergies" value={health.allergies || "None recorded"} />
-          <SummaryFact label="Current conditions" value={health.conditions || "None recorded"} />
-          <SummaryFact
-            label="Emergency contact"
-            value={health.emergencyContactName
-              ? `${health.emergencyContactName}${health.emergencyContactPhone ? ` · ${health.emergencyContactPhone}` : ""}`
-              : "Not added"}
-          />
-        </dl>
-      </section>
+      </div>
 
       {/* Health basics, what a doctor reads before treating them. */}
       <IdentityImport />
-      <HealthProfileForm />
+      <div id="health-record"><HealthProfileForm /></div>
 
 
       {/* Language */}
@@ -142,6 +140,10 @@ function SummaryFact({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 truncate text-sm font-medium text-cream" title={value}>{value}</dd>
     </div>
   );
+}
+
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between gap-4 py-3 text-left"><dt className="text-xs text-[var(--text-faint)]">{label}</dt><dd className="max-w-[58%] truncate text-sm font-medium text-cream" title={value}>{value}</dd></div>;
 }
 
 function Section({

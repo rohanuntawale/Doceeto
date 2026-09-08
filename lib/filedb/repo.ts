@@ -172,6 +172,15 @@ export async function findUserByEmail(email: string): Promise<UserRecord | null>
   return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
 }
 
+/** Rotate a local account password. Sessions are invalidated by the caller. */
+export async function updateUserPassword(id: string, passwordHash: string): Promise<boolean> {
+  const user = data().users.find((entry) => entry.id === id);
+  if (!user) return false;
+  user.passwordHash = passwordHash;
+  persist();
+  return true;
+}
+
 // ── Pending sign-ups (Google, before the profile exists) ─────
 
 export async function createPendingSignup(input: {

@@ -33,6 +33,7 @@ import {
   doctorAbout,
 } from "@/lib/utils/doctor";
 import { useMounted } from "@/lib/hooks/use-mounted";
+import { AccountSecuritySupport } from "@/components/account/account-security-support";
 
 export default function ProfilePage() {
   const me = useCurrentDoctor();
@@ -208,6 +209,10 @@ export default function ProfilePage() {
             </div>
           )}
         </Card>
+      </div>
+
+      <div className="mt-5">
+        <AccountSecuritySupport />
       </div>
 
       <EditProfileDialog

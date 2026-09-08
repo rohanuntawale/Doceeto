@@ -27,7 +27,7 @@ export interface InteractiveMapMarker {
   position: Point;
   color?: MarkerColor;
   size?: MarkerSize;
-  icon?: L.Icon;
+  icon?: L.Icon | L.DivIcon;
   popup?: { title: string; content?: string; image?: string };
 }
 
@@ -76,21 +76,27 @@ export interface AdvancedMapProps {
   style?: React.CSSProperties;
 }
 
-const MARKER_SIZES: Record<MarkerSize, [number, number]> = {
-  small: [20, 32],
-  medium: [25, 41],
-  large: [30, 50],
+const MARKER_SIZES: Record<MarkerSize, number> = {
+  small: 18,
+  medium: 24,
+  large: 30,
 };
 
 function markerIcon(color: MarkerColor = "blue", size: MarkerSize = "medium") {
-  return new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: MARKER_SIZES[size],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
+  const diameter = MARKER_SIZES[size];
+  const fill: Record<MarkerColor, string> = {
+    blue: "#3b82f6",
+    red: "#d45738",
+    green: "#187057",
+    orange: "#dd8a24",
+    violet: "#7359c7",
+  };
+  return L.divIcon({
+    className: "doceeto-map-marker",
+    html: `<span style="display:block;width:${diameter}px;height:${diameter}px;border:3px solid #fff;border-radius:9999px;background:${fill[color]};box-shadow:0 4px 10px rgb(22 52 43 / .34)"></span>`,
+    iconSize: [diameter, diameter],
+    iconAnchor: [diameter / 2, diameter / 2],
+    popupAnchor: [0, -(diameter / 2)],
   });
 }
 
@@ -317,7 +323,7 @@ export function AdvancedMap({
     name: string;
   } | null>(null);
   const [clickedLocation, setClickedLocation] = useState<L.LatLng | null>(null);
-  const icons = useMemo(() => new Map<string, L.Icon>(), []);
+  const icons = useMemo(() => new Map<string, L.Icon | L.DivIcon>(), []);
 
   const getIcon = useCallback(
     (marker: InteractiveMapMarker) => {

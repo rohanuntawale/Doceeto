@@ -75,7 +75,7 @@ export async function getRequestSession(req: Request): Promise<SessionRecord | n
   const session = await getSession(surfaceOf(req));
   if (session && (session.role === "doctor" || session.role === "nurse")) {
     const path = new URL(req.url).pathname;
-    const permitted = ["/api/auth/me", "/api/auth/logout", "/api/auth/avatar"];
+    const permitted = ["/api/auth/me", "/api/auth/logout", "/api/auth/avatar", "/api/auth/password", "/api/support/tickets"];
     if (!permitted.includes(path) && !(await db.getDoctorById(session.userId))?.verified) return null;
   }
   return session;

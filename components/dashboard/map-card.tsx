@@ -81,13 +81,12 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
           enableClustering={markers.length > 4}
           enableSearch={true}
           enableControls={true}
+          showAttribution={false}
           style={{ height: "100%", width: "100%" }}
         />
       </div>
 
-      {/* Glass overlays. Bottom space is deliberately reserved for the map
-          source notice, so narrow cards never stack the action over it. */}
-      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-3 pb-11">
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-3">
         <div className="flex items-start justify-between gap-2 pt-12">
           <button
             type="button"
@@ -129,6 +128,10 @@ export function MapCard({ patient }: { patient: PatientIdentity }) {
           </button>
         </div>
       </div>
+      <footer className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[10px] font-medium text-[var(--text-faint)]">
+        <span>Map data</span>
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="pointer-events-auto hover:text-[var(--text-muted)]">© OpenStreetMap · Esri</a>
+      </footer>
     </section>
   );
 }
