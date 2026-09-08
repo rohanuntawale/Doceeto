@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, LogOut, Search, Stethoscope, Pill, User } from "lucide-react";
-import { LayoutGroup, motion } from "framer-motion";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSelector } from "@/components/ui/language-selector";
+import { AppDock, type DockItem } from "@/components/layout/app-dock";
 import { MEDICINE_ENABLED } from "@/lib/config";
 import { apiFetch } from "@/lib/api/client";
 import { resetPatientSession } from "@/lib/hooks/use-current-patient";
@@ -14,9 +14,8 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils/cn";
 
 /**
- * Patient shell. Mobile keeps a compact thumb-friendly tab pill; desktop uses
- * an animated, in-app navigation bar so pages never compete with a floating
- * dock for visual attention.
+ * Patient shell. Mobile: a floating iOS-style tab pill. Desktop (lg+): a
+ * macOS magnifying dock at the bottom instead of a sidebar.
  */
 const NAV = [
   { id: "home", href: "/patient", labelKey: "nav.home", icon: Home, color: "#0A84FF", exact: true },
@@ -86,6 +85,14 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
+  const dockItems: DockItem[] = NAV.map((n) => ({
+    id: n.id,
+    href: n.href,
+    label: t(n.labelKey),
+    icon: n.icon,
+    color: n.color,
+  }));
+
   // Four tabs plus a translated label can outgrow a 320px phone (Hindi and
   // Marathi labels run long); keep the active tab in view so clipped tabs
   // stay discoverable — same treatment as the doctor shell.
@@ -101,14 +108,10 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen app-accent-warm">
       {/* Top bar, brand + language. Solid glass at exactly --chrome-top tall,
           so scrolled content never collides with the controls floating on it. */}
-      <div className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
+      <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
         <Link href="/patient" aria-label="Doceeto home">
           <Wordmark compact />
         </Link>
-        <PatientFramerNav
-          items={NAV.map((item) => ({ ...item, label: t(item.labelKey) }))}
-          activeId={active}
-        />
         {/* Sign out then language, the same order, icon and styling as the
             doctor cockpit's top bar. Someone who holds both a patient and a
             provider account should not have to re-learn where the exit is
@@ -173,45 +176,8 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
+      {/* Desktop macOS dock */}
+      <AppDock items={dockItems} activeId={active} />
     </div>
-  );
-}
-
-function PatientFramerNav({
-  items,
-  activeId,
-}: {
-  items: Array<(typeof NAV)[number] & { label: string }>;
-  activeId: string;
-}) {
-  return (
-    <LayoutGroup id="patient-navigation">
-      <nav
-        aria-label="Patient navigation"
-        className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)]/90 p-1 shadow-[0_10px_30px_rgb(16_45_35/0.08)] backdrop-blur-xl lg:flex"
-      >
-        {items.map(({ id, href, label, icon: Icon }) => {
-          const selected = id === activeId;
-          return (
-            <Link
-              key={id}
-              href={href}
-              aria-current={selected ? "page" : undefined}
-              className="relative flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors"
-            >
-              {selected ? (
-                <motion.span
-                  layoutId="patient-nav-active"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  className="absolute inset-0 rounded-full bg-[#153d32] shadow-[0_5px_14px_rgb(21_61_50/0.22)]"
-                />
-              ) : null}
-              <Icon className={cn("relative h-4 w-4", selected ? "text-white" : "text-[var(--text-muted)]")} />
-              <span className={cn("relative", selected ? "text-white" : "text-[var(--text-muted)]")}>{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-    </LayoutGroup>
   );
 }
