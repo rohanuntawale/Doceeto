@@ -216,7 +216,7 @@
      itself against the viewport (map canvases, chat floors). Pages must use
      these instead of hard-coding the bar heights, so a chrome tweak can never
      silently push content under the floating dock again. */
-  --chrome-top: 3.5rem; /* sticky brand bar (h-14, hairline included) */
+  --chrome-top: 4.5rem; /* floating application header (h-18) */
   --chrome-dock: 5.25rem; /* floating tab pill + its bottom clearance */
 }
 

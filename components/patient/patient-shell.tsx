@@ -106,26 +106,27 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
   return (
     // The app keeps the terracotta accent; green is the public brand.
     <div className="min-h-screen app-accent-warm">
-      {/* Top bar, brand + language. Solid glass at exactly --chrome-top tall,
-          so scrolled content never collides with the controls floating on it. */}
-      <div className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--border)] bg-espresso/85 px-4 backdrop-blur-xl sm:px-6">
-        <Link href="/patient" aria-label="Doceeto home">
-          <Wordmark compact />
-        </Link>
-        {/* Sign out then language, the same order, icon and styling as the
-            doctor cockpit's top bar. Someone who holds both a patient and a
-            provider account should not have to re-learn where the exit is
-            when they switch. */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={logout}
-            aria-label="Sign out"
-            title="Sign out"
-            className="grid h-8 w-8 place-items-center rounded-full border border-[var(--border)] bg-surface/70 text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-          <LanguageSelector />
+      {/* Floating app header. Its centered capsule mirrors the public
+          navigation while keeping the signed-in controls close to the brand. */}
+      <div className="sticky top-0 z-20 flex h-[4.5rem] items-center px-3 sm:px-6">
+        <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between rounded-[1.75rem] border border-[#dbe5df] bg-white/90 px-4 shadow-[0_16px_34px_rgb(19_57_45/0.14)] backdrop-blur-xl sm:px-5">
+          <Link href="/patient" aria-label="Doceeto home" className="shrink-0">
+            <Wordmark compact />
+          </Link>
+          {/* Sign out and language have text labels, not anonymous icon
+              badges, so the actions remain clear on the patient surface. */}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={logout}
+              aria-label="Log out"
+              title="Log out"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-[#dbe5df] bg-white px-3.5 text-sm font-semibold text-[var(--text-muted)] transition-colors hover:border-[rgb(var(--c-forest))/0.26] hover:bg-[#f4f8f5] hover:text-[rgb(var(--c-forest))]"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Log out</span>
+            </button>
+            <LanguageSelector />
+          </div>
         </div>
       </div>
 
