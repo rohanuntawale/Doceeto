@@ -11,7 +11,7 @@ import { CareNetwork } from "@/components/auth/care-network";
  */
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="relative grid h-screen place-items-center overflow-hidden bg-[rgb(var(--c-forest-paper))] px-3 py-3 text-[var(--text)] sm:px-5 sm:py-4">
+    <main className="relative grid h-[100dvh] min-h-[100dvh] place-items-center overflow-hidden bg-[rgb(var(--c-forest-paper))] px-3 py-3 text-[var(--text)] sm:px-5 sm:py-4">
       {/* The landing hero's footage, same file and same full-opacity treatment
           as components/landing/landing-hero.tsx. Must be z-0, not -z-10: main
           has z-index:auto, so a negative child escapes to the root stacking
@@ -39,11 +39,12 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
 
 /**
  * The surface a left panel needs to sit on this shell: glass over the footage,
- * scrolling on its own so a long form never stretches the frame. Both panels
- * apply it so the two columns match edge for edge.
+ * scrolling from its true beginning so a long form never loses its brand line
+ * or footer inside the fixed shell. Both panels apply it so the two columns
+ * match edge for edge.
  */
 export const authPanelCls =
-  "relative flex h-full min-h-0 flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface-rgb)/0.85)] px-6 py-8 backdrop-blur-2xl short:py-6 sm:px-10";
+  "relative flex h-full min-h-0 flex-col items-center justify-start overflow-x-hidden overflow-y-auto overscroll-contain bg-[rgb(var(--surface-rgb)/0.85)] px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] backdrop-blur-2xl sm:px-10 sm:pt-10 sm:pb-10";
 
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);

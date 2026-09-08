@@ -335,6 +335,9 @@ function OnboardingPanel() {
       if (!registrationNo.trim()) {
         return setError("Add your nursing council registration number.");
       }
+      if (accessPath === "invite" && !inviteCode.trim()) {
+        return setError("Enter your invitation code, or choose Get verified.");
+      }
 
       const nurseProfile = {
         inviteCode: accessPath === "invite" ? inviteCode.trim() : undefined,
@@ -740,6 +743,9 @@ function OnboardingPanel() {
                   placeholder="600"
                 />
               </Field>
+              <p className="-mt-2 text-[11px] leading-snug text-[var(--text-faint)]">
+                You can change this fee anytime from your dashboard.
+              </p>
             </div>
           ) : (
             <>
@@ -920,6 +926,9 @@ function OnboardingPanel() {
                   />
                 </Field>
               </div>
+              <p className="-mt-1 text-[11px] leading-snug text-[var(--text-faint)]">
+                Both fees are editable anytime from your dashboard.
+              </p>
 
               <Field label="Clinic address (optional)">
                 <input
@@ -935,12 +944,17 @@ function OnboardingPanel() {
           )}
 
           {step === 2 && role !== "patient" && <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left">
-            <h2 className="font-semibold text-[var(--text)]">Your route to Doceeto</h2>
+            <div>
+              <h2 className="font-semibold text-[var(--text)]">Your route to Doceeto</h2>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                An invitation gives verified {role === "doctor" ? "doctors" : "nurses"} immediate dashboard access. It is sent by Doceeto, tied to your account email and clinician role, and expires automatically.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setAccessPath("review")} aria-pressed={accessPath === "review"} className={cn("rounded-xl border px-3 py-3 text-sm", accessPath === "review" ? "border-[var(--accent)] font-bold" : "border-[var(--border)]")}>Get verified</button>
               <button type="button" onClick={() => setAccessPath("invite")} aria-pressed={accessPath === "invite"} className={cn("rounded-xl border px-3 py-3 text-sm", accessPath === "invite" ? "border-[var(--accent)] font-bold" : "border-[var(--border)]")}>I have an invite</button>
             </div>
-            {accessPath === "invite" ? <Field label="Invitation code"><input className={inputCls} value={inviteCode} onChange={event => setInviteCode(event.target.value)} required autoComplete="off" placeholder="Paste the code sent to your email" /></Field> : <p className="text-sm leading-relaxed text-[var(--text-muted)]">Submit your licence number and practice details. Our in-house team will contact you through your account email. You will have access after verification; until then your application stays pending.</p>}
+            {accessPath === "invite" ? <div className="space-y-2"><Field label="Invitation code"><input className={inputCls} value={inviteCode} onChange={event => setInviteCode(event.target.value)} required autoComplete="off" placeholder="Paste your Doceeto invite code" /></Field><p className="text-xs leading-relaxed text-[var(--text-muted)]">Paste the private code sent to the email used above. A valid code activates your provider dashboard as soon as your account is created.</p></div> : <p className="text-sm leading-relaxed text-[var(--text-muted)]">Submit your licence number and practice details. Our in-house team will contact you through your account email. You will have access after verification; until then your application stays pending.</p>}
           </div>}
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
