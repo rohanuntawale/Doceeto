@@ -109,7 +109,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
       {/* Floating app header. Its centered capsule mirrors the public
           navigation while keeping the signed-in controls close to the brand. */}
       <div className="sticky top-0 z-20 flex h-[4.5rem] items-center px-3 sm:px-6">
-        <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between rounded-[1.75rem] border border-[#dbe5df] bg-white/90 px-4 shadow-[0_16px_34px_rgb(19_57_45/0.14)] backdrop-blur-xl sm:px-5">
+        <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center justify-between rounded-[1.75rem] border border-white/70 bg-white/55 px-4 shadow-[0_18px_42px_rgb(19_57_45/0.16),inset_0_1px_0_rgb(255_255_255/0.8)] backdrop-blur-2xl backdrop-saturate-150 sm:px-5">
           <Link href="/patient" aria-label="Doceeto home" className="shrink-0">
             <Wordmark compact />
           </Link>
@@ -120,7 +120,7 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
               onClick={logout}
               aria-label="Log out"
               title="Log out"
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-[#dbe5df] bg-white px-3.5 text-sm font-semibold text-[var(--text-muted)] transition-colors hover:border-[rgb(var(--c-forest))/0.26] hover:bg-[#f4f8f5] hover:text-[rgb(var(--c-forest))]"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-white/70 bg-white/45 px-3.5 text-sm font-semibold text-[var(--text-muted)] shadow-[inset_0_1px_0_rgb(255_255_255/0.75)] backdrop-blur-md transition-colors hover:border-[rgb(var(--c-forest))/0.26] hover:bg-white/75 hover:text-[rgb(var(--c-forest))]"
             >
               <LogOut className="h-4 w-4" />
               <span>Log out</span>

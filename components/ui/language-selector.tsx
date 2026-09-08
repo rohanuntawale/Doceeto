@@ -73,7 +73,7 @@ export function LanguageSelector() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Change language"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-surface/70 px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] backdrop-blur transition-colors hover:text-[var(--text)]"
+        className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/45 px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] shadow-[inset_0_1px_0_rgb(255_255_255/0.75)] backdrop-blur-md transition-colors hover:bg-white/70 hover:text-[var(--text)]"
       >
         <Globe className="h-4 w-4" />
         <span>{active.native}</span>
