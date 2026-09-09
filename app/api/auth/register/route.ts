@@ -6,6 +6,7 @@ import { clientIp, rateLimit, tooMany } from "@/lib/server/rate-limit";
 import { emitChange } from "@/lib/server/events";
 import { NURSE_SERVICES } from "@/lib/nurse";
 import { providerDetailsError, validProviderInvite } from "@/lib/verify/invite";
+import { hashOpsProviderInviteCode } from "@/lib/verify/ops-provider-invite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +26,6 @@ export async function POST(req: Request) {
     const provider = body.role === "doctor" || body.role === "nurse";
     const detailsError = provider ? providerDetailsError(body) : null;
     if (detailsError) return NextResponse.json({ error: detailsError }, { status: 400 });
-    const invited = provider && validProviderInvite(body.inviteCode, email, body.role);
-    if (body.inviteCode && !invited) return NextResponse.json({ error: "This invite is invalid, expired, or belongs to another email. Remove it to request verification." }, { status: 400 });
-
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
     }
@@ -42,6 +40,21 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "An account with this email already exists." },
         { status: 409 },
+      );
+    }
+    const configuredInvite = provider && validProviderInvite(body.inviteCode, email, body.role);
+    const opsInvite = provider && body.inviteCode && !configuredInvite
+      ? await db.consumeProviderInvite({
+          codeHash: hashOpsProviderInviteCode(body.inviteCode),
+          role: body.role,
+          email,
+        })
+      : false;
+    const invited = Boolean(configuredInvite || opsInvite);
+    if (body.inviteCode && !invited) {
+      return NextResponse.json(
+        { error: "This invite is invalid, expired, revoked, or already used. Remove it to request verification." },
+        { status: 400 },
       );
     }
     const passwordHash = await hashPassword(password);

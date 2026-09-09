@@ -118,7 +118,7 @@ export default function DoctorsNetwork() {
                   isNurseTab ? "Nurse" : "Doctor",
                   isNurseTab ? "Title" : "Specialty",
                   "Status",
-                  isNurseTab ? "Verified" : "Working on",
+                  "Verification",
                   isNurseTab ? "Services" : "Gigs",
                   "Rating",
                   "Consult",
@@ -164,30 +164,18 @@ export default function DoctorsNetwork() {
                     <td className="px-5 py-3">
                       <StatusPill tone={st.tone}>{st.label}</StatusPill>
                     </td>
-                    {/* For a nurse this column is the ops decision itself: a
-                        nurse is invisible to patients until it is Yes. For a
-                        doctor it stays "what are they occupied with", which
-                        `status` (their own intent) doesn't tell you. */}
                     <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                      {isNurseTab ? (
-                        <button
-                          onClick={() => toggleVerified(d)}
-                          className={cn(
-                            "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                            d.verified
-                              ? "border-status-ok/40 text-status-ok hover:bg-status-ok/10"
-                              : "border-[var(--border)] text-[var(--text-muted)] hover:text-cream",
-                          )}
-                        >
-                          {d.verified ? "Verified" : "Verify"}
-                        </button>
-                      ) : d.onGig ? (
-                        <StatusPill tone="warn">On a gig</StatusPill>
-                      ) : d.onConsult ? (
-                        <StatusPill tone="info">In consult</StatusPill>
-                      ) : (
-                        <span className="text-xs text-[var(--text-faint)]">Free</span>
-                      )}
+                      <button
+                        onClick={() => toggleVerified(d)}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                          d.verified
+                            ? "border-status-ok/40 text-status-ok hover:bg-status-ok/10"
+                            : "border-[var(--border)] text-[var(--text-muted)] hover:text-cream",
+                        )}
+                      >
+                        {d.verified ? "Verified" : "Verify"}
+                      </button>
                     </td>
                     <td className="px-5 py-3">
                       {isNurseTab ? (

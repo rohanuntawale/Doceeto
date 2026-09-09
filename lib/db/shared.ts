@@ -51,6 +51,15 @@ export interface UserRecord {
   name: string;
 }
 
+export interface ProviderInviteRecord {
+  id: string;
+  role: "doctor" | "nurse";
+  expiresAt: string;
+  createdAt: string;
+  consumedAt: string | null;
+  consumedByEmail: string | null;
+}
+
 /**
  * A signed-in session, stored in the DATABASE rather than encoded into the
  * browser's cookie. The browser only ever holds `id` — an opaque random

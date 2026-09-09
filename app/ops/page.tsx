@@ -8,6 +8,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { LiveMap } from "@/components/map/live-map";
 import { OrderCard } from "@/components/auramed/order-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ProviderInviteGenerator } from "@/components/ops/provider-invite-generator";
 import {
   useOpsSnapshot,
   useOrders,
@@ -41,6 +42,10 @@ export default function OpsOverview() {
           label="Doceeto active"
           icon={<Pill className="h-4 w-4" />}
         />
+      </div>
+
+      <div className="mt-5">
+        <ProviderInviteGenerator />
       </div>
 
       <Card className="mt-5 overflow-hidden">

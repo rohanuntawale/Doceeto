@@ -13,6 +13,7 @@ import {
   newStartCode,
   type Near,
   type PendingSignup,
+  type ProviderInviteRecord,
   type SessionRecord,
   type UserRecord,
 } from "@/lib/db/shared";
@@ -66,7 +67,7 @@ import type {
  */
 
 export { DomainError };
-export type { Near, PendingSignup, SessionRecord, UserRecord };
+export type { Near, PendingSignup, ProviderInviteRecord, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const nowIso = () => new Date().toISOString();
@@ -79,6 +80,53 @@ const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return Number.isFinite(n) ? n : fallback;
 };
+
+export async function createProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  createdById: string;
+  expiresAt: string;
+}): Promise<ProviderInviteRecord> {
+  return tx(async (client) => {
+    await client.query(
+      `UPDATE provider_invites
+       SET revoked_at = now()
+       WHERE role = $1 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > now()`,
+      [input.role],
+    );
+    const id = uid("pinv");
+    const result = await client.query(
+      `INSERT INTO provider_invites (id, code_hash, role, created_by_id, expires_at)
+       VALUES ($1,$2,$3,$4,$5)
+       RETURNING id, role, created_at, expires_at, consumed_at, consumed_by_email`,
+      [id, input.codeHash, input.role, input.createdById, input.expiresAt],
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      role: row.role,
+      createdAt: iso(row.created_at),
+      expiresAt: iso(row.expires_at),
+      consumedAt: isoOrNull(row.consumed_at),
+      consumedByEmail: row.consumed_by_email ?? null,
+    };
+  });
+}
+
+export async function consumeProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  email: string;
+}): Promise<boolean> {
+  const row = await one(
+    `UPDATE provider_invites
+     SET consumed_at = now(), consumed_by_email = $3
+     WHERE code_hash = $1 AND role = $2 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+     RETURNING id`,
+    [input.codeHash, input.role, input.email],
+  );
+  return Boolean(row);
+}
 
 type Row = Record<string, any>;
 
