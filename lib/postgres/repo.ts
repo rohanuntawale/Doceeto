@@ -81,12 +81,44 @@ const num = (v: unknown, fallback = 0): number => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+let providerInviteStoreReady: Promise<void> | null = null;
+
+async function ensureProviderInviteStore(): Promise<void> {
+  if (!providerInviteStoreReady) {
+    providerInviteStoreReady = (async () => {
+      await sql(`
+        CREATE TABLE IF NOT EXISTS provider_invites (
+          id                TEXT PRIMARY KEY,
+          code_hash         TEXT NOT NULL UNIQUE,
+          role              TEXT NOT NULL CHECK (role IN ('doctor','nurse')),
+          created_by_id     TEXT NOT NULL,
+          created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+          expires_at        TIMESTAMPTZ NOT NULL,
+          consumed_at       TIMESTAMPTZ,
+          consumed_by_email TEXT,
+          revoked_at        TIMESTAMPTZ
+        )
+      `);
+      await sql(`
+        CREATE INDEX IF NOT EXISTS provider_invites_active_idx
+        ON provider_invites(role, expires_at)
+        WHERE consumed_at IS NULL AND revoked_at IS NULL
+      `);
+    })().catch((error) => {
+      providerInviteStoreReady = null;
+      throw error;
+    });
+  }
+  await providerInviteStoreReady;
+}
+
 export async function createProviderInvite(input: {
   codeHash: string;
   role: "doctor" | "nurse";
   createdById: string;
   expiresAt: string;
 }): Promise<ProviderInviteRecord> {
+  await ensureProviderInviteStore();
   return tx(async (client) => {
     await client.query(
       `UPDATE provider_invites
@@ -118,6 +150,7 @@ export async function consumeProviderInvite(input: {
   role: "doctor" | "nurse";
   email: string;
 }): Promise<boolean> {
+  await ensureProviderInviteStore();
   const row = await one(
     `UPDATE provider_invites
      SET consumed_at = now(), consumed_by_email = $3
