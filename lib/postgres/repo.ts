@@ -2298,7 +2298,10 @@ export async function getPrescriptionById(id: string): Promise<Prescription | nu
 export async function getPrescriptionByToken(token: string): Promise<Prescription | null> {
   if (!token) return null;
   await ensurePrescriptions();
-  const r = await one(`SELECT * FROM prescriptions WHERE share_token = $1`, [token]);
+  const r = await one(
+    `SELECT * FROM prescriptions WHERE share_token = $1 AND revoked_at IS NULL`,
+    [token],
+  );
   return r ? mapPrescription(r) : null;
 }
 
