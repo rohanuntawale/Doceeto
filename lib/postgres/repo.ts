@@ -1399,6 +1399,17 @@ export async function createRequest(input: {
           startIso: String(input.scheduledAt ?? ""),
           existing,
         });
+        // ATOMICITY: Even with the doctor locked, we check for a conflicting 
+        // pending/accepted slot to prevent double-booking in a multi-instance setup.
+        const conflict = await c.query(
+          `SELECT id FROM consult_requests 
+           WHERE scheduledAt = $1 AND status IN ('pending', 'accepted')
+           LIMIT 1`,
+          [slot.scheduledAt],
+        );
+        if (conflict.rows.length > 0) {
+          throw new DomainError("That slot has just been booked. Please pick another time.", 409);
+        }
       } else {
         const g = await c.query(`SELECT * FROM gigs WHERE id = $1`, [input.gigId ?? ""]);
         hire = assertCanHire({

@@ -336,9 +336,15 @@ export function beyondHorizon(
 export function isOngoingConsult(req: ConsultRequest, nowMs: number = Date.now()): boolean {
   if (req.status !== "accepted") return false;
   const iv = intervalOf(req);
-  // An accepted row with no readable slot is treated as live: it is claimed
+  // An accepted row with no readable slot (e.g. a gig) is treated as live: it is claimed
   // and unfinished, so the doctor is on it.
-  if (!iv) return true;
+  if (!iv) {
+    // TTL: If a consult with no slot has been active for more than 12 hours,
+    // it is considered timed-out to prevent permanent "on consult" deadlocks.
+    const createdAt = Date.parse(req.createdAt);
+    if (isNaN(createdAt) || nowMs - createdAt > 12 * 60 * 60 * 1000) return false;
+    return true;
+  }
   return nowMs >= iv.start && nowMs < iv.end;
 }
 
