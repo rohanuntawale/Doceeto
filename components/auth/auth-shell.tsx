@@ -44,7 +44,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
  * match edge for edge.
  */
 export const authPanelCls =
-  "relative flex h-full min-h-0 flex-col items-center justify-start overflow-x-hidden overflow-y-auto overscroll-contain bg-[rgb(var(--surface-rgb)/0.85)] px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] backdrop-blur-2xl sm:px-10 sm:pt-10 sm:pb-10";
+  "relative flex h-full min-h-0 flex-col items-center justify-center overflow-x-hidden overflow-y-auto overscroll-contain bg-[rgb(var(--surface-rgb)/0.85)] px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] backdrop-blur-2xl sm:px-10 sm:pt-10 sm:pb-10";
 
 function FilmPanel() {
   const bounds = useRef<HTMLDivElement>(null);
