@@ -224,6 +224,9 @@ export const newShareToken = (): string => randomChars(32, "abcdefghijkmnpqrstuv
  * The link follows for the printable copy.
  */
 export function rxShareText(rx: Prescription, url?: string): string {
+  if (rx.revokedAt) {
+    return `Prescription ${rx.code}\nThis document has been revoked by the prescribing doctor.`;
+  }
   const lines: string[] = [
     `Prescription ${rx.code}`,
     `${rx.patientName} · ${new Date(rx.issuedAt).toLocaleDateString("en-IN", {

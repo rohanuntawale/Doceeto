@@ -18,6 +18,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { AuthShell as SharedAuthShell, authPanelCls } from "@/components/auth/auth-shell";
 import { AuthDivider, GoogleButton } from "@/components/auth/google-button";
 import { useWarmBackend } from "@/lib/hooks/use-warm-backend";
+import { useMounted } from "@/lib/hooks/use-mounted";
 import { SIGNUP_HANDOFF_KEY, surfaceFromPath } from "@/lib/auth/constants";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
@@ -77,6 +78,7 @@ function AuthPanel({
   googleEnabled: boolean;
   defaultMode: Mode;
 }) {
+  const isMounted = useMounted();
   // Wake the database while they're still typing — submit lands warm.
   useWarmBackend();
   const router = useRouter();
@@ -134,10 +136,12 @@ function AuthPanel({
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
+    if (isMounted) setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Could not sign in.");
-      setGoogleOnly(data.code === "GOOGLE_ONLY");
+      if (isMounted) {
+        setError(data.error ?? "Could not sign in.");
+        setGoogleOnly(data.code === "GOOGLE_ONLY");
+      }
       return;
     }
     const home =
@@ -196,9 +200,11 @@ function AuthPanel({
       body: JSON.stringify({ role: "patient", name, email, password }),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
+    if (isMounted) setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Could not create the account.");
+      if (isMounted) {
+        setError(data.error ?? "Could not create the account.");
+      }
       return;
     }
     router.push("/patient");

@@ -75,15 +75,15 @@ export function setSseConnected(v: boolean) {
 // ── Live primitive: fetch an entity from /api/data with polling ──
 async function fetchEntity<T>(entity: string): Promise<T[]> {
   const res = await apiFetch(`/api/data?entity=${entity}`, { cache: "no-store" });
-  // A 5xx is the server falling over, not an answer of "there are none".
-  // Swallowing it as [] caches an empty screen — the doctor list, the map and
-  // every count go blank and stay blank until something else invalidates the
-  // query. Throwing keeps the last good data on screen and lets the poll retry.
   if (res.status >= 500) throw new Error(`${entity}: ${res.status}`);
   if (!res.ok) return [];
   const data = await res.json();
+  
+  // Validation: Ensure the response is an array.
+  // In a full production app, we would use Zod schemas here for each entity type.
   return Array.isArray(data) ? (data as T[]) : [];
 }
+
 
 /**
  * Read an entity, optionally scoped.
@@ -154,8 +154,15 @@ export function useDoctorDetail(doctorId: string) {
         throw new Error(
           typeof body?.error === "string" ? body.error : "Could not load this doctor.",
         );
+      
+      // Validation: Ensure the body is an object and not null.
+      if (!body || typeof body !== "object") {
+        throw new Error("Invalid data received from server.");
+      }
+      
       return body as DoctorDetail;
     },
+
   });
   return {
     detail: data ?? null,
@@ -352,7 +359,13 @@ async function callAction<T = Record<string, unknown>>(
     console.error("Doceeto action failed:", action, msg);
     throw new Error(msg);
   }
-  return body as unknown as T;
+  
+  // Validation: Ensure body is an object before returning.
+  if (typeof body !== "object" || body === null) {
+    throw new Error("Server returned an invalid response.");
+  }
+  
+  return body as T;
 }
 
 export function useActions(): Actions {

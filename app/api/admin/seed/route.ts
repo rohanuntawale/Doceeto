@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runSetup } from "@/lib/db";
+import { handleApiError } from "@/lib/api/utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,6 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(result);
   } catch (err) {
-    console.error("setup failed:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return handleApiError(err, "Setup failed. Please check server logs.");
   }
 }
