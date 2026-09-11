@@ -69,7 +69,12 @@ export async function GET(req: Request) {
     mobileReturn?: string;
   };
   try {
-    pending = JSON.parse(raw);
+    let pending;
+    try {
+      pending = JSON.parse(raw);
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid pending signup data." }, { status: 400 });
+    }
   } catch {
     return fail(origin, "That sign-in expired. Please try again.");
   }

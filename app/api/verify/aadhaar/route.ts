@@ -22,7 +22,12 @@ export async function POST(req: Request) {
   try {
     const text = await req.text();
     if (Buffer.byteLength(text) > 350_000) return NextResponse.json({ error: "File too large." }, { status: 413 });
-    const body = JSON.parse(text);
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid JSON response from provider." }, { status: 502 });
+    }
     if (body.consent !== true || typeof body.xml !== "string") return NextResponse.json({ error: "Consent and your extracted XML are required." }, { status: 400 });
     const identity = verifyAadhaarXml(body.xml, certificate);
     const existing = await db.getPatientProfile(session.userId);

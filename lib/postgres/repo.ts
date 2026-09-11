@@ -584,54 +584,8 @@ export async function purgeExpiredSessions(): Promise<void> {
 }
 
 // ── Auth ─────────────────────────────────────────────────────
-// ── Hardcoded test accounts ──────────────────────────────────
-// Guaranteed to exist before any login lookup — they survive database
-// resets and fresh deploys. Both log in with the password "test1234"
-// (bcrypt hash below, converged on every check so the documented password
-// always works). Mirrors the same block in lib/filedb/store.ts.
-// ⚠ Remove this block before a real public launch.
-const TEST_PASSWORD_HASH = "$2b$10$wq6p.lQQ00xR/227k.juJetPb5YH/iQpnl3zXhH0ZQ3PUrt9bJRjy";
-let testAccountsEnsured = false;
-
-async function ensureTestAccounts(): Promise<void> {
-  if (testAccountsEnsured) return;
-  try {
-    await sql(
-      `INSERT INTO users (id, email, password_hash, role, name, address, lat, lng)
-       VALUES ('patient-test-1', 'patient@gmail.com', $1, 'patient', 'Riya Sharma', 'Baner, Pune', $2, $3)
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
-      [TEST_PASSWORD_HASH, MAP_CENTER.lat, MAP_CENTER.lng],
-    );
-    // The doctor row must share the user's id, whatever id that account was
-    // originally created with — so resolve the id first, then upsert the row.
-    const doc = await one<{ id: string }>(
-      `INSERT INTO users (id, email, password_hash, role, name)
-       VALUES ('doc-test-1', 'doctor@gmail.com', $1, 'doctor', 'Dr. Arjun Mehta')
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
-       RETURNING id`,
-      [TEST_PASSWORD_HASH],
-    );
-    await sql(
-      `INSERT INTO doctors (id, full_name, specialty, kind, gender, age, experience_years,
-         languages, status, verified, rating, consult_fee, home_visit_fee, avatar_color,
-         lat, lng, qualifications, education, registration_no, clinic_address)
-       VALUES ($1, 'Dr. Arjun Mehta', 'General Physician', 'practising', 'male', 38, 12,
-         $2, 'online', false, 0, 500, 1000, '#5D8A6E',
-         $3, $4, 'MBBS, MD (General Medicine)', 'Grant Medical College, Mumbai',
-         'MH-45210', 'MG Road, Pune, opposite Central Mall')
-       ON CONFLICT (id) DO NOTHING`,
-      [doc!.id, ["English", "Hindi", "Marathi"], MAP_CENTER.lat + 0.01, MAP_CENTER.lng + 0.01],
-    );
-    testAccountsEnsured = true;
-  } catch {
-    // Table missing (setup not run yet) or transient DB error — retry on the
-    // next lookup rather than failing the caller's request.
-  }
-}
-
-/**
- * The account behind a session id.
- *
+// The account behind a session id.
+// ... [truncated] *
  * Needed by the set-password route, which has a session (so it knows WHO) but
  * must read `passwordHash` to decide whether this is a first password being
  * added or an existing one being changed — those have different rules.
@@ -645,7 +599,6 @@ export async function findUserById(id: string): Promise<UserRecord | null> {
 }
 
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
-  await ensureTestAccounts();
   const r = await one(
     `SELECT id, email, password_hash, role, name FROM users WHERE email = $1`,
     [email.toLowerCase()],
@@ -2124,14 +2077,20 @@ export async function completeRequest(
 ) {
   await tx(async (c) => {
     const rq = await c.query(`SELECT * FROM consult_requests WHERE id = $1 FOR UPDATE`, [id]);
-    if (!rq.rows[0]) return;
+    if (!rq.rows[0]) throw new DomainError("That consult no longer exists.", 404);
     const req = mapRequest(rq.rows[0]);
-    if (req.status !== "accepted" && req.status !== "pending") return;
-    // Completing releases the doctor's "in a consult" state (which gates their
-    // urgent feed) and credits a wallet — only the doctor on it may close it.
-    if (opts?.doctorId && !claimableBy(req, opts.doctorId)) {
+    if (!opts?.doctorId || req.doctorId !== opts.doctorId) {
       throw new DomainError("That consult isn't yours to complete.", 403);
     }
+    if (req.status !== "accepted") {
+      throw new DomainError("That consult is not active.", 409);
+    }
+    if (req.tripStage !== "in_progress") {
+      throw new DomainError("Start the consult before completing it.", 409);
+    }
+    // Completing releases the doctor's "in a consult" state (which gates their
+    // urgent feed) and credits a wallet — only the doctor assigned to it may
+    // close it.
     await c.query(
       `UPDATE consult_requests SET status = 'completed', completed_at = now() WHERE id = $1`,
       [id],
@@ -2230,6 +2189,8 @@ export async function issuePrescription(input: {
       throw new DomainError("That consult isn't yours to prescribe for.", 403);
     if (req.status !== "accepted" && req.status !== "completed")
       throw new DomainError("You can only prescribe for a consult you are running.", 409);
+    if (req.status === "accepted" && req.tripStage !== "in_progress")
+      throw new DomainError("Start the consult before prescribing.", 409);
     const dupe = await c.query(`SELECT 1 FROM prescriptions WHERE request_id = $1`, [
       input.requestId,
     ]);
@@ -2272,16 +2233,37 @@ export async function issuePrescription(input: {
         newShareToken(),
       ],
     );
-    return { rx: mapPrescription(row.rows[0]), wasOpen: req.status === "accepted" };
+    const prescription = mapPrescription(row.rows[0]);
+    if (req.status === "accepted") {
+      await c.query(
+        `UPDATE consult_requests SET status = 'completed', completed_at = now() WHERE id = $1`,
+        [req.id],
+      );
+      const already = await c.query(
+        `SELECT 1 FROM transactions WHERE kind = 'earning' AND request_id = $1`,
+        [req.id],
+      );
+      if (already.rows.length === 0 && req.doctorId) {
+        const commission = Math.round(req.fee * COMMISSION_RATE);
+        await c.query(
+          `INSERT INTO transactions (id, doctor_id, kind, request_id, patient_name, method, gross, commission, net)
+           VALUES ($1,$2,'earning',$3,$4,$5,$6,$7,$8)`,
+          [
+            uid("txn"),
+            req.doctorId,
+            req.id,
+            req.patientName,
+            req.paymentMethod ?? "online",
+            req.fee,
+            commission,
+            req.fee - commission,
+          ],
+        );
+      }
+    }
+    return prescription;
   });
-
-  // Issuing closes the visit when it was still open. Outside the transaction so
-  // a rejected prescription never silently ends a consult, and so completion
-  // takes its own lock exactly as a plain "Mark complete" would.
-  if (rx.wasOpen) {
-    await completeRequest(input.requestId, { doctorId: input.doctorId });
-  }
-  return rx.rx;
+  return rx;
 }
 
 /** Every prescription, newest first. Callers scope by patient or doctor. */
@@ -2319,8 +2301,12 @@ export async function getTransactions(): Promise<Transaction[]> {
 export async function requestPayout(doctorId: string): Promise<boolean> {
   return tx(async (c) => {
     // Lock the ledger rows so a double-tap cannot withdraw the balance twice.
+    await c.query(
+      `SELECT id FROM transactions WHERE doctor_id = $1 FOR UPDATE`,
+      [doctorId],
+    );
     const bal = await c.query(
-      `SELECT COALESCE(sum(net), 0)::int AS balance FROM transactions WHERE doctor_id = $1 FOR UPDATE`,
+      `SELECT COALESCE(sum(net), 0)::int AS balance FROM transactions WHERE doctor_id = $1`,
       [doctorId],
     );
     const balance = num(bal.rows[0].balance);
@@ -2340,6 +2326,12 @@ const ORDER_FLOW = ["placed", "packed", "out_for_delivery", "delivered"];
 
 export async function assignAmbulance(sosId: string, ambulanceId: string) {
   await tx(async (c) => {
+    const sos = await c.query(`SELECT id FROM sos_events WHERE id = $1 FOR UPDATE`, [sosId]);
+    if (!sos.rows[0]) throw new DomainError("That emergency no longer exists.", 404);
+    const ambulance = await c.query(`SELECT id FROM ambulances WHERE id = $1 FOR UPDATE`, [
+      ambulanceId,
+    ]);
+    if (!ambulance.rows[0]) throw new DomainError("That ambulance no longer exists.", 404);
     await c.query(
       `UPDATE sos_events
        SET ambulance_id = $2, status = CASE WHEN status = 'open' THEN 'assigned' ELSE status END
@@ -2350,8 +2342,29 @@ export async function assignAmbulance(sosId: string, ambulanceId: string) {
   });
 }
 
-export async function assignDoctorToSos(sosId: string, doctorId: string) {
-  await sql(`UPDATE sos_events SET doctor_id = $2 WHERE id = $1`, [sosId, doctorId]);
+export async function assignDoctorToSos(
+  sosId: string,
+  doctorId: string,
+  options?: { claimOnly?: boolean },
+): Promise<boolean> {
+  return tx(async (c) => {
+    const sos = await c.query(`SELECT id FROM sos_events WHERE id = $1 FOR UPDATE`, [sosId]);
+    if (!sos.rows[0]) throw new DomainError("That emergency no longer exists.", 404);
+    const doctor = await c.query(`SELECT id FROM doctors WHERE id = $1`, [doctorId]);
+    if (!doctor.rows[0]) throw new DomainError("That doctor no longer exists.", 404);
+    if (options?.claimOnly) {
+      const claimed = await c.query(
+        `UPDATE sos_events
+         SET doctor_id = $2, status = CASE WHEN status = 'open' THEN 'assigned' ELSE status END
+         WHERE id = $1 AND doctor_id IS NULL AND status IN ('open', 'assigned')
+         RETURNING id`,
+        [sosId, doctorId],
+      );
+      return claimed.rowCount === 1;
+    }
+    await c.query(`UPDATE sos_events SET doctor_id = $2 WHERE id = $1`, [sosId, doctorId]);
+    return true;
+  });
 }
 
 export async function setSosCategory(sosId: string, category: string) {
