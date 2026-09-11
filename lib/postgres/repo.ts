@@ -585,7 +585,7 @@ export async function purgeExpiredSessions(): Promise<void> {
 
 // ── Auth ─────────────────────────────────────────────────────
 // The account behind a session id.
-// ... [truncated] *
+/**
  * Needed by the set-password route, which has a session (so it knows WHO) but
  * must read `passwordHash` to decide whether this is a first password being
  * added or an existing one being changed — those have different rules.

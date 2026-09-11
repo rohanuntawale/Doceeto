@@ -452,6 +452,8 @@ export interface Prescription {
    * to and the doctor who wrote it; never in an ops or roster response.
    */
   shareToken: string;
+  /** When a doctor revokes this document. */
+  revokedAt?: string | null;
 }
 
 export interface Review {
