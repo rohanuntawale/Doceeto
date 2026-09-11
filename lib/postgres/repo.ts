@@ -13,6 +13,7 @@ import {
   newStartCode,
   type Near,
   type PendingSignup,
+  type ProviderInviteRecord,
   type SessionRecord,
   type UserRecord,
 } from "@/lib/db/shared";
@@ -66,7 +67,7 @@ import type {
  */
 
 export { DomainError };
-export type { Near, PendingSignup, SessionRecord, UserRecord };
+export type { Near, PendingSignup, ProviderInviteRecord, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const nowIso = () => new Date().toISOString();
@@ -79,6 +80,86 @@ const num = (v: unknown, fallback = 0): number => {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return Number.isFinite(n) ? n : fallback;
 };
+
+let providerInviteStoreReady: Promise<void> | null = null;
+
+async function ensureProviderInviteStore(): Promise<void> {
+  if (!providerInviteStoreReady) {
+    providerInviteStoreReady = (async () => {
+      await sql(`
+        CREATE TABLE IF NOT EXISTS provider_invites (
+          id                TEXT PRIMARY KEY,
+          code_hash         TEXT NOT NULL UNIQUE,
+          role              TEXT NOT NULL CHECK (role IN ('doctor','nurse')),
+          created_by_id     TEXT NOT NULL,
+          created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+          expires_at        TIMESTAMPTZ NOT NULL,
+          consumed_at       TIMESTAMPTZ,
+          consumed_by_email TEXT,
+          revoked_at        TIMESTAMPTZ
+        )
+      `);
+      await sql(`
+        CREATE INDEX IF NOT EXISTS provider_invites_active_idx
+        ON provider_invites(role, expires_at)
+        WHERE consumed_at IS NULL AND revoked_at IS NULL
+      `);
+    })().catch((error) => {
+      providerInviteStoreReady = null;
+      throw error;
+    });
+  }
+  await providerInviteStoreReady;
+}
+
+export async function createProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  createdById: string;
+  expiresAt: string;
+}): Promise<ProviderInviteRecord> {
+  await ensureProviderInviteStore();
+  return tx(async (client) => {
+    await client.query(
+      `UPDATE provider_invites
+       SET revoked_at = now()
+       WHERE role = $1 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > now()`,
+      [input.role],
+    );
+    const id = uid("pinv");
+    const result = await client.query(
+      `INSERT INTO provider_invites (id, code_hash, role, created_by_id, expires_at)
+       VALUES ($1,$2,$3,$4,$5)
+       RETURNING id, role, created_at, expires_at, consumed_at, consumed_by_email`,
+      [id, input.codeHash, input.role, input.createdById, input.expiresAt],
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      role: row.role,
+      createdAt: iso(row.created_at),
+      expiresAt: iso(row.expires_at),
+      consumedAt: isoOrNull(row.consumed_at),
+      consumedByEmail: row.consumed_by_email ?? null,
+    };
+  });
+}
+
+export async function consumeProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  email: string;
+}): Promise<boolean> {
+  await ensureProviderInviteStore();
+  const row = await one(
+    `UPDATE provider_invites
+     SET consumed_at = now(), consumed_by_email = $3
+     WHERE code_hash = $1 AND role = $2 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+     RETURNING id`,
+    [input.codeHash, input.role, input.email],
+  );
+  return Boolean(row);
+}
 
 type Row = Record<string, any>;
 

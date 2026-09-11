@@ -9,6 +9,7 @@ import {
   newStartCode,
   type Near,
   type PendingSignup,
+  type ProviderInviteRecord,
   type SessionRecord,
   type UserRecord,
 } from "@/lib/db/shared";
@@ -49,7 +50,7 @@ import type {
 } from "@/lib/types/domain";
 
 export { DomainError };
-export type { Near, PendingSignup, SessionRecord, UserRecord };
+export type { Near, PendingSignup, ProviderInviteRecord, SessionRecord, UserRecord };
 
 const uid = (p: string) => `${p}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -170,6 +171,56 @@ export async function findUserById(id: string): Promise<UserRecord | null> {
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const u = data().users.find((x) => x.email === email.toLowerCase());
   return u ? { id: u.id, email: u.email, passwordHash: u.passwordHash, role: u.role, name: u.name } : null;
+}
+
+export async function createProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  createdById: string;
+  expiresAt: string;
+}): Promise<ProviderInviteRecord> {
+  const d = data();
+  const issuedAt = now();
+  const invites = d.providerInvites ?? (d.providerInvites = []);
+  for (const invite of invites) {
+    if (invite.role === input.role && !invite.consumedAt && !invite.revokedAt && new Date(invite.expiresAt).getTime() > Date.now()) {
+      invite.revokedAt = issuedAt;
+    }
+  }
+  const invite = {
+    id: uid("pinv"),
+    codeHash: input.codeHash,
+    role: input.role,
+    createdById: input.createdById,
+    createdAt: issuedAt,
+    expiresAt: input.expiresAt,
+    consumedAt: null,
+    consumedByEmail: null,
+    revokedAt: null,
+  };
+  invites.push(invite);
+  persist();
+  return invite;
+}
+
+export async function consumeProviderInvite(input: {
+  codeHash: string;
+  role: "doctor" | "nurse";
+  email: string;
+}): Promise<boolean> {
+  const invite = (data().providerInvites ?? []).find(
+    (candidate) =>
+      candidate.codeHash === input.codeHash &&
+      candidate.role === input.role &&
+      !candidate.consumedAt &&
+      !candidate.revokedAt &&
+      new Date(candidate.expiresAt).getTime() > Date.now(),
+  );
+  if (!invite) return false;
+  invite.consumedAt = now();
+  invite.consumedByEmail = input.email;
+  persist();
+  return true;
 }
 
 /** Rotate a local account password. Sessions are invalidated by the caller. */

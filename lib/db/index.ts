@@ -15,7 +15,7 @@ const usePostgres = Boolean(process.env.DATABASE_URL);
 export const db = (usePostgres ? postgres : filedb) as unknown as typeof postgres;
 
 export { DomainError } from "@/lib/db/shared";
-export type { Near, SessionRecord, UserRecord } from "@/lib/db/shared";
+export type { Near, ProviderInviteRecord, SessionRecord, UserRecord } from "@/lib/db/shared";
 
 /** One-time setup for whichever backend is active. */
 export async function runSetup() {

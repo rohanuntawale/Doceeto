@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { MAP_CENTER } from "@/lib/config";
 import { seedDoctors, seedReviews } from "@/lib/seed-doctors";
-import type { PendingSignup, SessionRecord, UserRecord } from "@/lib/db/shared";
+import type { PendingSignup, ProviderInviteRecord, SessionRecord, UserRecord } from "@/lib/db/shared";
 import type {
   Ambulance,
   ConsultRequest,
@@ -73,6 +73,7 @@ export interface FileData {
   sessions: SessionRecord[];
   /** Verified Google identities that haven't become accounts yet. */
   pendingSignups: PendingSignup[];
+  providerInvites?: (ProviderInviteRecord & { codeHash: string; createdById: string; revokedAt: string | null })[];
   doctors: Doctor[];
   /** Service packages doctors publish for patients to hire. */
   gigs: Gig[];
@@ -107,6 +108,7 @@ function empty(): FileData {
     users: [],
     sessions: [],
     pendingSignups: [],
+    providerInvites: [],
     doctors: [],
     gigs: [],
     ambulances: [],
@@ -258,6 +260,7 @@ export function data(): FileData {
     // object (survives dev hot-reloads) so new fields are never undefined.
     if (!g.__iyashiFileDb.sessions) g.__iyashiFileDb.sessions = [];
     if (!g.__iyashiFileDb.pendingSignups) g.__iyashiFileDb.pendingSignups = [];
+    if (!g.__iyashiFileDb.providerInvites) g.__iyashiFileDb.providerInvites = [];
     if (!g.__iyashiFileDb.patientReviews) g.__iyashiFileDb.patientReviews = [];
     if (!g.__iyashiFileDb.transactions) g.__iyashiFileDb.transactions = [];
     if (!g.__iyashiFileDb.gigs) g.__iyashiFileDb.gigs = [];

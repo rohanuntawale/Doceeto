@@ -84,6 +84,21 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS pending_signups_expiry_idx ON pending_signups(expires_at);
 
+CREATE TABLE IF NOT EXISTS provider_invites (
+  id                TEXT PRIMARY KEY,
+  code_hash         TEXT NOT NULL UNIQUE,
+  role              TEXT NOT NULL CHECK (role IN ('doctor','nurse')),
+  created_by_id     TEXT NOT NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at        TIMESTAMPTZ NOT NULL,
+  consumed_at       TIMESTAMPTZ,
+  consumed_by_email TEXT,
+  revoked_at        TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS provider_invites_active_idx
+  ON provider_invites(role, expires_at)
+  WHERE consumed_at IS NULL AND revoked_at IS NULL;
+
 -- Longitudinal vitals log — one row per measurement, never overwritten, so
 -- weight (and later BP/glucose) can be TRENDED rather than only snapshotted.
 -- Fed automatically: every health-profile save with a changed weight appends.
